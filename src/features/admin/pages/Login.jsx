@@ -20,7 +20,7 @@ export default function Login() {
           <h1 className="text-3xl font-black text-blue-600 tracking-tight">
             Kedai Sigma
           </h1>
-          <p className="text-lg font-medium text-[#434655]">Admin Panel</p>
+          <p className="text-lg font-medium text-[#434655]">Admin Login</p>
         </div>
 
         {/* Form */}
