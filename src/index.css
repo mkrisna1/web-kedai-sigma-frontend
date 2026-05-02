@@ -1,1 +1,13 @@
-@import "tailwindcss";
+/* ===== src/index.css ===== */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import Font Google (harus setelah tailwind) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* CSS tambahan lain kalau ada */
