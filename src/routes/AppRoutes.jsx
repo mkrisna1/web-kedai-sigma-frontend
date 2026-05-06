@@ -5,6 +5,9 @@ import Login from "../features/admin/pages/Login";
 import AdminLayout from "../layouts/admin/AdminLayout";
 import Dashboard from "../features/admin/pages/Dashboard";
 import Pesanan from "../features/admin/pages/Pesanan";
+import MenuAdmin from "../features/admin/pages/MenuAdmin";
+import MejaAdmin from "../features/admin/pages/MejaAdmin";
+
 
 function AppRoutes() {
   return (
@@ -23,6 +26,12 @@ function AppRoutes() {
 
           {/* Pesanan */}
           <Route path="pesanan" element={<Pesanan />} />
+
+          {/*Menu*/}
+          <Route path="Menu" element={<MenuAdmin />} />
+
+          {/*Meja*/}
+          <Route path="Meja" element={<MejaAdmin />} />
 
         </Route>
       </Routes>
