@@ -1,3 +1,5 @@
+import { useMemo, useState } from "react";
+
 const breakdown = [
   { stars: 5, percent: 100, color: "bg-[#006C49]" },
   { stars: 4, percent: 0, color: "bg-[#006C49]/70" },
@@ -6,7 +8,7 @@ const breakdown = [
   { stars: 1, percent: 0, color: "bg-[#BA1A1A]" },
 ];
 
-const reviews = [
+const baseReviews = [
   {
     name: "Jagat Satrio Wibowo",
     item: "Kopi Susu Sigma",
@@ -27,6 +29,21 @@ const reviews = [
     attachment: "Makanan Sempel.jpg",
   },
 ];
+
+const clonedReviews = Array.from({ length: 8 }, (_, index) => {
+  const source = baseReviews[index % baseReviews.length];
+
+  return {
+    ...source,
+    name: `${source.name} ${index + 2}`,
+    date: `${index + 1} days ago`,
+    initials: source.initials,
+    attachment: index % 2 === 0 ? source.attachment : undefined,
+    verified: index % 2 !== 0,
+  };
+});
+
+const reviews = [...baseReviews, ...clonedReviews];
 
 function StarIcon({ className = "h-5 w-5" }) {
   return (
@@ -155,6 +172,35 @@ function ReviewCard({ review }) {
 }
 
 export default function ReviewAdmin() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(2);
+
+  const filteredReviews = useMemo(() => {
+    const keyword = searchQuery.trim().toLowerCase();
+
+    if (!keyword) {
+      return reviews;
+    }
+
+    return reviews.filter((review) =>
+      [
+        review.name,
+        review.item,
+        review.date,
+        review.comment,
+        review.attachment,
+        review.verified ? "verified review" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(keyword),
+    );
+  }, [searchQuery]);
+
+  const visibleReviews = filteredReviews.slice(0, visibleCount);
+  const canLoadMore = visibleCount < filteredReviews.length;
+
   return (
     <section className="flex w-full flex-col gap-8 bg-[#F7F9FB] font-['Inter',Arial,sans-serif] text-[#191C1E]">
       <div className="relative max-w-md">
@@ -162,6 +208,11 @@ export default function ReviewAdmin() {
         <input
           type="search"
           placeholder="Search Reviews..."
+          value={searchQuery}
+          onChange={(event) => {
+            setSearchQuery(event.target.value);
+            setVisibleCount(2);
+          }}
           className="h-[38px] w-full border-0 border-b-2 border-[#C3C6D7] bg-white py-2 pl-10 pr-4 text-sm text-[#191C1E] outline-none placeholder:text-[#6B7280] focus:border-[#004AC6]"
         />
       </div>
@@ -223,17 +274,33 @@ export default function ReviewAdmin() {
         </h2>
 
         <div className="flex flex-col gap-4">
-          {reviews.map((review) => (
-            <ReviewCard key={review.name} review={review} />
-          ))}
+          {visibleReviews.length > 0 ? (
+            visibleReviews.map((review) => (
+              <ReviewCard key={`${review.name}-${review.date}`} review={review} />
+            ))
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm font-semibold text-[#434655]">
+              Tidak ada review yang cocok.
+            </div>
+          )}
         </div>
 
-        <div className="flex justify-center pt-4">
-          <button className="flex h-12 items-center gap-2 rounded-xl border-2 border-slate-200 px-8 text-sm font-bold text-[#434655] transition hover:border-slate-300 hover:bg-white">
-            Load More Reviews
-            <ChevronDownIcon />
-          </button>
-        </div>
+        {canLoadMore && (
+          <div className="flex justify-center pt-4">
+            <button
+              type="button"
+              onClick={() =>
+                setVisibleCount((current) =>
+                  Math.min(current + 2, filteredReviews.length),
+                )
+              }
+              className="flex h-12 items-center gap-2 rounded-xl border-2 border-slate-200 px-8 text-sm font-bold text-[#434655] transition hover:border-slate-300 hover:bg-white"
+            >
+              Load More Reviews
+              <ChevronDownIcon />
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

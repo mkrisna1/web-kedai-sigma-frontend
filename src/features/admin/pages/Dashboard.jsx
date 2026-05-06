@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 const transactions = [
   { id: "#TRX-9382", table: "Meja 04", time: "14:32", total: "41K" },
@@ -7,7 +7,18 @@ const transactions = [
   { id: "#TRX-9379", table: "Meja 08", time: "12:45", total: "30K" },
 ];
 
+const allTransactions = [
+  ...transactions,
+  { id: "#TRX-9378", table: "Meja 03", time: "12:20", total: "52K" },
+  { id: "#TRX-9377", table: "Meja 10", time: "11:58", total: "27K" },
+  { id: "#TRX-9376", table: "Meja 06", time: "11:35", total: "84K" },
+  { id: "#TRX-9375", table: "Meja 02", time: "11:12", total: "18K" },
+];
+
 const Dashboard = () => {
+  const [showAllTransactions, setShowAllTransactions] = useState(false);
+  const visibleTransactions = showAllTransactions ? allTransactions : transactions;
+
   return (
     <div className="min-h-screen bg-[#F7F9FB] p-10 font-['Inter',Arial,sans-serif]">
       <div className="mx-auto max-w-[1280px] space-y-10">
@@ -76,8 +87,12 @@ const Dashboard = () => {
                   Transaksi hari ini
                 </p>
               </div>
-              <button className="rounded-xl bg-[#2563EB] px-8 py-3 text-lg font-semibold text-white transition hover:brightness-105">
-                Lihat Semua
+              <button
+                type="button"
+                onClick={() => setShowAllTransactions((current) => !current)}
+                className="rounded-xl bg-[#2563EB] px-8 py-3 text-lg font-semibold text-white transition hover:brightness-105"
+              >
+                {showAllTransactions ? "Sembunyikan" : "Lihat Semua"}
               </button>
             </div>
 
@@ -91,7 +106,7 @@ const Dashboard = () => {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {transactions.map((item) => (
+                {visibleTransactions.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="py-6 font-medium text-[#2563EB]">
                       {item.id}
@@ -107,13 +122,13 @@ const Dashboard = () => {
             </table>
           </div>
 
-          <div className="col-span-2 flex flex-col rounded-2xl bg-white p-10 shadow-sm">
+          <div className="col-span-2 flex self-start flex-col rounded-2xl bg-white p-10 shadow-sm">
             <h3 className="text-2xl font-bold text-[#191C1E]">Peak Traffic</h3>
             <p className="mt-1 text-base text-gray-500">
               Hourly customer flow comparison
             </p>
 
-            <div className="relative mt-12 flex h-72 flex-1 items-end gap-4 border-b border-l border-gray-200">
+            <div className="relative mt-12 flex h-72 shrink-0 items-end gap-4 border-b border-l border-gray-200">
               <div className="flex-1 rounded-t bg-[#2563EB]" style={{ height: "65%" }} />
               <div className="flex-1 rounded-t bg-[#2563EB]" style={{ height: "82%" }} />
               <div className="flex-1 rounded-t bg-[#2563EB]" style={{ height: "48%" }} />
