@@ -1,125 +1,165 @@
-import { useState } from "react";
+const cn = (...classes) => classes.filter(Boolean).join(" ");
 
-/* =========================
-   DATA
-========================= */
-const STATS = [
-  { label: "Pending Orders", value: 1, color: "border-blue-600", iconBg: "bg-blue-50", iconColor: "text-blue-600", valColor: "text-gray-900" },
-  { label: "In Preparation", value: 2, color: "border-amber-500", iconBg: "bg-amber-50", iconColor: "text-amber-600", valColor: "text-gray-900" },
-  { label: "Completed (Today)", value: 40, color: "border-emerald-700", iconBg: "bg-emerald-50", iconColor: "text-emerald-700", valColor: "text-gray-900" },
-  { label: "Cancelled", value: 0, color: "border-red-700", iconBg: "bg-red-50", iconColor: "text-red-700", valColor: "text-gray-900" },
-];
-
-const ORDERS = [
-  {
-    id: "KS-9281",
-    table: "T-04",
-    tableColor: "border-blue-200 text-blue-700",
-    time: "Dipesan 4 menit lalu",
-    status: "Pending",
-    statusBg: "bg-indigo-200 text-indigo-900",
-    headerBg: "bg-blue-50/30",
-    items: [
-      { name: "2x Kentang", price: "20K" },
-      { name: "1x Ice Matcha", price: "13K" },
-      { name: "2x Ice Coffee Latte", price: "26K" },
-    ],
-    total: "59K",
-    totalColor: "text-blue-700",
-    primaryBtn: { label: "Konfirmasi Pesanan", bg: "bg-blue-700 hover:bg-blue-800 text-white", width: "w-full" },
-    secondaryBtn: null,
-    strikethrough: false,
+const statusConfig = {
+  pending: {
+    badge: { bg: "bg-[#DBE1FF]", text: "text-[#00174B]", label: "Pending" },
+    headerBg: "bg-[rgba(239,246,255,0.30)]",
+    tableBorder: "border-[rgba(0,74,198,0.20)]",
+    tableText: "text-[#004AC6]",
+    tableBg: "bg-white",
+    totalColor: "text-[#004AC6]",
   },
-  {
-    id: "KS-7743",
-    table: "T-08",
-    tableColor: "border-amber-300 text-amber-600",
-    time: "Disiapkan: 12 menit",
-    status: "Processing",
-    statusBg: "bg-orange-200 text-orange-900",
-    headerBg: "bg-amber-50/30",
-    items: [
-      { name: "1x Sosis Solo", price: "13K" },
-      { name: "1x Ice Lemon Tea", price: "10K" },
-    ],
-    total: "23K",
-    totalColor: "text-amber-600",
-    primaryBtn: { label: "Selesai Disiapkan", bg: "bg-amber-500 hover:bg-amber-600 text-white", width: "flex-1" },
-    secondaryBtn: true,
-    strikethrough: false,
+  processing: {
+    badge: { bg: "bg-[#FFDDB8]", text: "text-[#653E00]", label: "Processing" },
+    headerBg: "bg-[rgba(255,251,235,0.30)]",
+    tableBorder: "border-[#FDE68A]",
+    tableText: "text-[#D97706]",
+    tableBg: "bg-white",
+    totalColor: "text-[#D97706]",
   },
-];
+  completed: {
+    badge: { bg: "bg-[#6CF8BB]", text: "text-[#00714D]", label: "Completed" },
+    headerBg: "bg-[rgba(108,248,187,0.10)]",
+    tableBorder: "border-[rgba(0,108,73,0.20)]",
+    tableText: "text-[#006C49]",
+    tableBg: "bg-white",
+    totalColor: "text-[#006C49]",
+  },
+  cancelled: {
+    badge: { bg: "bg-[#FFDAD6]", text: "text-[#93000A]", label: "Cancelled" },
+    headerBg: "bg-[rgba(255,218,214,0.20)]",
+    tableBorder: "border-[rgba(186,26,26,0.20)]",
+    tableText: "text-[#BA1A1A]",
+    tableBg: "bg-white",
+    totalColor: "text-[#BA1A1A]",
+  },
+};
 
-/* =========================
-   COMPONENTS
-========================= */
-function StatCard({ label, value, color, iconBg, iconColor, valColor }) {
+const ClockIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+    <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10Zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm1-8.414 3.293 3.293-1.414 1.414L11 12.414V6h2v5.586Z" fill="currentColor" />
+  </svg>
+);
+
+const ProcessingIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+    <path d="M12 2a10 10 0 0 1 10 10h-2a8 8 0 1 0-2.343 5.657l1.414 1.414A10 10 0 1 1 12 2Zm1 5v6h5v-2h-3V7h-2Z" fill="currentColor" />
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+    <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10Zm-1.05-6.464 6.364-6.364-1.414-1.414-4.95 4.95-2.121-2.122-1.414 1.414 3.535 3.536Z" fill="currentColor" />
+  </svg>
+);
+
+const XIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+    <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10Zm3.536-14.95L12 10.586 8.464 7.05 7.05 8.464 10.586 12 7.05 15.536l1.414 1.414L12 13.414l3.536 3.536 1.414-1.414L13.414 12l3.536-3.536-1.414-1.414Z" fill="currentColor" />
+  </svg>
+);
+
+const CancelIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+    <path d="M18.3 5.71 16.89 4.3 12 9.17 7.11 4.3 5.7 5.71 10.59 10.6 5.7 15.49 7.11 16.9 12 12.01 16.89 16.9 18.3 15.49 13.41 10.6 18.3 5.71Z" fill="currentColor" />
+  </svg>
+);
+
+const ShieldIcon = () => (
+  <svg width="10" height="12" viewBox="0 0 10 12" fill="none">
+    <path d="M4.05417 7.90417L7.35 4.60833L6.51875 3.77708L4.05417 6.24167L2.82917 5.01667L1.99792 5.84792L4.05417 7.90417ZM4.66667 11.6667C3.31528 11.3264 2.19965 10.551 1.31979 9.34062C0.439931 8.13021 0 6.78611 0 5.30833V1.75L4.66667 0L9.33333 1.75V5.30833C9.33333 6.78611 8.8934 8.13021 8.01354 9.34062C7.13368 10.551 6.01806 11.3264 4.66667 11.6667ZM4.66667 10.4417C5.67778 10.1208 6.51389 9.47917 7.175 8.51667C7.83611 7.55417 8.16667 6.48472 8.16667 5.30833V2.55208L4.66667 1.23958L1.16667 2.55208V5.30833C1.16667 6.48472 1.49722 7.55417 2.15833 8.51667C2.81944 9.47917 3.65556 10.1208 4.66667 10.4417Z" fill="#006C49" />
+  </svg>
+);
+
+const DotsIcon = () => (
+  <svg width="12" height="3" viewBox="0 0 12 3" fill="none">
+    <path d="M1.5 3C1.0875 3 0.734375 2.85313 0.440625 2.55938C0.146875 2.26562 0 1.9125 0 1.5C0 1.0875 0.146875 0.734375 0.440625 0.440625C0.734375 0.146875 1.0875 0 1.5 0C1.9125 0 2.26562 0.146875 2.55938 0.440625C2.85313 0.734375 3 1.0875 3 1.5C3 1.9125 2.85313 2.26562 2.55938 2.55938C2.26562 2.85313 1.9125 3 1.5 3ZM6 3C5.5875 3 5.23438 2.85313 4.94063 2.55938C4.64688 2.26562 4.5 1.9125 4.5 1.5C4.5 1.0875 4.64688 0.734375 4.94063 0.440625C5.23438 0.146875 5.5875 0 6 0C6.4125 0 6.76562 0.146875 7.05937 0.440625C7.35312 0.734375 7.5 1.0875 7.5 1.5C7.5 1.9125 7.35312 2.26562 7.05937 2.55938C6.76562 2.85313 6.4125 3 6 3ZM10.5 3C10.0875 3 9.73438 2.85313 9.44063 2.55938C9.14688 2.26562 9 1.9125 9 1.5C9 1.0875 9.14688 0.734375 9.44063 0.440625C9.73438 0.146875 10.0875 0 10.5 0C10.9125 0 11.2656 0.146875 11.5594 0.440625C11.8531 0.734375 12 1.0875 12 1.5C12 1.9125 11.8531 2.26562 11.5594 2.55938C11.2656 2.85313 10.9125 3 10.5 3Z" fill="#434655" />
+  </svg>
+);
+
+function StatCard({ label, value, icon, accentColor, valueColor }) {
   return (
-    <div className={`flex-1 bg-white rounded-lg shadow-sm border-b-4 ${color} p-6 flex flex-col gap-1`}>
-      <div className={`rounded p-2 w-fit ${iconBg}`}>
-        <span className={`${iconColor}`}>■</span>
-      </div>
-
-      <p className="text-xs font-bold tracking-widest uppercase text-gray-500 mt-2">
-        {label}
-      </p>
-
-      <p className={`text-3xl font-black tracking-tight ${valColor}`}>
-        {value}
-      </p>
+    <div className={cn("flex flex-col gap-1 p-6 rounded-lg bg-white shadow-sm border-b-4", accentColor)}>
+      <div className="flex justify-between items-start">{icon}</div>
+      <p className="text-[#434655] text-xs font-bold leading-4 tracking-[0.6px] uppercase mt-3">{label}</p>
+      <p className={cn("text-3xl font-black leading-9", valueColor)}>{value}</p>
     </div>
   );
 }
 
-function OrderCard({ order }) {
-  return (
-    <div className="bg-white rounded-lg shadow-sm flex flex-col">
+function OrderCard({ tableNumber, orderId, timeLabel, status, items, total }) {
+  const cfg = statusConfig[status] ?? statusConfig.pending;
+  const isCompleted = status === "completed";
+  const isCancelled = status === "cancelled";
+  const isDimmed = isCompleted || isCancelled;
 
-      {/* Header */}
-      <div className={`flex justify-between items-center px-5 py-4 ${order.headerBg} border-b border-gray-100/20`}>
+  return (
+    <div className={cn("flex flex-col rounded-lg bg-white shadow-sm overflow-hidden", isCompleted && "border border-[rgba(0,108,73,0.10)]")}>
+      <div className={cn("flex items-center justify-between px-5 py-4 border-b border-[rgba(195,198,215,0.15)]", cfg.headerBg)}>
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 bg-white border rounded flex items-center justify-center font-bold ${order.tableColor}`}>
-            {order.table}
+          <div className={cn("flex items-center justify-center w-10 h-10 rounded border font-bold text-base", cfg.tableBorder, cfg.tableText, cfg.tableBg)}>
+            {tableNumber}
           </div>
-          <div>
-            <p className="font-bold text-gray-900">Order #{order.id}</p>
-            <p className="text-xs text-gray-500">{order.time}</p>
+
+          <div className="flex flex-col">
+            <span className="text-[#191C1E] text-sm font-bold leading-5">{orderId}</span>
+            <span className="text-[#434655] text-[10px] font-medium leading-[15px]">{timeLabel}</span>
           </div>
         </div>
 
-        <span className={`text-xs font-bold px-2 py-1 rounded ${order.statusBg}`}>
-          {order.status}
+        <span className={cn("px-2 py-1 rounded-sm text-[10px] font-bold leading-[15px] tracking-[0.5px] uppercase", cfg.badge.bg, cfg.badge.text)}>
+          {cfg.badge.label}
         </span>
       </div>
 
-      {/* Items */}
-      <div className="p-5 flex flex-col gap-3 flex-1">
-        {order.items.map((item, i) => (
-          <div key={i} className="flex justify-between text-sm">
-            <span className="text-gray-500">{item.name}</span>
-            <span className="font-semibold">{item.price}</span>
-          </div>
-        ))}
+      <div className="flex flex-col gap-4 px-5 py-5 flex-1">
+        <div className="flex flex-col gap-3">
+          {items.map((item, idx) => (
+            <div key={`${item.name}-${idx}`} className={cn("flex justify-between items-start", isDimmed && "opacity-60")}>
+              <span className={cn("text-[#434655] text-sm leading-5", isDimmed && "line-through")}>{item.name}</span>
+              <span className="text-[#191C1E] text-sm font-semibold leading-5 flex-shrink-0 ml-2">{item.price}</span>
+            </div>
+          ))}
+        </div>
 
-        <div className="border-t pt-3 flex justify-between items-center mt-2">
-          <span className="text-xs font-bold uppercase text-gray-500">
-            Total
-          </span>
-          <span className={`text-lg font-black ${order.totalColor}`}>
-            {order.total}
-          </span>
+        <div className="flex justify-between items-center pt-4 border-t border-[rgba(195,198,215,0.15)] mt-auto">
+          <span className="text-[#434655] text-xs font-bold leading-4 uppercase tracking-wide">Total Harga</span>
+
+          <div className="flex items-center gap-2">
+            {isCompleted && <ShieldIcon />}
+            <span className={cn("text-lg font-black leading-7", cfg.totalColor)}>{total}</span>
+          </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="bg-gray-100 px-4 py-4 flex gap-2">
-        <button className={`flex-1 py-2.5 rounded text-xs font-bold ${order.primaryBtn.bg}`}>
-          {order.primaryBtn.label}
-        </button>
+      <div className="px-4 py-4 bg-[#F2F4F6] flex gap-2">
+        {status === "pending" && (
+          <>
+            <button className="flex-1 py-3 rounded bg-[#004AC6] text-white text-xs font-bold tracking-wide shadow-md hover:bg-blue-800 transition-colors">
+              Accept Order
+            </button>
 
-        {order.secondaryBtn && (
-          <button className="w-10 h-10 bg-white border rounded flex items-center justify-center">
-            •••
+            <button className="flex items-center justify-center w-10 h-10 rounded border border-[rgba(195,198,215,0.20)] bg-white text-[#BA1A1A] hover:bg-red-50 transition-colors flex-shrink-0">
+              <CancelIcon />
+            </button>
+          </>
+        )}
+
+        {status === "processing" && (
+          <>
+            <button className="flex-1 py-3 rounded bg-[#F59E0B] text-white text-xs font-bold tracking-wide shadow-md hover:bg-amber-500 transition-colors">
+              Mark as Ready
+            </button>
+
+            <button className="flex items-center justify-center w-10 h-10 rounded border border-[rgba(195,198,215,0.20)] bg-white hover:bg-slate-50 transition-colors flex-shrink-0">
+              <DotsIcon />
+            </button>
+          </>
+        )}
+
+        {(isCompleted || isCancelled) && (
+          <button className="flex-1 py-2 rounded border border-[rgba(195,198,215,0.20)] bg-white text-[#434655] text-xs font-bold hover:bg-slate-50 transition-colors">
+            Print Receipt
           </button>
         )}
       </div>
@@ -127,34 +167,90 @@ function OrderCard({ order }) {
   );
 }
 
-/* =========================
-   PAGE (CONTENT ONLY)
-========================= */
 export default function Pesanan() {
+  const orders = [
+    {
+      tableNumber: "12",
+      orderId: "#ORD-001",
+      timeLabel: "10 menit lalu",
+      status: "pending",
+      total: "Rp 85.000",
+      items: [
+        { name: "Nasi Goreng Spesial", price: "Rp 35.000" },
+        { name: "Es Teh Manis", price: "Rp 8.000" },
+      ],
+    },
+    {
+      tableNumber: "07",
+      orderId: "#ORD-002",
+      timeLabel: "18 menit lalu",
+      status: "processing",
+      total: "Rp 120.000",
+      items: [
+        { name: "Ayam Bakar", price: "Rp 45.000" },
+        { name: "Jus Alpukat", price: "Rp 18.000" },
+      ],
+    },
+    {
+      tableNumber: "03",
+      orderId: "#ORD-003",
+      timeLabel: "35 menit lalu",
+      status: "completed",
+      total: "Rp 65.000",
+      items: [
+        { name: "Mie Goreng", price: "Rp 30.000" },
+        { name: "Kopi Susu", price: "Rp 15.000" },
+      ],
+    },
+    {
+      tableNumber: "09",
+      orderId: "#ORD-004",
+      timeLabel: "50 menit lalu",
+      status: "cancelled",
+      total: "Rp 42.000",
+      items: [
+        { name: "Soto Ayam", price: "Rp 28.000" },
+        { name: "Air Mineral", price: "Rp 6.000" },
+      ],
+    },
+    {
+      tableNumber: "12",
+      orderId: "#ORD-005",
+      timeLabel: "10 menit lalu",
+      status: "pending",
+      total: "Rp 85.000",
+      items: [
+        { name: "Nasi Goreng Spesial", price: "Rp 35.000" },
+        { name: "Es Teh Manis", price: "Rp 8.000" },
+      ],
+    },
+    {
+      tableNumber: "12",
+      orderId: "#ORD-006",
+      timeLabel: "10 menit lalu",
+      status: "pending",
+      total: "Rp 85.000",
+      items: [
+        { name: "Nasi Goreng Spesial", price: "Rp 35.000" },
+        { name: "Es Teh Manis", price: "Rp 8.000" },
+      ],
+    },
+  ];
+
   return (
-    <div className="flex flex-col gap-8">
-
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-extrabold">Kelola Pesanan</h1>
-        <p className="text-gray-600">
-          Pantau semua pesanan secara real-time
-        </p>
+    <main className="min-h-screen bg-[#F6F7FB] p-6 font-['Inter',sans-serif]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        <StatCard label="Pending" value="3" accentColor="border-[#004AC6]" valueColor="text-[#004AC6]" icon={<div className="w-10 h-10 rounded bg-[#DBE1FF] text-[#004AC6] flex items-center justify-center"><ClockIcon /></div>} />
+        <StatCard label="Processing" value="1" accentColor="border-[#F59E0B]" valueColor="text-[#D97706]" icon={<div className="w-10 h-10 rounded bg-[#FFDDB8] text-[#D97706] flex items-center justify-center"><ProcessingIcon /></div>} />
+        <StatCard label="Completed" value="1" accentColor="border-[#006C49]" valueColor="text-[#006C49]" icon={<div className="w-10 h-10 rounded bg-[#6CF8BB] text-[#006C49] flex items-center justify-center"><CheckIcon /></div>} />
+        <StatCard label="Cancelled" value="1" accentColor="border-[#BA1A1A]" valueColor="text-[#BA1A1A]" icon={<div className="w-10 h-10 rounded bg-[#FFDAD6] text-[#BA1A1A] flex items-center justify-center"><XIcon /></div>} />
       </div>
 
-      {/* Stats */}
-      <div className="flex gap-6">
-        {STATS.map((s, i) => (
-          <StatCard key={i} {...s} />
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {orders.map((order) => (
+          <OrderCard key={order.orderId} {...order} />
         ))}
       </div>
-
-      {/* Orders */}
-      <div className="grid grid-cols-3 gap-6">
-        {ORDERS.map((o, i) => (
-          <OrderCard key={i} order={o} />
-        ))}
-      </div>
-    </div>
+    </main>
   );
 }
