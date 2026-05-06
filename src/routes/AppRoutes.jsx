@@ -1,6 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
+// User
 import Home from "../features/user/pages/Home";
+import Menu from "../features/user/pages/Menu";
+import Reservasi from "../features/user/pages/Reservasi";
+import Review from "../features/user/pages/Review";
+import MainLayout from "../layouts/user/MainLayout";
+
+// Admin
 import Login from "../features/admin/pages/Login";
 import AdminLayout from "../layouts/admin/AdminLayout";
 import Dashboard from "../features/admin/pages/Dashboard";
@@ -14,8 +21,16 @@ function AppRoutes() {
     <BrowserRouter>
       <Routes>
         {/* PUBLIC */}
-        <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
+
+        {/* USER */}
+        <Route path="/" element={<MainLayout />}>
+          <Route index element={<Home />} />
+          <Route path="home" element={<Home />} />
+          <Route path="menu" element={<Menu />} />
+          <Route path="reservasi" element={<Reservasi />} />
+          <Route path="review" element={<Review />} />
+        </Route>
 
         {/* ADMIN */}
         <Route path="/admin" element={<AdminLayout />}>
