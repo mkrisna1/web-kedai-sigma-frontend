@@ -14,6 +14,9 @@ import Dashboard from "../features/admin/pages/Dashboard";
 import Pesanan from "../features/admin/pages/Pesanan";
 import MenuAdmin from "../features/admin/pages/MenuAdmin";
 import MejaAdmin from "../features/admin/pages/MejaAdmin";
+import ReservasiAdmin from "../features/admin/pages/ReservasiAdmin";
+import ReviewAdmin from "../features/admin/pages/ReviewAdmin";
+import Laporan from "../features/admin/pages/Laporan";
 
 
 function AppRoutes() {
@@ -47,6 +50,15 @@ function AppRoutes() {
 
           {/*Meja*/}
           <Route path="Meja" element={<MejaAdmin />} />
+
+          {/*Reservasi*/}
+          <Route path="reservasi" element={<ReservasiAdmin />} />
+
+          {/*Review*/}
+          <Route path="review" element={<ReviewAdmin />} />
+
+          {/*Laporan*/}
+          <Route path="laporan" element={<Laporan />} />
 
         </Route>
       </Routes>

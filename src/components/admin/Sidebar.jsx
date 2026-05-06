@@ -39,7 +39,7 @@ const navItems = [
   },
   {
     label: "Kelola Reservasi",
-    path: "/kelola-reservasi",
+    path: "/admin/reservasi",
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 18 20" fill="none">
   <path
@@ -51,7 +51,7 @@ const navItems = [
   },
   {
     label: "Review",
-    path: "/review",
+    path: "/admin/review",
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 20 20" fill="none">
   <path
@@ -63,7 +63,7 @@ const navItems = [
   },
   {
     label: "Laporan",
-    path: "/laporan",
+    path: "/admin/laporan",
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 18 18" fill="none">
   <path
