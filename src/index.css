@@ -1,13 +1,22 @@
-/* ===== src/index.css ===== */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Import Font Google (harus setelah tailwind) */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
-
-body {
-  font-family: 'Inter', system-ui, sans-serif;
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 95px;
 }
 
-/* CSS tambahan lain kalau ada */
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+@keyframes slide-left {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(calc(-50% - 1rem));
+  }
+}
