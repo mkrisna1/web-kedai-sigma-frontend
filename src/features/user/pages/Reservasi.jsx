@@ -1,6 +1,7 @@
 import { useState } from "react";
 import fotoKedai1 from "../../../assets/Foto Kedai 1.png";
 import fotoKedai2 from "../../../assets/Foto Kedai 2.PNG";
+import logoSigma from "../../../assets/Logo Sigma.png";
 
 const inputClass =
   "h-[62px] w-full border-0 border-b-2 border-[#5C403C] bg-transparent px-1 py-4 font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-7 text-[#D9E3F6] outline-none transition placeholder:text-[#2B3544]/55 focus:border-[#EEC200]";
@@ -64,8 +65,36 @@ function ChargeIcon({ className = "h-7 w-7" }) {
   );
 }
 
+function CheckBadgeIcon({ className = "h-8 w-8" }) {
+  return (
+    <svg viewBox="0 0 32 32" className={className} fill="none" aria-hidden="true">
+      <path
+        d="m7.5 16.4 5.2 5.2 11.8-12"
+        stroke="#FFFFFF"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="4"
+        className="[stroke-dasharray:30] [stroke-dashoffset:30] animate-[check-draw_520ms_180ms_cubic-bezier(0.65,0,0.35,1)_forwards]"
+      />
+    </svg>
+  );
+}
+
 const days = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
-const april2026 = Array.from({ length: 30 }, (_, index) => index + 1);
+const monthNames = [
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
+];
 const timeOptions = [
   "16:00",
   "16:30",
@@ -85,27 +114,130 @@ const timeOptions = [
   "23:30",
 ];
 
-function CalendarPopup({ selectedDate, onClose, onSelect }) {
+function formatDateValue(year, month, date) {
+  return `${String(month + 1).padStart(2, "0")}/${String(date).padStart(2, "0")}/${year}`;
+}
+
+function getDateFromValue(value) {
+  if (!value) {
+    return new Date();
+  }
+
+  const [month, date, year] = value.split("/").map(Number);
+
+  if (!month || !date || !year) {
+    return new Date();
+  }
+
+  return new Date(year, month - 1, date);
+}
+
+function isSameDate(firstDate, secondDate) {
   return (
-    <div className="absolute left-1/2 top-full z-30 mt-4 w-[min(384px,calc(100vw-48px))] -translate-x-1/2 overflow-hidden rounded-lg border border-[#2B3544] bg-[#212B39] shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
-      <div className="flex flex-col gap-8 p-6">
-        <div className="flex h-7 items-center justify-between">
+    firstDate.getFullYear() === secondDate.getFullYear() &&
+    firstDate.getMonth() === secondDate.getMonth() &&
+    firstDate.getDate() === secondDate.getDate()
+  );
+}
+
+function CalendarPopup({ selectedDate, onClose, onSelect }) {
+  const today = new Date();
+  const selectedDateObject = getDateFromValue(selectedDate);
+  const [visibleMonth, setVisibleMonth] = useState(selectedDateObject.getMonth());
+  const [visibleYear, setVisibleYear] = useState(selectedDateObject.getFullYear());
+  const firstDayIndex = new Date(visibleYear, visibleMonth, 1).getDay();
+  const daysInMonth = new Date(visibleYear, visibleMonth + 1, 0).getDate();
+  const monthDates = Array.from({ length: daysInMonth }, (_, index) => index + 1);
+  const minReservationDate = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+  );
+  const maxReservationDate = new Date(minReservationDate);
+  maxReservationDate.setDate(minReservationDate.getDate() + 14);
+  const isPreviousMonthDisabled =
+    visibleYear === today.getFullYear() && visibleMonth <= today.getMonth();
+  const isNextMonthDisabled =
+    new Date(visibleYear, visibleMonth + 1, 1) > maxReservationDate;
+
+  const goToPreviousMonth = () => {
+    setVisibleMonth((currentMonth) => {
+      if (currentMonth === 0) {
+        setVisibleYear((currentYear) => currentYear - 1);
+        return 11;
+      }
+
+      return currentMonth - 1;
+    });
+  };
+
+  const goToNextMonth = () => {
+    setVisibleMonth((currentMonth) => {
+      if (currentMonth === 11) {
+        setVisibleYear((currentYear) => currentYear + 1);
+        return 0;
+      }
+
+      return currentMonth + 1;
+    });
+  };
+
+  const hasSelectableDatesInMonth = (monthIndex) => {
+    const firstDateInMonth = new Date(visibleYear, monthIndex, 1);
+    const lastDateInMonth = new Date(visibleYear, monthIndex + 1, 0);
+
+    return (
+      lastDateInMonth >= minReservationDate &&
+      firstDateInMonth <= maxReservationDate
+    );
+  };
+
+  return (
+    <div className="absolute left-1/2 top-full z-30 mt-4 w-[min(384px,calc(100vw-48px))] -translate-x-1/2 animate-[picker-panel_180ms_ease-out] overflow-hidden rounded-lg border border-[#2B3544] bg-[#212B39] shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
+      <div className="flex flex-col gap-6 p-6">
+        <div className="flex items-center justify-between gap-3">
           <button
             type="button"
-            className="flex h-7 w-7 items-center justify-center rounded-md text-[#94A3B8] transition hover:bg-[#121C2A] hover:text-[#D9E3F6]"
+            onClick={goToPreviousMonth}
+            disabled={isPreviousMonthDisabled}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[#94A3B8] transition hover:bg-[#121C2A] hover:text-[#D9E3F6] disabled:cursor-not-allowed disabled:opacity-30"
             aria-label="Bulan sebelumnya"
           >
-            <span className="text-lg leading-none">‹</span>
+            <span className="text-lg leading-none">{"<"}</span>
           </button>
-          <h2 className="font-['Inter',sans-serif] text-lg font-bold leading-7 tracking-[-0.025em] text-[#D9E3F6]">
-            April 2026
-          </h2>
+
+          <div className="grid flex-1 grid-cols-[1fr_82px] gap-2">
+            <select
+              value={visibleMonth}
+              onChange={(event) => setVisibleMonth(Number(event.target.value))}
+              className="h-9 rounded-lg border border-[#2B3544] bg-[#121C2A] px-3 font-['Inter',sans-serif] text-sm font-bold text-[#D9E3F6] outline-none transition focus:border-[#EEC200]"
+              aria-label="Pilih bulan"
+            >
+              {monthNames.map((month, index) => (
+                <option
+                  key={month}
+                  className="bg-[#121C2A]"
+                  value={index}
+                  disabled={!hasSelectableDatesInMonth(index)}
+                >
+                  {month}
+                </option>
+              ))}
+            </select>
+
+            <div className="flex h-9 items-center justify-center rounded-lg border border-[#2B3544] bg-[#121C2A] px-3 font-['Inter',sans-serif] text-sm font-bold text-[#D9E3F6]">
+              {visibleYear}
+            </div>
+          </div>
+
           <button
             type="button"
-            className="flex h-7 w-7 items-center justify-center rounded-md text-[#94A3B8] transition hover:bg-[#121C2A] hover:text-[#D9E3F6]"
+            onClick={goToNextMonth}
+            disabled={isNextMonthDisabled}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[#94A3B8] transition hover:bg-[#121C2A] hover:text-[#D9E3F6] disabled:cursor-not-allowed disabled:opacity-30"
             aria-label="Bulan berikutnya"
           >
-            <span className="text-lg leading-none">›</span>
+            <span className="text-lg leading-none">{">"}</span>
           </button>
         </div>
 
@@ -119,23 +251,34 @@ function CalendarPopup({ selectedDate, onClose, onSelect }) {
             </div>
           ))}
 
-          <div />
-          <div />
-          <div />
-          {april2026.map((date) => {
-            const value = `04/${String(date).padStart(2, "0")}/2026`;
+          {Array.from({ length: firstDayIndex }).map((_, index) => (
+            <div key={`blank-${index}`} />
+          ))}
+          {monthDates.map((date) => {
+            const value = formatDateValue(visibleYear, visibleMonth, date);
             const isSelected = selectedDate === value;
-            const isToday = date === 1;
+            const currentDate = new Date(visibleYear, visibleMonth, date);
+            const isToday = isSameDate(currentDate, today);
+            const isOutsideReservationRange =
+              currentDate < minReservationDate ||
+              currentDate > maxReservationDate;
 
             return (
               <button
                 key={date}
                 type="button"
-                onClick={() => onSelect(value)}
+                onClick={() => {
+                  if (!isOutsideReservationRange) {
+                    onSelect(value);
+                  }
+                }}
+                disabled={isOutsideReservationRange}
                 className={`relative flex h-10 items-center justify-center rounded-xl font-['Inter',sans-serif] text-sm leading-5 transition ${
                   isSelected
                     ? "bg-gradient-to-br from-[#DC2626] to-[#F43F3F] font-bold text-white shadow-[0_8px_18px_rgba(220,38,38,0.35)]"
-                    : "text-[#D9E3F6] hover:bg-[#121C2A]"
+                    : isOutsideReservationRange
+                      ? "cursor-not-allowed text-[#94A3B8]/30"
+                      : "text-[#D9E3F6] hover:bg-[#121C2A]"
                 } ${isToday && !isSelected ? "ring-1 ring-[#EEC200]/40" : ""}`}
               >
                 {date}
@@ -164,10 +307,9 @@ function CalendarPopup({ selectedDate, onClose, onSelect }) {
     </div>
   );
 }
-
 function TimePopup({ selectedTime, onClose, onSelect }) {
   return (
-    <div className="absolute left-1/2 top-full z-30 mt-4 w-[min(384px,calc(100vw-48px))] -translate-x-1/2 overflow-hidden rounded-lg border border-[#2B3544] bg-[#212B39] shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
+    <div className="absolute left-1/2 top-full z-30 mt-4 w-[min(384px,calc(100vw-48px))] -translate-x-1/2 animate-[picker-panel_180ms_ease-out] overflow-hidden rounded-lg border border-[#2B3544] bg-[#212B39] shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
       <div className="flex flex-col gap-6 p-6">
         <div>
           <h2 className="font-['Inter',sans-serif] text-lg font-bold leading-7 tracking-[-0.025em] text-[#D9E3F6]">
@@ -220,10 +362,144 @@ function TimePopup({ selectedTime, onClose, onSelect }) {
   );
 }
 
+function ReservationSuccessPopup({ onClose }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex animate-[popup-backdrop_180ms_ease-out] items-center justify-center bg-black/60 px-4 py-8 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reservation-success-title"
+    >
+      <div className="relative flex h-auto w-full max-w-[850px] animate-[popup-panel_220ms_cubic-bezier(0.16,1,0.3,1)] flex-col overflow-hidden rounded-xl bg-[#091421] shadow-[0_24px_70px_rgba(0,0,0,0.55)] sm:min-h-[415px]">
+        <div className="relative flex min-h-[330px] flex-col border-b border-white/40 px-6 py-8 sm:min-h-[359px] sm:px-10 md:px-16">
+          <div className="flex items-center justify-center border-b border-white/40 pb-8 sm:justify-start">
+            <p className="font-['Be_Vietnam_Pro',sans-serif] text-xl leading-5 text-white">
+              System
+            </p>
+          </div>
+
+          <div className="grid flex-1 items-center gap-8 pt-8 md:grid-cols-[220px_1fr] md:gap-10 md:pt-0">
+            <div className="flex justify-center md:justify-start">
+              <img
+                src={logoSigma}
+                alt="Logo Kedai Sigma"
+                className="h-[170px] w-[170px] object-contain sm:h-[210px] sm:w-[210px] md:h-[235px] md:w-[234px]"
+              />
+            </div>
+
+            <div className="relative flex flex-col gap-8 text-center md:text-left">
+              <CheckBadgeIcon className="pointer-events-none mx-auto h-11 w-11 animate-[check-pop_360ms_120ms_ease-out_both] md:absolute md:-left-12 md:top-[52px] md:mx-0 md:h-9 md:w-9" />
+              <h2
+                id="reservation-success-title"
+                className="font-['Space_Grotesk',sans-serif] text-2xl font-bold uppercase leading-8 tracking-[-0.05em] text-white"
+              >
+                Terima kasih sudah reservasi!
+              </h2>
+              <div className="h-px w-full bg-white/15" />
+              <p className="max-w-[439px] font-['Be_Vietnam_Pro',sans-serif] text-xl leading-6 text-white/50">
+                Terima kasih telah melakukan reservasi.
+                <br />
+                Kami akan menyiapkan yang terbaik untuk menyambut kedatangan Anda.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-14 w-full items-center justify-center bg-[#DC2626] px-4 font-['Space_Grotesk',sans-serif] text-base font-bold uppercase leading-6 tracking-[0.1em] text-white transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-white/70 focus:ring-offset-2 focus:ring-offset-[#091421]"
+        >
+          Reservasi Berhasil
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ReservationWarningPopup({ onClose }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex animate-[popup-backdrop_180ms_ease-out] items-center justify-center bg-black/60 px-4 py-8 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reservation-warning-title"
+    >
+      <div className="w-full max-w-[520px] animate-[popup-panel_220ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-xl border border-[#EEC200]/30 bg-[#091421] shadow-[0_24px_70px_rgba(0,0,0,0.55)]">
+        <div className="border-b border-white/25 px-6 py-5 sm:px-8">
+          <p className="font-['Be_Vietnam_Pro',sans-serif] text-xl leading-5 text-white">
+            System
+          </p>
+        </div>
+
+        <div className="px-6 py-8 text-center sm:px-8">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#EEC200] text-2xl font-black text-[#091421]">
+            !
+          </div>
+          <h2
+            id="reservation-warning-title"
+            className="mt-6 font-['Space_Grotesk',sans-serif] text-2xl font-bold uppercase leading-8 tracking-[-0.04em] text-white"
+          >
+            Mohon isi yang lengkap
+          </h2>
+          <p className="mx-auto mt-3 max-w-[360px] font-['Be_Vietnam_Pro',sans-serif] text-sm leading-6 text-white/55">
+            Lengkapi nama, nomor telepon, tanggal, waktu, jumlah orang, dan catatan sebelum mengirim reservasi.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-14 w-full items-center justify-center bg-[#DC2626] px-4 font-['Space_Grotesk',sans-serif] text-base font-bold uppercase leading-6 tracking-[0.1em] text-white transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-white/70 focus:ring-offset-2 focus:ring-offset-[#091421]"
+        >
+          Lengkapi Form
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Reservasi() {
+  const [formData, setFormData] = useState({
+    name: "",
+    phone: "",
+    people: "",
+    note: "",
+  });
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [openPicker, setOpenPicker] = useState(null);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [showWarningPopup, setShowWarningPopup] = useState(false);
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+
+    setFormData((current) => ({
+      ...current,
+      [name]: value,
+    }));
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    setOpenPicker(null);
+
+    const isFormComplete =
+      formData.name.trim() &&
+      formData.phone.trim() &&
+      selectedDate &&
+      selectedTime &&
+      formData.people &&
+      formData.note.trim();
+
+    if (!isFormComplete) {
+      setShowWarningPopup(true);
+      return;
+    }
+
+    setShowSuccessPopup(true);
+  };
 
   return (
     <div className="min-h-screen overflow-hidden bg-[#091421] text-[#D9E3F6]">
@@ -255,7 +531,10 @@ export default function Reservasi() {
           </header>
 
           <div className="flex w-full max-w-[672px] flex-col gap-8">
-            <form className="w-full bg-[#212B39] px-6 py-10 shadow-[0_0_60px_rgba(0,0,0,0.6)] sm:px-12 sm:pb-16 sm:pt-12">
+            <form
+              onSubmit={handleSubmit}
+              className="w-full bg-[#212B39] px-6 py-10 shadow-[0_0_60px_rgba(0,0,0,0.6)] sm:px-12 sm:pb-16 sm:pt-12"
+            >
               <div className="flex items-center gap-3 border-b border-[#5C403C] pb-6">
                 <FormIcon className="h-5 w-6 text-[#EEC200]" />
                 <h2 className="font-['Space_Grotesk',sans-serif] text-2xl font-bold uppercase leading-8 tracking-[-0.025em]">
@@ -265,11 +544,25 @@ export default function Reservasi() {
 
               <div className="mt-10 flex flex-col gap-10">
                 <Field label="Nama kamu">
-                  <input className={inputClass} type="text" placeholder="Who are you?" />
+                  <input
+                    className={inputClass}
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    placeholder="Who are you?"
+                  />
                 </Field>
 
                 <Field label="No. telepon">
-                  <input className={inputClass} type="tel" placeholder="+62-000-0000-0000" />
+                  <input
+                    className={inputClass}
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    placeholder="+62-000-0000-0000"
+                  />
                 </Field>
 
                 <div className="grid gap-8 sm:grid-cols-2">
@@ -331,21 +624,29 @@ export default function Reservasi() {
                 </div>
 
                 <Field label="Berapa orang">
-                  <select className={`${inputClass} appearance-none`} defaultValue="1 Person">
+                  <select
+                    className={`${inputClass} appearance-none`}
+                    name="people"
+                    value={formData.people}
+                    onChange={handleChange}
+                  >
+                    <option className="bg-[#212B39]" value="">
+                      Pilih jumlah orang
+                    </option>
                     <option className="bg-[#212B39]" value="1 Person">
-                      1 Person
+                      1 Orang
                     </option>
                     <option className="bg-[#212B39]" value="2 Person">
-                      2 Person
+                      2 Orang
                     </option>
                     <option className="bg-[#212B39]" value="3 Person">
-                      3 Person
+                      3 Orang
                     </option>
                     <option className="bg-[#212B39]" value="4 Person">
-                      4 Person
+                      4 Orang
                     </option>
                     <option className="bg-[#212B39]" value="5+ Person">
-                      5+ Person
+                      5+ Orang
                     </option>
                   </select>
                 </Field>
@@ -353,6 +654,9 @@ export default function Reservasi() {
                 <Field label="Catatan">
                   <textarea
                     className="min-h-[106px] w-full resize-none border-0 border-b-2 border-[#5C403C] bg-transparent px-1 py-4 font-['Space_Grotesk',sans-serif] text-base font-bold leading-6 text-[#D9E3F6] outline-none transition placeholder:text-[#2B3544]/55 focus:border-[#EEC200]"
+                    name="note"
+                    value={formData.note}
+                    onChange={handleChange}
                     placeholder="cth: request tambah terminal kaka"
                   />
                 </Field>
@@ -426,6 +730,13 @@ export default function Reservasi() {
           </section>
         </div>
       </section>
+
+      {showSuccessPopup && (
+        <ReservationSuccessPopup onClose={() => setShowSuccessPopup(false)} />
+      )}
+      {showWarningPopup && (
+        <ReservationWarningPopup onClose={() => setShowWarningPopup(false)} />
+      )}
     </div>
   );
 }

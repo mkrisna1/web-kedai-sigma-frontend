@@ -90,36 +90,64 @@ const Dashboard = () => {
               <button
                 type="button"
                 onClick={() => setShowAllTransactions((current) => !current)}
-                className="rounded-xl bg-[#2563EB] px-8 py-3 text-lg font-semibold text-white transition hover:brightness-105"
+                className="group flex items-center gap-3 rounded-xl bg-[#2563EB] px-8 py-3 text-lg font-semibold text-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:brightness-105"
+                aria-expanded={showAllTransactions}
               >
-                {showAllTransactions ? "Sembunyikan" : "Lihat Semua"}
+                <span>{showAllTransactions ? "Sembunyikan" : "Lihat Semua"}</span>
+                <span
+                  className={`text-base leading-none transition-transform duration-300 ${
+                    showAllTransactions ? "rotate-180" : ""
+                  }`}
+                  aria-hidden="true"
+                >
+                  v
+                </span>
               </button>
             </div>
 
-            <table className="w-full text-lg">
-              <thead>
-                <tr className="border-b text-sm uppercase tracking-normal text-[#434655]">
-                  <th className="pb-5 text-left">ID Pesanan</th>
-                  <th className="pb-5 text-left">Meja</th>
-                  <th className="pb-5 text-left">Waktu</th>
-                  <th className="pb-5 text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {visibleTransactions.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="py-6 font-medium text-[#2563EB]">
-                      {item.id}
-                    </td>
-                    <td className="py-6 text-[#191C1E]">{item.table}</td>
-                    <td className="py-6 text-gray-600">{item.time}</td>
-                    <td className="py-6 text-right font-bold text-[#191C1E]">
-                      Rp {item.total}
-                    </td>
+            <div
+              className={`overflow-hidden transition-[max-height] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                showAllTransactions ? "max-h-[680px]" : "max-h-[372px]"
+              }`}
+            >
+              <table className="w-full text-lg">
+                <thead>
+                  <tr className="border-b text-sm uppercase tracking-normal text-[#434655]">
+                    <th className="pb-5 text-left">ID Pesanan</th>
+                    <th className="pb-5 text-left">Meja</th>
+                    <th className="pb-5 text-left">Waktu</th>
+                    <th className="pb-5 text-right">Total</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y">
+                  {visibleTransactions.map((item, index) => (
+                    <tr
+                      key={item.id}
+                      className={`transition-colors hover:bg-gray-50 ${
+                        showAllTransactions && index >= transactions.length
+                          ? "animate-[dashboard-row-in_320ms_ease-out_both]"
+                          : ""
+                      }`}
+                      style={{
+                        animationDelay:
+                          showAllTransactions && index >= transactions.length
+                            ? `${(index - transactions.length) * 55}ms`
+                            : "0ms",
+                      }}
+                    >
+                      <td className="py-6 font-medium text-[#2563EB]">
+                        {item.id}
+                      </td>
+                      <td className="py-6 text-[#191C1E]">{item.table}</td>
+                      <td className="py-6 text-gray-600">{item.time}</td>
+                      <td className="py-6 text-right font-bold text-[#191C1E]">
+                        Rp {item.total}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div className="col-span-2 flex self-start flex-col rounded-2xl bg-white p-10 shadow-sm">
