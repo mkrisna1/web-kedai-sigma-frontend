@@ -2,6 +2,7 @@ import { useState } from "react";
 import fotoKedai1 from "../../../assets/Foto Kedai 1.png";
 import fotoKedai2 from "../../../assets/Foto Kedai 2.PNG";
 import fotoKedai3 from "../../../assets/Foto Kedai 3.PNG";
+import logoSigma from "../../../assets/Logo Sigma.png";
 
 const ratingBars = [
   { star: 5, percent: 100, color: "#00B954" },
@@ -136,6 +137,38 @@ function CameraIcon() {
     >
       <path d="M4 7h3l2-3h6l2 3h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" />
       <path d="M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
+    </svg>
+  );
+}
+
+function SuccessIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5 text-white [animation:review-check-pop_450ms_ease-out_120ms_both]"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M9.5 16.6 4.9 12l-1.4 1.4 6 6L21 7.9 19.6 6.5 9.5 16.6Z" />
+    </svg>
+  );
+}
+
+function AlertIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
+      <path d="M10.3 3.9 2.6 17.2A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.8L13.7 3.9a2 2 0 0 0-3.4 0Z" />
     </svg>
   );
 }
@@ -288,92 +321,185 @@ function ReviewCard({ review }) {
   );
 }
 
+function ReviewSuccessPopup({ onClose }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6 [animation:review-backdrop-in_220ms_ease-out]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="review-success-title"
+    >
+      <div className="relative h-auto min-h-[415px] w-full max-w-[850px] overflow-hidden rounded-xl bg-[#091421] font-['Be_Vietnam_Pro',sans-serif] text-white shadow-[0_18px_60px_rgba(0,0,0,0.35)] [animation:review-popup-in_320ms_cubic-bezier(0.16,1,0.3,1)] sm:h-[415px]">
+        <div className="flex h-[53px] items-center border-b border-white/40 px-6 sm:px-0">
+          <p className="mx-auto font-['Be_Vietnam_Pro',sans-serif] text-xl leading-5 text-white sm:ml-[369px] sm:mr-0 sm:w-[305px]">
+            System
+          </p>
+        </div>
+
+        <div className="relative flex min-h-[306px] flex-col items-center gap-8 px-6 py-10 text-center sm:block sm:px-0 sm:py-0">
+          <img
+            src={logoSigma}
+            alt="Logo Kedai Sigma"
+            className="h-[172px] w-[172px] object-contain sm:absolute sm:left-[34px] sm:top-[27px] sm:h-[234px] sm:w-[233px]"
+          />
+
+          <div className="hidden border-t border-white/15 sm:absolute sm:left-[223px] sm:top-[86px] sm:block sm:w-[627px]" />
+
+          <h2
+            id="review-success-title"
+            className="font-['Space_Grotesk',sans-serif] text-2xl font-bold uppercase leading-8 tracking-[-1.2px] text-white sm:absolute sm:left-[300px] sm:top-[33px] sm:flex sm:h-[38px] sm:w-[367px] sm:items-center"
+          >
+            Terima kasih sudah review!
+          </h2>
+
+          <div className="flex items-start gap-3 sm:absolute sm:left-[253px] sm:top-[95px]">
+            <SuccessIcon />
+            <p className="max-w-[409px] text-left font-['Be_Vietnam_Pro',sans-serif] text-xl leading-6 text-white/50 sm:flex sm:h-[60px] sm:items-center sm:leading-5">
+              Terima kasih banyak sudah memberikan review! Feedback dari kamu bakal bantu kami jadi
+              lebih baik lagi!
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-14 w-full items-center justify-center gap-2 bg-[#DC2626] px-4 py-4 font-['Space_Grotesk',sans-serif] text-base font-bold uppercase leading-6 tracking-[1.6px] text-white transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-[#EEC200] focus:ring-inset"
+        >
+          Review berhasil
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ReviewForm() {
   const [rating, setRating] = useState(0);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [submitWarning, setSubmitWarning] = useState("");
+
+  function clearSubmitWarning() {
+    if (submitWarning) {
+      setSubmitWarning("");
+    }
+  }
 
   function handleSubmit(event) {
     event.preventDefault();
+
+    const formData = new FormData(event.currentTarget);
+    const name = formData.get("name")?.toString().trim();
+    const comment = formData.get("comment")?.toString().trim();
+
+    if (!name || !comment || rating === 0) {
+      setSubmitWarning("Review belum lengkap. Isi identitas, pilih rating, dan tulis komentar dulu ya.");
+      return;
+    }
+
+    setSubmitWarning("");
+    setShowSuccessPopup(true);
   }
 
   return (
-    <section className="relative overflow-hidden bg-[#16202E] p-6 sm:p-8 lg:p-12">
-      <div className="relative z-10">
-        <h2 className="font-['Space_Grotesk',sans-serif] text-3xl font-bold uppercase leading-10 text-[#D9E3F6] sm:text-4xl">
-          Tinggalkan jejak anda
-        </h2>
+    <>
+      <section className="relative overflow-hidden bg-[#16202E] p-6 sm:p-8 lg:p-12">
+        <div className="relative z-10">
+          <h2 className="font-['Space_Grotesk',sans-serif] text-3xl font-bold uppercase leading-10 text-[#D9E3F6] sm:text-4xl">
+            Tinggalkan jejak anda
+          </h2>
 
-        <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-8">
-          <div className="grid gap-8 md:grid-cols-2">
+          <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-8">
+            <div className="grid gap-8 md:grid-cols-2">
+              <label className="relative block pt-2">
+                <span className="absolute left-4 top-0 bg-[#16202E] px-2 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 text-[#EEC200]">
+                  Identitas
+                </span>
+                <input
+                  type="text"
+                  name="name"
+                  placeholder="ALIASES ONLY..."
+                  onChange={clearSubmitWarning}
+                  aria-invalid={Boolean(submitWarning)}
+                  className="h-16 w-full border-2 border-[#5C403C] bg-transparent px-4 pt-1 font-['Space_Grotesk',sans-serif] text-lg uppercase tracking-[0.08em] text-[#D9E3F6] outline-none transition placeholder:text-[#475569] focus:border-[#EEC200]"
+                />
+              </label>
+
+              <div>
+                <p className="mb-2 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 text-[#EEC200]">
+                  Rating
+                </p>
+                <div className="flex items-center gap-2">
+                  {Array.from({ length: 5 }).map((_, index) => {
+                    const value = index + 1;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => {
+                          setRating(value);
+                          clearSubmitWarning();
+                        }}
+                        className={`p-1 transition ${
+                          value <= rating ? "text-[#EEC200]" : "text-[#475569] hover:text-[#94A3B8]"
+                        }`}
+                        aria-label={`Beri rating ${value}`}
+                      >
+                        <StarIcon className="h-[30px] w-[30px]" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
             <label className="relative block pt-2">
               <span className="absolute left-4 top-0 bg-[#16202E] px-2 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 text-[#EEC200]">
-                Identitas
+                Komentar
               </span>
-              <input
-                type="text"
-                name="name"
-                placeholder="ALIASES ONLY..."
-                className="h-16 w-full border-2 border-[#5C403C] bg-transparent px-4 pt-1 font-['Space_Grotesk',sans-serif] text-lg uppercase tracking-[0.08em] text-[#D9E3F6] outline-none transition placeholder:text-[#475569] focus:border-[#EEC200]"
+              <textarea
+                name="comment"
+                placeholder="WHAT'S THE WORD ON THE STREET?"
+                onChange={clearSubmitWarning}
+                aria-invalid={Boolean(submitWarning)}
+                className="min-h-36 w-full resize-y border-2 border-[#5C403C] bg-transparent px-4 py-5 font-['Space_Grotesk',sans-serif] text-lg text-[#D9E3F6] outline-none transition placeholder:text-[#475569] focus:border-[#EEC200]"
               />
             </label>
 
-            <div>
-              <p className="mb-2 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 text-[#EEC200]">
-                Rating
-              </p>
-              <div className="flex items-center gap-2">
-                {Array.from({ length: 5 }).map((_, index) => {
-                  const value = index + 1;
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setRating(value)}
-                      className={`p-1 transition ${
-                        value <= rating ? "text-[#EEC200]" : "text-[#475569] hover:text-[#94A3B8]"
-                      }`}
-                      aria-label={`Beri rating ${value}`}
-                    >
-                      <StarIcon className="h-[30px] w-[30px]" />
-                    </button>
-                  );
-                })}
+            {submitWarning && (
+              <div
+                className="flex items-start gap-3 border-l-4 border-[#DC2626] bg-[#DC2626]/15 px-4 py-3 font-['Be_Vietnam_Pro',sans-serif] text-sm leading-5 text-[#FFD6D1] [animation:review-warning-in_180ms_ease-out]"
+                role="alert"
+              >
+                <AlertIcon />
+                <p>{submitWarning}</p>
               </div>
+            )}
+
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <label className="flex h-14 cursor-pointer items-center gap-2 border-2 border-dashed border-[#5C403C] px-4 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase text-[#94A3B8] transition hover:border-[#AC8884] hover:text-[#D9E3F6]">
+                  <CameraIcon />
+                  Add images (photos)
+                  <input type="file" name="photos" multiple accept="image/*" className="sr-only" />
+                </label>
+                <p className="max-w-[150px] font-['Be_Vietnam_Pro',sans-serif] text-[10px] font-bold uppercase leading-3 text-[#64748B]">
+                  Max 3 files, keep it real.
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                className="-skew-x-12 bg-[#DC2626] px-10 py-5 font-['Space_Grotesk',sans-serif] text-2xl font-black uppercase leading-8 text-[#FFF6F5] shadow-[8px_8px_0_#EEC200] transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-[#EEC200] focus:ring-offset-2 focus:ring-offset-[#16202E]"
+              >
+                <span className="block skew-x-12">Kirim</span>
+              </button>
             </div>
-          </div>
+          </form>
+        </div>
+      </section>
 
-          <label className="relative block pt-2">
-            <span className="absolute left-4 top-0 bg-[#16202E] px-2 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 text-[#EEC200]">
-              Komentar
-            </span>
-            <textarea
-              name="comment"
-              placeholder="WHAT'S THE WORD ON THE STREET?"
-              className="min-h-36 w-full resize-y border-2 border-[#5C403C] bg-transparent px-4 py-5 font-['Space_Grotesk',sans-serif] text-lg text-[#D9E3F6] outline-none transition placeholder:text-[#475569] focus:border-[#EEC200]"
-            />
-          </label>
-
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <label className="flex h-14 cursor-pointer items-center gap-2 border-2 border-dashed border-[#5C403C] px-4 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase text-[#94A3B8] transition hover:border-[#AC8884] hover:text-[#D9E3F6]">
-                <CameraIcon />
-                Add images (photos)
-                <input type="file" name="photos" multiple accept="image/*" className="sr-only" />
-              </label>
-              <p className="max-w-[150px] font-['Be_Vietnam_Pro',sans-serif] text-[10px] font-bold uppercase leading-3 text-[#64748B]">
-                Max 3 files, keep it real.
-              </p>
-            </div>
-
-            <button
-              type="submit"
-              className="-skew-x-12 bg-[#DC2626] px-10 py-5 font-['Space_Grotesk',sans-serif] text-2xl font-black uppercase leading-8 text-[#FFF6F5] shadow-[8px_8px_0_#EEC200] transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-[#EEC200] focus:ring-offset-2 focus:ring-offset-[#16202E]"
-            >
-              <span className="block skew-x-12">Kirim</span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </section>
+      {showSuccessPopup && <ReviewSuccessPopup onClose={() => setShowSuccessPopup(false)} />}
+    </>
   );
 }
 
