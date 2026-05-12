@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
 const transactions = [
   { id: "#TRX-9382", table: "Meja 04", time: "14:32", total: "41K" },

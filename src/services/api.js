@@ -31,7 +31,7 @@ export const loginAdmin = async (username, password) => {
 
 export const logoutAdmin = async () => {
     try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('admin_token');
 
         const response = await fetch(`${BASE_URL}/admin/logout`, {
             method: 'POST',
@@ -48,7 +48,7 @@ export const logoutAdmin = async () => {
         }
 
         // Hapus token dari localStorage
-        localStorage.removeItem('token');
+        localStorage.removeItem('admin_token');
 
         return data;
     } catch (error) {

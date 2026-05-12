@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-
+import { logoutAdmin } from "../../services/api";
 const navItems = [
   {
     label: "Dashboard",
@@ -79,11 +79,17 @@ export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    navigate("/login");
-  };
+  const handleLogout = async () => {
+    try {
+        await logoutAdmin(); // kirim request logout ke backend
+    } catch (error) {
+        console.error("Logout error:", error);
+    } finally {
+        localStorage.removeItem("admin_token");
+        localStorage.removeItem("admin_data");
+        navigate("/login");
+    }
+};
 
   return (
     <aside className="flex flex-col w-64 min-h-screen border-r bg-slate-50">
