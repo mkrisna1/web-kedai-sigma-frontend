@@ -1,36 +1,36 @@
 import { useMemo, useState } from "react";
-import coklatClassicImage from "../../../assets/Coklat Classic.png";
-import coklatClassicRotiImage from "../../../assets/Coklat Classic Roti.png";
-import coffeeBearImage from "../../../assets/Coffee Bear.png";
-import coffeeMilkImage from "../../../assets/Coffee Milk.png";
-import coffeLatteImage from "../../../assets/Coffe Latte.png";
-import coffeMilkV2Image from "../../../assets/Coffe Milk V2.png";
-import coffeMilkChocholateImage from "../../../assets/Coffe Milk Chocholate.png";
-import espressoImage from "../../../assets/Espresso.png";
-import americanoImage from "../../../assets/Americano.png";
-import ayamPopcornImage from "../../../assets/Ayam Popcorn.png";
-import indomieNyemekHaluImage from "../../../assets/Indomie Nyemek Halu.png";
-import indomieNyemekVinsenImage from "../../../assets/Indomie Nyemek Vinsen.png";
-import joshuaImage from "../../../assets/Joshua.png";
-import kentangImage from "../../../assets/Kentang.png";
-import kopiTubrukImage from "../../../assets/Kopi Tubruk.png";
-import kopiTubrukSusuImage from "../../../assets/Kopi Tubruk Susu.png";
-import lemonTeaImage from "../../../assets/Lemon Tea.png";
-import lycheeTeaImage from "../../../assets/Lychee Tea.png";
-import matchaImage from "../../../assets/Matcha.png";
-import miloImage from "../../../assets/Milo.png";
-import mixPlatterImage from "../../../assets/Mix Platter.png";
-import nuggetImage from "../../../assets/Nugget.png";
-import piscokImage from "../../../assets/Piscok.png";
-import redvelvetImage from "../../../assets/Redvelvet.png";
-import risolMayoImage from "../../../assets/Risol Mayo.png";
-import siomayAyamImage from "../../../assets/Siomay Ayam.png";
-import sosisSoloImage from "../../../assets/Sosis Solo.png";
-import strawberryMilkImage from "../../../assets/Strawberry Milk.png";
-import tahuBaksoGorengImage from "../../../assets/Tahu Bakso Goreng.png";
-import tehTarikImage from "../../../assets/Teh Tarik.png";
-import v6DripImage from "../../../assets/V6 Drip.png";
-import v6DripSusuImage from "../../../assets/V6 Drip Susu.png";
+import coklatClassicImage from "../../../assets/Coklat Clasic.jpg";
+import coklatClassicRotiImage from "../../../assets/Coklat Clasic Roti.jpg";
+import coffeeBearImage from "../../../assets/Coffee Bear.jpg";
+import coffeeMilkImage from "../../../assets/Coffee Milk.jpg";
+import coffeLatteImage from "../../../assets/Coffee Latte.webp";
+import coffeMilkV2Image from "../../../assets/Coffee Milk V2.jpeg";
+import coffeMilkChocholateImage from "../../../assets/Coffe Milk Chocholate.jpg";
+import espressoImage from "../../../assets/Espresso.webp";
+import americanoImage from "../../../assets/Americano.jpg";
+import ayamPopcornImage from "../../../assets/Ayam Popcorn.jpg";
+import indomieNyemekHaluImage from "../../../assets/Indomie Nyemek Halu.jpg";
+import indomieNyemekVinsenImage from "../../../assets/Indomie Nyemek Vinsen.jpg";
+import joshuaImage from "../../../assets/Joshua.jpg";
+import kentangImage from "../../../assets/Kentang.jpg";
+import kopiTubrukImage from "../../../assets/Kopi Tubruk.jpg";
+import kopiTubrukSusuImage from "../../../assets/Kopi Tubruk Susu.jpg";
+import lemonTeaImage from "../../../assets/Lemon Tea.jpg";
+import lycheeTeaImage from "../../../assets/Lychee Tea.jpg";
+import matchaImage from "../../../assets/Matcha.jpg";
+import miloImage from "../../../assets/Ice Milo.jpg";
+import mixPlatterImage from "../../../assets/Mix Platter.jpg";
+import nuggetImage from "../../../assets/Nugget.jpg";
+import piscokImage from "../../../assets/Piscok.jpg";
+import redvelvetImage from "../../../assets/Redvelvet.webp";
+import risolMayoImage from "../../../assets/Risol Mayo.jpg";
+import siomayAyamImage from "../../../assets/Siomay Ayam.jpg";
+import sosisSoloImage from "../../../assets/Sosis Solo.jpg";
+import strawberryMilkImage from "../../../assets/Strawberry Milk.jpg";
+import tahuBaksoGorengImage from "../../../assets/Tahu Bakso Goreng.jpg";
+import tehTarikImage from "../../../assets/Teh Tarik.jpg";
+import v6DripImage from "../../../assets/V6 Drip.jpg";
+import v6DripSusuImage from "../../../assets/V6 Drip Susu.jpg";
 
 const INITIAL_VISIBLE_COUNT = 9;
 const LOAD_MORE_COUNT = 6;
@@ -43,6 +43,8 @@ const filters = [
   { label: "Tea Series", value: "tea-series" },
   { label: "Milk Series", value: "milk-series" },
 ];
+
+const categoryOrder = filters.filter((item) => item.value !== "all");
 
 const menuItems = [
   {
@@ -303,6 +305,24 @@ const menuItems = [
   },
 ];
 
+function interleaveItemsByCategory(items) {
+  const groupedItems = categoryOrder.map((category) =>
+    items.filter((item) => item.category === category.value)
+  );
+  const maxCategoryLength = Math.max(...groupedItems.map((itemsByCategory) => itemsByCategory.length), 0);
+  const interleavedItems = [];
+
+  for (let index = 0; index < maxCategoryLength; index += 1) {
+    groupedItems.forEach((itemsByCategory) => {
+      if (itemsByCategory[index]) {
+        interleavedItems.push(itemsByCategory[index]);
+      }
+    });
+  }
+
+  return interleavedItems;
+}
+
 function SearchIcon() {
   return (
     <svg
@@ -402,7 +422,7 @@ export default function Menu() {
   const filteredItems = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
-    return menuItems.filter((item) => {
+    const matchingItems = menuItems.filter((item) => {
       const matchesFilter = activeFilter === "all" || item.category === activeFilter;
       const matchesSearch =
         keyword.length === 0 ||
@@ -411,11 +431,34 @@ export default function Menu() {
 
       return matchesFilter && matchesSearch;
     });
+
+    return activeFilter === "all"
+      ? interleaveItemsByCategory(matchingItems)
+      : matchingItems;
   }, [activeFilter, search]);
 
   const visibleItems = useMemo(() => {
     return filteredItems.slice(0, visibleCount);
   }, [filteredItems, visibleCount]);
+
+  const visibleCategorySections = useMemo(() => {
+    if (activeFilter === "all") {
+      return [
+        {
+          label: "All Menu",
+          value: "all",
+          items: visibleItems,
+        },
+      ];
+    }
+
+    return categoryOrder
+      .map((category) => ({
+        ...category,
+        items: visibleItems.filter((item) => item.category === category.value),
+      }))
+      .filter((category) => category.items.length > 0);
+  }, [activeFilter, visibleItems]);
 
   function handleFilterChange(value) {
     setActiveFilter(value);
@@ -467,13 +510,26 @@ export default function Menu() {
           ))}
         </section>
 
-        <section className="grid w-full gap-8 md:grid-cols-2 xl:grid-cols-3">
-          {visibleItems.map((item, index) => (
-            <MenuCard
-              key={`${item.category}-${item.name}`}
-              item={item}
-              index={index}
-            />
+        <section className="flex w-full flex-col gap-12">
+          {visibleCategorySections.map((category) => (
+            <div key={category.value} className="flex w-full flex-col gap-6">
+              <div className="flex items-center gap-5">
+                <h2 className="font-['Space_Grotesk',sans-serif] text-2xl font-black uppercase leading-none tracking-[-0.05em] text-[#EEC200] sm:text-3xl">
+                  {category.label}
+                </h2>
+                <div className="h-px flex-1 bg-[#2B3544]" />
+              </div>
+
+              <div className="grid w-full gap-8 md:grid-cols-2 xl:grid-cols-3">
+                {category.items.map((item, index) => (
+                  <MenuCard
+                    key={`${item.category}-${item.name}`}
+                    item={item}
+                    index={index}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </section>
 

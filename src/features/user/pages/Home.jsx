@@ -1,9 +1,12 @@
 import { Link } from "react-router-dom";
-import heroImage from "../../../assets/hero.png";
 import fotoKedai1 from "../../../assets/Foto Kedai 1.png";
 import fotoKedai2 from "../../../assets/Foto Kedai 2.PNG";
 import fotoKedai3 from "../../../assets/Foto Kedai 3.PNG";
 import lokasiSigma from "../../../assets/Lokasi_Sigma.png";
+import coffeLatteImage from "../../../assets/Coffee Latte.webp";
+import espressoImage from "../../../assets/Espresso.webp";
+import matchaImage from "../../../assets/Matcha.jpg";
+import indomieNyemekHaluImage from "../../../assets/Indomie Nyemek Halu.jpg";
 
 const stats = [
   { value: "5 dari 5", label: "Rating Kedai", color: "#EEC200" },
@@ -14,22 +17,25 @@ const stats = [
 
 const menuCards = [
   {
-    category: "Coffee-Milk",
+    category: "Coffee Milk",
     name: "Coffee Latte",
     price: "IDR13K",
     accent: "#4AE176",
+    image: coffeLatteImage,
   },
   {
-    category: "Non Kafein",
+    category: "Milk Series",
     name: "Matcha",
     price: "IDR13K",
     accent: "#4AE176",
+    image: matchaImage,
   },
   {
     category: "Food",
     name: "Indomie Nyemek Halu",
     price: "IDR15K",
     accent: "#4AE176",
+    image: indomieNyemekHaluImage,
   },
 ];
 
@@ -184,7 +190,7 @@ export default function Home() {
           <div className="grid gap-6 lg:grid-cols-3">
             <article className="relative min-h-[500px] overflow-hidden bg-[#16202E] lg:col-span-2">
               <img
-                src={heroImage}
+                src={espressoImage}
                 alt="Espresso"
                 className="absolute inset-0 h-full w-full object-cover"
               />
@@ -233,7 +239,7 @@ export default function Home() {
                 className="relative min-h-[400px] overflow-hidden bg-[#121C2A]"
               >
                 <img
-                  src={heroImage}
+                  src={item.image}
                   alt={item.name}
                   className="absolute inset-0 h-full w-full object-cover"
                 />
