@@ -1,21 +1,36 @@
 import { useState } from "react";
+import americanoImage from "../../../assets/Americano.jpg";
 import ayamPopcornImage from "../../../assets/Ayam Popcorn.jpg";
+import coffeeBearImage from "../../../assets/Coffee Bear.jpg";
+import coffeeLatteImage from "../../../assets/Coffee Latte.webp";
+import coffeeMilkV2Image from "../../../assets/Coffee Milk V2.jpeg";
+import coffeeMilkImage from "../../../assets/Coffee Milk.jpg";
 import coffeeMilkChocolateImage from "../../../assets/Coffe Milk Chocholate.jpg";
 import coklatClassicRotiImage from "../../../assets/Coklat Clasic Roti.jpg";
 import coklatClassicImage from "../../../assets/Coklat Clasic.jpg";
+import espressoImage from "../../../assets/Espresso.webp";
+import indomieNyemekHaluImage from "../../../assets/Indomie Nyemek Halu.jpg";
+import indomieNyemekVinsenImage from "../../../assets/Indomie Nyemek Vinsen.jpg";
 import kentangImage from "../../../assets/Kentang.jpg";
+import kopiTubrukImage from "../../../assets/Kopi Tubruk.jpg";
+import kopiTubrukSusuImage from "../../../assets/Kopi Tubruk Susu.jpg";
 import lemonTeaImage from "../../../assets/Lemon Tea.jpg";
 import miloImage from "../../../assets/Ice Milo.jpg";
 import joshuaImage from "../../../assets/Joshua.jpg";
 import lycheeTeaImage from "../../../assets/Lychee Tea.jpg";
+import matchaImage from "../../../assets/Matcha.jpg";
+import mixPlatterImage from "../../../assets/Mix Platter.jpg";
 import nuggetImage from "../../../assets/Nugget.jpg";
 import piscokImage from "../../../assets/Piscok.jpg";
+import redvelvetImage from "../../../assets/Redvelvet.webp";
 import risolMayoImage from "../../../assets/Risol Mayo.jpg";
 import siomayAyamImage from "../../../assets/Siomay Ayam.jpg";
 import sosisSoloImage from "../../../assets/Sosis Solo.jpg";
 import strawberryMilkImage from "../../../assets/Strawberry Milk.jpg";
 import tahuBaksoGorengImage from "../../../assets/Tahu Bakso Goreng.jpg";
 import tarikTeaImage from "../../../assets/Teh Tarik.jpg";
+import v6DripImage from "../../../assets/V6 Drip.jpg";
+import v6DripSusuImage from "../../../assets/V6 Drip Susu.jpg";
 
 const parsePrice = (price) => {
   const values = price.match(/\d[\d.]*/g)?.map((value) =>
@@ -48,27 +63,27 @@ const menuItems = [
   { name: "Nugget", sku: "SKU-FO-006", category: "Food", price: "Rp 13.000", status: "ACTIVE", image: nuggetImage, thumbnail: "from-orange-100 via-yellow-200 to-amber-300" },
   { name: "Siomay Ayam", sku: "SKU-FO-007", category: "Food", price: "Rp 15.000", status: "ACTIVE", image: siomayAyamImage, thumbnail: "from-lime-100 via-yellow-200 to-orange-300" },
   { name: "Ayam Popcorn", sku: "SKU-FO-008", category: "Food", price: "Rp 15.000", status: "ACTIVE", image: ayamPopcornImage, thumbnail: "from-amber-100 via-orange-200 to-red-300" },
-  { name: "Mix Platter", sku: "SKU-FO-009", category: "Food", price: "Rp 20.000", status: "OUT OF STOCK", thumbnail: "from-red-100 via-amber-200 to-yellow-300" },
-  { name: "Indomie Nyemek Halu", sku: "SKU-FO-010", category: "Food", price: "Rp 15.000", status: "ACTIVE", thumbnail: "from-yellow-100 via-orange-200 to-red-300" },
-  { name: "Indomie Nyemek Vinsen", sku: "SKU-FO-011", category: "Food", price: "Rp 15.000", status: "ACTIVE", thumbnail: "from-orange-100 via-red-200 to-yellow-300" },
-  { name: "Coffee Bear", sku: "SKU-CB-001", category: "Coffee Based", price: "Rp 16.000", status: "ACTIVE", thumbnail: "from-stone-100 via-slate-200 to-amber-300" },
-  { name: "Espresso", sku: "SKU-CB-002", category: "Coffee Based", price: "Rp 8.000", status: "ACTIVE", thumbnail: "from-stone-200 via-zinc-300 to-amber-400" },
-  { name: "Americano", sku: "SKU-CB-003", category: "Coffee Based", price: "Rp 10.000/13.000", status: "ACTIVE", thumbnail: "from-slate-100 via-stone-200 to-zinc-300" },
-  { name: "Kopi Tubruk", sku: "SKU-CB-004", category: "Coffee Based", price: "Rp 8.000", status: "ACTIVE", thumbnail: "from-amber-100 via-stone-300 to-zinc-400" },
-  { name: "V6 Drip", sku: "SKU-CB-005", category: "Coffee Based", price: "Rp 10.000", status: "ACTIVE", thumbnail: "from-stone-100 via-amber-200 to-zinc-300" },
+  { name: "Mix Platter", sku: "SKU-FO-009", category: "Food", price: "Rp 20.000", status: "OUT OF STOCK", image: mixPlatterImage, thumbnail: "from-red-100 via-amber-200 to-yellow-300" },
+  { name: "Indomie Nyemek Halu", sku: "SKU-FO-010", category: "Food", price: "Rp 15.000", status: "ACTIVE", image: indomieNyemekHaluImage, thumbnail: "from-yellow-100 via-orange-200 to-red-300" },
+  { name: "Indomie Nyemek Vinsen", sku: "SKU-FO-011", category: "Food", price: "Rp 15.000", status: "ACTIVE", image: indomieNyemekVinsenImage, thumbnail: "from-orange-100 via-red-200 to-yellow-300" },
+  { name: "Coffee Bear", sku: "SKU-CB-001", category: "Coffee Based", price: "Rp 16.000", status: "ACTIVE", image: coffeeBearImage, thumbnail: "from-stone-100 via-slate-200 to-amber-300" },
+  { name: "Espresso", sku: "SKU-CB-002", category: "Coffee Based", price: "Rp 8.000", status: "ACTIVE", image: espressoImage, thumbnail: "from-stone-200 via-zinc-300 to-amber-400" },
+  { name: "Americano", sku: "SKU-CB-003", category: "Coffee Based", price: "Rp 10.000/13.000", status: "ACTIVE", image: americanoImage, thumbnail: "from-slate-100 via-stone-200 to-zinc-300" },
+  { name: "Kopi Tubruk", sku: "SKU-CB-004", category: "Coffee Based", price: "Rp 8.000", status: "ACTIVE", image: kopiTubrukImage, thumbnail: "from-amber-100 via-stone-300 to-zinc-400" },
+  { name: "V6 Drip", sku: "SKU-CB-005", category: "Coffee Based", price: "Rp 10.000", status: "ACTIVE", image: v6DripImage, thumbnail: "from-stone-100 via-amber-200 to-zinc-300" },
   { name: "Coffee Milk Chocolate", sku: "SKU-CM-001", category: "Coffee Milk", price: "Rp 15.000", status: "ACTIVE", image: coffeeMilkChocolateImage, thumbnail: "from-amber-100 via-stone-200 to-orange-300" },
-  { name: "Coffee Milk", sku: "SKU-CM-002", category: "Coffee Milk", price: "Rp 13.000", status: "ACTIVE", thumbnail: "from-stone-100 via-amber-200 to-yellow-300" },
-  { name: "Coffee Latte", sku: "SKU-CM-003", category: "Coffee Milk", price: "Rp 13.000/15.000", status: "ACTIVE", thumbnail: "from-orange-100 via-amber-200 to-stone-300" },
-  { name: "Coffee Milk V2", sku: "SKU-CM-004", category: "Coffee Milk", price: "Rp 13.000", status: "ACTIVE", thumbnail: "from-yellow-100 via-amber-200 to-stone-300" },
-  { name: "V6 Drip Susu", sku: "SKU-CM-005", category: "Coffee Milk", price: "Rp 13.000", status: "ACTIVE", thumbnail: "from-stone-100 via-orange-200 to-amber-300" },
-  { name: "Kopi Tubruk Susu", sku: "SKU-CM-006", category: "Coffee Milk", price: "Rp 10.000", status: "ACTIVE", thumbnail: "from-amber-100 via-yellow-200 to-stone-300" },
+  { name: "Coffee Milk", sku: "SKU-CM-002", category: "Coffee Milk", price: "Rp 13.000", status: "ACTIVE", image: coffeeMilkImage, thumbnail: "from-stone-100 via-amber-200 to-yellow-300" },
+  { name: "Coffee Latte", sku: "SKU-CM-003", category: "Coffee Milk", price: "Rp 13.000/15.000", status: "ACTIVE", image: coffeeLatteImage, thumbnail: "from-orange-100 via-amber-200 to-stone-300" },
+  { name: "Coffee Milk V2", sku: "SKU-CM-004", category: "Coffee Milk", price: "Rp 13.000", status: "ACTIVE", image: coffeeMilkV2Image, thumbnail: "from-yellow-100 via-amber-200 to-stone-300" },
+  { name: "V6 Drip Susu", sku: "SKU-CM-005", category: "Coffee Milk", price: "Rp 13.000", status: "ACTIVE", image: v6DripSusuImage, thumbnail: "from-stone-100 via-orange-200 to-amber-300" },
+  { name: "Kopi Tubruk Susu", sku: "SKU-CM-006", category: "Coffee Milk", price: "Rp 10.000", status: "ACTIVE", image: kopiTubrukSusuImage, thumbnail: "from-amber-100 via-yellow-200 to-stone-300" },
   { name: "Lemon Tea", sku: "SKU-TE-001", category: "Tea Series", price: "Rp 10.000", status: "ACTIVE", image: lemonTeaImage, thumbnail: "from-lime-100 via-yellow-200 to-green-300" },
   { name: "Lychee Tea", sku: "SKU-TE-002", category: "Tea Series", price: "Rp 10.000", status: "ACTIVE", image: lycheeTeaImage, thumbnail: "from-rose-100 via-pink-200 to-lime-300" },
   { name: "Tarik Tea", sku: "SKU-TE-003", category: "Tea Series", price: "Rp 13.000", status: "ACTIVE", image: tarikTeaImage, thumbnail: "from-orange-100 via-amber-200 to-yellow-300" },
   { name: "Milo", sku: "SKU-MS-001", category: "Milk Series", price: "Rp 13.000", status: "ACTIVE", image: miloImage, thumbnail: "from-green-100 via-lime-200 to-emerald-300" },
   { name: "Joshua", sku: "SKU-MS-002", category: "Milk Series", price: "Rp 13.000", status: "ACTIVE", image: joshuaImage, thumbnail: "from-blue-100 via-sky-200 to-cyan-300" },
-  { name: "Matcha", sku: "SKU-MS-003", category: "Milk Series", price: "Rp 13.000/15.000", status: "ACTIVE", thumbnail: "from-emerald-100 via-lime-200 to-teal-300" },
-  { name: "Redvelvet", sku: "SKU-MS-004", category: "Milk Series", price: "Rp 13.000/15.000", status: "ACTIVE", thumbnail: "from-red-100 via-rose-200 to-pink-300" },
+  { name: "Matcha", sku: "SKU-MS-003", category: "Milk Series", price: "Rp 13.000/15.000", status: "ACTIVE", image: matchaImage, thumbnail: "from-emerald-100 via-lime-200 to-teal-300" },
+  { name: "Redvelvet", sku: "SKU-MS-004", category: "Milk Series", price: "Rp 13.000/15.000", status: "ACTIVE", image: redvelvetImage, thumbnail: "from-red-100 via-rose-200 to-pink-300" },
   { name: "Coklat Classic", sku: "SKU-MS-005", category: "Milk Series", price: "Rp 13.000", status: "ACTIVE", image: coklatClassicImage, thumbnail: "from-stone-100 via-amber-200 to-orange-300" },
   { name: "Coklat Classic Roti", sku: "SKU-MS-006", category: "Milk Series", price: "Rp 15.000", status: "ACTIVE", image: coklatClassicRotiImage, thumbnail: "from-yellow-100 via-amber-200 to-stone-300" },
   { name: "Strawberry Milk", sku: "SKU-MS-007", category: "Milk Series", price: "Rp 15.000", status: "ACTIVE", image: strawberryMilkImage, thumbnail: "from-pink-100 via-rose-200 to-red-300" },
