@@ -208,57 +208,194 @@ function OrderCard({
   );
 }
 
-function CancelConfirmationPopup({ order, onClose, onConfirm }) {
+function StockIssuePopup({ order, replacementOptions, onClose, onResolve }) {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [resolution, setResolution] = useState("replace");
+  const [replacementName, setReplacementName] = useState(
+    replacementOptions[0]?.name ?? ""
+  );
+
   if (!order) {
     return null;
   }
+
+  const selectedItem = order.items[selectedIndex];
+  const selectedReplacement = replacementOptions.find(
+    (option) => option.name === replacementName
+  );
+  const canResolve = resolution === "remove" || Boolean(selectedReplacement);
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+
+    if (!canResolve) {
+      return;
+    }
+
+    onResolve({
+      itemIndex: selectedIndex,
+      resolution,
+      replacement: selectedReplacement,
+    });
+  };
 
   return (
     <div
       className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/40 px-4 py-8 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="cancel-order-title"
+      aria-labelledby="stock-issue-title"
     >
-      <div className="w-full max-w-[460px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-2xl bg-white shadow-[0_24px_70px_rgba(15,23,42,0.25)]">
-        <div className="px-8 pb-7 pt-8 text-center">
-          <div className="mx-auto flex h-16 w-16 animate-[warning-pulse_1.2s_ease-in-out_infinite] items-center justify-center rounded-full bg-[#FFDAD6] text-[#BA1A1A]">
-            <XIcon />
+      <div className="w-full max-w-[560px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-2xl bg-white shadow-[0_24px_70px_rgba(15,23,42,0.25)]">
+        <div className="px-7 pb-5 pt-7">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2
+                id="stock-issue-title"
+                className="text-2xl font-black leading-8 text-[#191C1E]"
+              >
+                Stok menu habis
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-[#434655]">
+                Pilih item dari pesanan {order.orderId}, lalu ganti dengan menu lain atau hapus dari pesanan.
+              </p>
+            </div>
+
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#FFDAD6] text-[#BA1A1A]">
+              <XIcon />
+            </div>
           </div>
 
-          <h2
-            id="cancel-order-title"
-            className="mt-5 text-2xl font-black leading-8 text-[#191C1E]"
-          >
-            Anda yakin?
-          </h2>
+          <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
+            <fieldset className="flex flex-col gap-3">
+              <legend className="text-xs font-bold uppercase leading-4 tracking-[0.6px] text-[#434655]">
+                Item yang stoknya habis
+              </legend>
 
-          <p className="mt-2 text-sm leading-6 text-[#434655]">
-            Pesanan {order.orderId} dari meja {order.tableNumber} akan dipindahkan ke status cancelled.
-          </p>
-        </div>
+              <div className="grid gap-2">
+                {order.items.map((item, index) => (
+                  <label
+                    key={`${item.name}-${index}`}
+                    className={cn(
+                      "flex cursor-pointer items-center justify-between gap-3 rounded-lg border px-4 py-3 transition",
+                      selectedIndex === index
+                        ? "border-[#BA1A1A] bg-[#FFF4F2]"
+                        : "border-[rgba(195,198,215,0.45)] bg-white hover:bg-slate-50"
+                    )}
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <input
+                        type="radio"
+                        name="outOfStockItem"
+                        checked={selectedIndex === index}
+                        onChange={() => setSelectedIndex(index)}
+                        className="h-4 w-4 accent-[#BA1A1A]"
+                      />
+                      <span className="truncate text-sm font-bold leading-5 text-[#191C1E]">
+                        {item.name}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-sm font-semibold text-[#434655]">
+                      {formatRupiah(item.price)}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
 
-        <div className="grid grid-cols-2 gap-3 bg-[#F2F4F6] px-5 py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-[rgba(195,198,215,0.60)] bg-white px-4 py-3 text-sm font-bold text-[#434655] transition hover:bg-slate-50"
-          >
-            Tidak
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="rounded-lg bg-[#BA1A1A] px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-red-800"
-          >
-            Ya, Cancel
-          </button>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setResolution("replace")}
+                className={cn(
+                  "rounded-lg border px-4 py-3 text-sm font-bold transition",
+                  resolution === "replace"
+                    ? "border-[#004AC6] bg-[#DBE1FF] text-[#00174B]"
+                    : "border-[rgba(195,198,215,0.60)] bg-white text-[#434655] hover:bg-slate-50"
+                )}
+              >
+                Ganti menu
+              </button>
+              <button
+                type="button"
+                onClick={() => setResolution("remove")}
+                className={cn(
+                  "rounded-lg border px-4 py-3 text-sm font-bold transition",
+                  resolution === "remove"
+                    ? "border-[#BA1A1A] bg-[#FFDAD6] text-[#93000A]"
+                    : "border-[rgba(195,198,215,0.60)] bg-white text-[#434655] hover:bg-slate-50"
+                )}
+              >
+                Hapus item
+              </button>
+            </div>
+
+            {resolution === "replace" && (
+              <label className="flex flex-col gap-2">
+                <span className="text-xs font-bold uppercase leading-4 tracking-[0.6px] text-[#434655]">
+                  Menu pengganti
+                </span>
+                <select
+                  value={replacementName}
+                  onChange={(event) => setReplacementName(event.target.value)}
+                  className="h-11 rounded-lg border border-[rgba(195,198,215,0.70)] bg-white px-3 text-sm font-semibold text-[#191C1E] outline-none transition focus:border-[#004AC6]"
+                >
+                  {replacementOptions.map((option) => (
+                    <option key={option.name} value={option.name}>
+                      {option.name} - {formatRupiah(option.price)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            <div className="rounded-lg bg-[#F2F4F6] px-4 py-3 text-xs font-semibold leading-5 text-[#434655]">
+              {resolution === "replace"
+                ? `${selectedItem?.name ?? "Item"} akan ditandai stok habis dan diganti dengan ${selectedReplacement?.name ?? "menu pengganti"}.`
+                : `${selectedItem?.name ?? "Item"} akan ditandai stok habis lalu dihapus dari pesanan.`}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-lg border border-[rgba(195,198,215,0.60)] bg-white px-4 py-3 text-sm font-bold text-[#434655] transition hover:bg-slate-50"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={!canResolve}
+                className="rounded-lg bg-[#BA1A1A] px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Simpan Perubahan
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
   );
 }
-
+const replacementMenuOptions = [
+  { name: "Kentang", price: 10000 },
+  { name: "Risol Mayo", price: 13000 },
+  { name: "Sosis Solo", price: 13000 },
+  { name: "Tahu Bakso Goreng", price: 13000 },
+  { name: "Piscok", price: 13000 },
+  { name: "Nugget", price: 13000 },
+  { name: "Siomay Ayam", price: 15000 },
+  { name: "Ayam Popcorn", price: 15000 },
+  { name: "Coffee Milk", price: 13000 },
+  { name: "Coffee Latte Ice", price: 13000 },
+  { name: "Americano Hot", price: 10000 },
+  { name: "V6 Drip Susu Hot", price: 13000 },
+  { name: "Coffee Bear Ice", price: 16000 },
+  { name: "Lemon Tea Ice", price: 10000 },
+  { name: "Lychee Tea Ice", price: 10000 },
+  { name: "Matcha Ice", price: 13000 },
+  { name: "Coklat Classic Roti", price: 15000 },
+];
 const initialOrders = [
   {
     tableNumber: "01",
@@ -354,12 +491,43 @@ export default function Pesanan() {
     );
   };
 
-  const confirmCancelOrder = () => {
+  const resolveStockIssue = ({ itemIndex, resolution, replacement }) => {
     if (!orderToCancel) {
       return;
     }
 
-    updateOrderStatus(orderToCancel.orderId, "cancelled");
+    setOrders((currentOrders) =>
+      currentOrders.map((order) => {
+        if (order.orderId !== orderToCancel.orderId) {
+          return order;
+        }
+
+        const outOfStockItem = order.items[itemIndex];
+        const nextItems = order.items.map((item, index) =>
+          index === itemIndex ? { ...item, note: "Stok habis" } : item
+        );
+
+        if (resolution === "replace" && replacement) {
+          nextItems[itemIndex] = {
+            ...replacement,
+            note: `Pengganti ${outOfStockItem.name}`,
+          };
+        }
+
+        const resolvedItems =
+          resolution === "remove"
+            ? nextItems.filter((_, index) => index !== itemIndex)
+            : nextItems;
+
+        return {
+          ...order,
+          status: resolvedItems.length ? order.status : "cancelled",
+          items: resolvedItems.length
+            ? resolvedItems
+            : [{ ...outOfStockItem, note: "Stok habis" }],
+        };
+      })
+    );
     setOrderToCancel(null);
   };
 
@@ -395,10 +563,12 @@ export default function Pesanan() {
         ))}
       </div>
 
-      <CancelConfirmationPopup
+      <StockIssuePopup
+        key={orderToCancel?.orderId ?? "stock-issue"}
         order={orderToCancel}
+        replacementOptions={replacementMenuOptions}
         onClose={() => setOrderToCancel(null)}
-        onConfirm={confirmCancelOrder}
+        onResolve={resolveStockIssue}
       />
     </main>
   );
