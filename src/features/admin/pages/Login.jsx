@@ -18,21 +18,19 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const result = await loginAdmin(agentId, secretCode);
+        const result = await loginAdmin(agentId, secretCode);
 
-      if (result.status === "success") {
-        localStorage.setItem("admin_token", result.token);
-        
-        localStorage.setItem("admin_data", JSON.stringify(result.data));
-
-        navigate("/admin/dashboard");
-      }
+        if (result.success === true) {
+            localStorage.setItem("admin_token", result.data.token);
+            localStorage.setItem("admin_data", JSON.stringify(result.data.admin));
+            navigate("/admin/dashboard");
+        }
     } catch (error) {
-      setErrorMessage(error.message);
+        setErrorMessage(error.message);
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
-  };
+};
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-6">
