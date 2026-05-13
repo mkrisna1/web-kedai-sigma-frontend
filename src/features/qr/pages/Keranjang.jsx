@@ -1,4 +1,4 @@
-import { Link, useOutletContext } from "react-router-dom";
+import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 
 const formatRupiah = (value) => `Rp ${value.toLocaleString("id-ID")}`;
 
@@ -115,6 +115,11 @@ export default function Keranjang() {
     removeFromCart,
     updateCartQuantity,
   } = useOutletContext();
+  const [searchParams] = useSearchParams();
+  const tableLabel =
+    searchParams.get("name") || searchParams.get("table") || "meja 04";
+  const queryString = searchParams.toString();
+  const menuPath = queryString ? `/qr/menu?${queryString}` : "/qr/menu";
 
   const handleConfirm = () => {
     if (!cartItems.length) {
@@ -122,7 +127,7 @@ export default function Keranjang() {
     }
 
     window.alert(
-      `Pesanan meja 04 diterima.\nTotal: ${formatRupiah(cartTotal)}`
+      `Pesanan ${tableLabel} diterima.\nTotal: ${formatRupiah(cartTotal)}`
     );
     clearCart();
   };
@@ -139,7 +144,7 @@ export default function Keranjang() {
       </section>
 
       <Link
-        to="/qr/menu"
+        to={menuPath}
         className="flex h-12 w-[210px] items-center justify-center gap-3 border-l-4 border-[#EEC200] bg-[#212B39] px-4 font-['Space_Grotesk',Arial,sans-serif] text-xs font-bold uppercase tracking-[1.6px] text-[#EEC200] transition hover:text-[#FFB4AB]"
       >
         <ArrowLeftIcon />

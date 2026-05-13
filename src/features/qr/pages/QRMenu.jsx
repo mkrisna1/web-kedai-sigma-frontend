@@ -1,4 +1,4 @@
-import { Link, useOutletContext } from "react-router-dom";
+import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 import { useMemo, useState } from "react";
 import QRMenuCard from "../../../components/qr/QRMenuCard";
 import americanoImage from "../../../assets/Americano.jpg";
@@ -578,11 +578,16 @@ function CartSuccessModal({ onClose }) {
 
 export default function QRMenu() {
   const { addToCart, cartCount } = useOutletContext();
+  const [searchParams] = useSearchParams();
   const [activeCategory, setActiveCategory] = useState("all");
   const [query, setQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(4);
   const [configItem, setConfigItem] = useState(null);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const tableLabel =
+    searchParams.get("name") || searchParams.get("table") || "Meja 04";
+  const queryString = searchParams.toString();
+  const cartPath = queryString ? `/qr/keranjang?${queryString}` : "/qr/keranjang";
 
   const filteredItems = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -624,8 +629,8 @@ export default function QRMenu() {
   return (
     <main className="flex flex-1 flex-col gap-[29px] border-r-4 border-[#212B39] px-7 pb-12 pt-7">
       <section className="box-border flex w-full max-w-[285px] flex-col border-l-8 border-[#DC2626] py-4 pl-2.5">
-        <h1 className="font-['Space_Grotesk',Arial,sans-serif] text-[60px] font-bold uppercase leading-[60px] tracking-[-3px] text-[#D9E3F6]">
-          Meja 04
+        <h1 className="break-words font-['Space_Grotesk',Arial,sans-serif] text-[48px] font-bold uppercase leading-[52px] tracking-normal text-[#D9E3F6]">
+          {tableLabel}
         </h1>
         <p className="w-full max-w-[267px] text-[10px] font-medium uppercase leading-5 tracking-[1.4px] text-[#E6BDB8]">
           Ngopi santai penuh makna, nongkrongnya ya di Kedai Sigma.
@@ -672,7 +677,7 @@ export default function QRMenu() {
         </label>
 
         <Link
-          to="/qr/keranjang"
+          to={cartPath}
           aria-label="Buka keranjang"
           className="absolute left-[218px] top-[13px] flex h-8 w-[42px] items-center text-[#EEC200]"
         >

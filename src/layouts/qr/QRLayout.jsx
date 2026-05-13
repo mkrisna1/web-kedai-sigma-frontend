@@ -1,8 +1,11 @@
-import { Link, Outlet } from "react-router-dom";
+import { Link, Outlet, useLocation } from "react-router-dom";
 import { useMemo, useState } from "react";
 
 export default function QRLayout() {
+  const location = useLocation();
   const [cartItems, setCartItems] = useState([]);
+  const menuPath = `/qr/menu${location.search}`;
+  const cartPath = `/qr/keranjang${location.search}`;
 
   const cartCount = useMemo(
     () => cartItems.reduce((total, item) => total + item.quantity, 0),
@@ -58,7 +61,7 @@ export default function QRLayout() {
       <div className="mx-auto flex min-h-screen w-full max-w-[440px] flex-col overflow-hidden bg-[#091421] font-['Be_Vietnam_Pro',Arial,sans-serif]">
         <header className="sticky top-0 z-30 flex h-[68px] shrink-0 items-center border-b-4 border-[#212B39] bg-[#091421] px-8 shadow-[0_0_20px_rgba(220,38,38,0.1)]">
           <Link
-            to="/qr/menu"
+            to={menuPath}
             className="font-['Space_Grotesk',Arial,sans-serif] text-[17px] font-bold uppercase leading-8 tracking-[-1.2px] text-[#DC2626]"
           >
             Kedai Sigma
@@ -82,10 +85,10 @@ export default function QRLayout() {
             (C) 2025 Kedai Sigma
           </p>
           <nav className="hidden items-center gap-8 text-[10px] uppercase leading-[15px] tracking-[1px] text-[#EEC200] min-[420px]:flex">
-            <Link to="/qr/menu" className="transition hover:text-[#FFB4AB]">
+            <Link to={menuPath} className="transition hover:text-[#FFB4AB]">
               Menu
             </Link>
-            <Link to="/qr/keranjang" className="transition hover:text-[#FFB4AB]">
+            <Link to={cartPath} className="transition hover:text-[#FFB4AB]">
               Order
             </Link>
           </nav>
