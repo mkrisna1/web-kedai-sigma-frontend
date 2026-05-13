@@ -2,6 +2,7 @@ import { useState } from "react";
 import fotoKedai1 from "../../../assets/Foto Kedai 1.png";
 import fotoKedai2 from "../../../assets/Foto Kedai 2.PNG";
 import logoSigma from "../../../assets/Logo Sigma.png";
+import { createReservation } from "../../../services/api";
 
 const inputClass =
   "h-[62px] w-full border-0 border-b-2 border-[#5C403C] bg-transparent px-1 py-4 font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-7 text-[#D9E3F6] outline-none transition placeholder:text-[#2B3544]/55 focus:border-[#EEC200]";
@@ -130,6 +131,16 @@ function getDateFromValue(value) {
   }
 
   return new Date(year, month - 1, date);
+}
+
+function toApiDate(value) {
+  const date = getDateFromValue(value);
+
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
 }
 
 function isSameDate(firstDate, secondDate) {
@@ -443,7 +454,7 @@ function ReservationWarningPopup({ onClose }) {
             Mohon isi yang lengkap
           </h2>
           <p className="mx-auto mt-3 max-w-[360px] font-['Be_Vietnam_Pro',sans-serif] text-sm leading-6 text-white/55">
-            Lengkapi nama, nomor telepon, tanggal, waktu, jumlah orang, dan catatan sebelum mengirim reservasi.
+            Lengkapi nama, nomor telepon, tanggal, waktu, dan jumlah orang sebelum mengirim reservasi.
           </p>
         </div>
 
@@ -471,6 +482,8 @@ export default function Reservasi() {
   const [openPicker, setOpenPicker] = useState(null);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [showWarningPopup, setShowWarningPopup] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -481,24 +494,49 @@ export default function Reservasi() {
     }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setOpenPicker(null);
+    setErrorMessage("");
 
     const isFormComplete =
       formData.name.trim() &&
       formData.phone.trim() &&
       selectedDate &&
       selectedTime &&
-      formData.people &&
-      formData.note.trim();
+      formData.people;
 
     if (!isFormComplete) {
       setShowWarningPopup(true);
       return;
     }
 
-    setShowSuccessPopup(true);
+    setIsSubmitting(true);
+
+    try {
+      await createReservation({
+        nama_reservasi: formData.name.trim(),
+        no_hp: formData.phone.trim(),
+        tgl_reservasi: toApiDate(selectedDate),
+        jam_reservasi: selectedTime,
+        jml_orang: Number(formData.people),
+        catatan_reservasi: formData.note.trim() || null,
+      });
+
+      setFormData({
+        name: "",
+        phone: "",
+        people: "",
+        note: "",
+      });
+      setSelectedDate("");
+      setSelectedTime("");
+      setShowSuccessPopup(true);
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -633,19 +671,19 @@ export default function Reservasi() {
                     <option className="bg-[#212B39]" value="">
                       Pilih jumlah orang
                     </option>
-                    <option className="bg-[#212B39]" value="1 Person">
+                    <option className="bg-[#212B39]" value="1">
                       1 Orang
                     </option>
-                    <option className="bg-[#212B39]" value="2 Person">
+                    <option className="bg-[#212B39]" value="2">
                       2 Orang
                     </option>
-                    <option className="bg-[#212B39]" value="3 Person">
+                    <option className="bg-[#212B39]" value="3">
                       3 Orang
                     </option>
-                    <option className="bg-[#212B39]" value="4 Person">
+                    <option className="bg-[#212B39]" value="4">
                       4 Orang
                     </option>
-                    <option className="bg-[#212B39]" value="5+ Person">
+                    <option className="bg-[#212B39]" value="5">
                       5+ Orang
                     </option>
                   </select>
@@ -661,11 +699,18 @@ export default function Reservasi() {
                   />
                 </Field>
 
+                {errorMessage && (
+                  <div className="border border-[#DC2626]/40 bg-[#3B1115] px-4 py-3 font-['Be_Vietnam_Pro',sans-serif] text-sm text-[#FFB4AB]">
+                    {errorMessage}
+                  </div>
+                )}
+
                 <button
                   type="submit"
-                  className="flex h-20 w-full items-center justify-center bg-[#DC2626] px-4 py-6 text-center font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-8 tracking-[0.28em] text-[#FFF6F5] shadow-[0_10px_30px_rgba(220,38,38,0.3)] transition hover:bg-red-700 md:text-2xl"
+                  disabled={isSubmitting}
+                  className="flex h-20 w-full items-center justify-center bg-[#DC2626] px-4 py-6 text-center font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-8 tracking-[0.28em] text-[#FFF6F5] shadow-[0_10px_30px_rgba(220,38,38,0.3)] transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-[#7F1D1D] md:text-2xl"
                 >
-                  Confirm Reservation
+                  {isSubmitting ? "Mengirim..." : "Confirm Reservation"}
                 </button>
               </div>
             </form>

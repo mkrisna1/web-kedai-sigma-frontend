@@ -1,557 +1,402 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  getAdminTables,
+  getAdminReservations,
+  updateAdminReservationStatus,
+} from "../../../services/api";
 
-const reservations = [
-  {
-    id: "RSV-001",
-    initials: "AR",
-    name: "Ariel Pratama",
-    phone: "+62 812-8888-2211",
-    guests: "4 Person",
-    date: "Apr 6, 2026",
-    dateValue: "2026-04-06",
-    time: "19:00 PM",
-    status: "Pending",
+const statusConfig = {
+  menunggu_konfirmasi: {
+    label: "Menunggu",
+    badge: "bg-amber-100 text-amber-700",
   },
-  {
-    id: "RSV-002",
-    initials: "NA",
-    name: "Nadia Putri",
-    phone: "+62 813-4477-9910",
-    guests: "3 Person",
-    date: "Apr 6, 2026",
-    dateValue: "2026-04-06",
-    time: "18:30 PM",
-    status: "Confirmed",
+  dikonfirmasi: {
+    label: "Dikonfirmasi",
+    badge: "bg-emerald-100 text-emerald-700",
   },
-  {
-    id: "RSV-003",
-    initials: "BS",
-    name: "Bima Santoso",
-    phone: "+62 857-3312-0044",
-    guests: "20 Person",
-    date: "Apr 6, 2026",
-    dateValue: "2026-04-06",
-    time: "20:15 PM",
-    status: "Cancelled",
+  dibatalkan: {
+    label: "Ditolak",
+    badge: "bg-rose-100 text-rose-700",
   },
-  {
-    id: "RSV-004",
-    initials: "KY",
-    name: "Kyla Dewi",
-    phone: "+62 821-7780-2219",
-    guests: "2 Person",
-    date: "Apr 6, 2026",
-    dateValue: "2026-04-06",
-    time: "12:00 PM",
-    status: "Confirmed",
-  },
-];
-
-const reservationPages = [0, 1, 2].map((pageIndex) =>
-  reservations.map((item) => ({
-    ...item,
-    id: `${item.id}-P${pageIndex + 1}`,
-  }))
-);
-
-const statusStyles = {
-  Pending: "bg-yellow-100 text-yellow-700",
-  Confirmed: "bg-green-100 text-green-700",
-  Cancelled: "bg-red-100 text-red-700",
 };
 
-const monthNames = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
+const getInitials = (value = "") =>
+  value
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase())
+    .join("") || "RS";
 
-const dayNames = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+const formatDate = (value) =>
+  value
+    ? new Intl.DateTimeFormat("id-ID", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      }).format(new Date(`${value}T00:00:00`))
+    : "-";
 
-const formatDateValue = (date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+const formatTime = (value = "") => value.slice(0, 5) || "-";
 
-  return `${year}-${month}-${day}`;
-};
-
-const parseDateValue = (dateValue) => {
-  if (!dateValue) {
-    return new Date(2026, 3, 1);
+function DecisionPopup({ feedback, onClose }) {
+  if (!feedback) {
+    return null;
   }
 
-  const [year, month, day] = dateValue.split("-").map(Number);
-  return new Date(year, month - 1, day);
-};
-
-const formatDateLabel = (dateValue) => {
-  if (!dateValue) {
-    return "Pilih tanggal";
-  }
-
-  const date = parseDateValue(dateValue);
-  return `${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
-};
-
-function CalendarIcon({ className = "h-5 w-5" }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M7 2h2v2h6V2h2v2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2V2Zm12 8H5v10h14V10ZM5 8h14V6H5v2Z" />
-    </svg>
-  );
-}
-
-function UsersIcon({ className = "h-5 w-5" }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M16 11a4 4 0 1 0-3.46-6A5.97 5.97 0 0 1 14 9c0 .73-.13 1.43-.37 2H16ZM8 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-3.31 0-6 1.79-6 4v2h12v-2c0-2.21-2.69-4-6-4Zm8 0c-.45 0-.88.04-1.3.11.82.95 1.3 2.07 1.3 3.39V19h6v-2c0-2.21-2.69-4-6-4Z" />
-    </svg>
-  );
-}
-
-function DotsIcon({ className = "h-4 w-4" }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M6 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" />
-    </svg>
-  );
-}
-
-function ChevronLeftIcon({ className = "h-3 w-2" }) {
-  return (
-    <svg viewBox="0 0 8 12" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M6.6 12 0.6 6 6.6 0 8 1.4 3.4 6 8 10.6 6.6 12Z" />
-    </svg>
-  );
-}
-
-function ChevronRightIcon({ className = "h-3 w-2" }) {
-  return (
-    <svg viewBox="0 0 8 12" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M1.4 12 0 10.6 4.6 6 0 1.4 1.4 0 7.4 6 1.4 12Z" />
-    </svg>
-  );
-}
-
-function CheckIcon({ className = "h-4 w-4" }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M9.55 17.6 4.4 12.45 5.8 11.05 9.55 14.8 18.2 6.15 19.6 7.55 9.55 17.6Z" />
-    </svg>
-  );
-}
-
-function XIcon({ className = "h-4 w-4" }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M6.4 19 5 17.6 10.6 12 5 6.4 6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19Z" />
-    </svg>
-  );
-}
-
-function Field({ label, children }) {
-  return (
-    <label className="flex min-w-[220px] flex-1 flex-col gap-2">
-      <span className="px-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[#434655]">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
-
-function CalendarPopup({ value, onClose, onSelect }) {
-  const initialDate = parseDateValue(value);
-  const [viewDate, setViewDate] = useState(
-    new Date(initialDate.getFullYear(), initialDate.getMonth(), 1)
-  );
-  const [draftDate, setDraftDate] = useState(value || formatDateValue(initialDate));
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
-  const todayValue = formatDateValue(new Date());
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const calendarDays = [
-    ...Array.from({ length: firstDay }, (_, index) => ({
-      key: `blank-${index}`,
-      day: "",
-      value: "",
-    })),
-    ...Array.from({ length: daysInMonth }, (_, index) => {
-      const day = index + 1;
-      const dateValue = formatDateValue(new Date(year, month, day));
-
-      return {
-        key: dateValue,
-        day,
-        value: dateValue,
-      };
-    }),
-  ];
-
-  const changeMonth = (offset) => {
-    setViewDate((currentDate) => {
-      return new Date(
-        currentDate.getFullYear(),
-        currentDate.getMonth() + offset,
-        1
-      );
-    });
-  };
+  const isSuccess = feedback.type === "success";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-6">
-      <div className="flex h-[495px] w-full max-w-96 flex-col items-start overflow-hidden rounded-lg bg-white shadow-[0_10px_30px_rgba(25,28,30,0.06)]">
-        <div className="flex h-[427px] w-full flex-col items-start gap-8 p-6">
-          <div className="flex h-7 w-full items-center justify-between">
-            <button
-              type="button"
-              onClick={() => changeMonth(-1)}
-              className="flex h-7 w-[23.4px] items-center justify-center rounded-xl text-[#434655] transition hover:bg-[#F2F4F6]"
-              aria-label="Bulan sebelumnya"
-            >
-              <ChevronLeftIcon className="h-3 w-[7.4px]" />
-            </button>
-
-            <h2 className="flex h-7 items-center text-lg font-bold leading-7 tracking-[-0.45px] text-[#191C1E]">
-              {monthNames[month]} {year}
-            </h2>
-
-            <button
-              type="button"
-              onClick={() => changeMonth(1)}
-              className="flex h-7 w-[23.4px] items-center justify-center rounded-xl text-[#434655] transition hover:bg-[#F2F4F6]"
-              aria-label="Bulan berikutnya"
-            >
-              <ChevronRightIcon className="h-3 w-[7.4px]" />
-            </button>
-          </div>
-
-          <div className="h-[319px] w-full">
-            <div className="grid grid-cols-7 gap-y-2">
-              {dayNames.map((dayName) => (
-                <div
-                  key={dayName}
-                  className="flex h-[31px] items-start justify-center pb-4 text-[10px] font-bold uppercase leading-[15px] tracking-[1px] text-[#434655]"
-                >
-                  {dayName}
-                </div>
-              ))}
-
-              {calendarDays.map((dateItem) => {
-                const isSelected = dateItem.value === draftDate;
-                const isToday = dateItem.value === todayValue;
-
-                return (
-                  <button
-                    key={dateItem.key}
-                    type="button"
-                    disabled={!dateItem.value}
-                    onClick={() => setDraftDate(dateItem.value)}
-                    className="relative flex h-10 items-center justify-center text-sm font-medium leading-5 text-[#191C1E] disabled:pointer-events-none"
-                  >
-                    {isToday && !isSelected && (
-                      <span className="absolute inset-1 rounded-xl border border-[#2563EB]/20" />
-                    )}
-                    {isSelected && (
-                      <span className="absolute inset-1 rounded-xl bg-gradient-to-br from-[#004AC6] to-[#2563EB] shadow-sm" />
-                    )}
-                    <span
-                      className={`relative z-10 ${
-                        isSelected ? "font-bold text-white" : ""
-                      }`}
-                    >
-                      {dateItem.day}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex h-[68px] w-full items-center justify-end gap-3 bg-[#F2F4F6] p-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-9 items-center justify-center px-5 text-sm font-semibold leading-5 text-[#434655] transition hover:text-[#191C1E]"
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4 py-8 backdrop-blur-[1px]">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]">
+        <div className="px-6 py-6">
+          <div
+            className={`flex h-12 w-12 items-center justify-center rounded-full text-2xl font-black ${
+              isSuccess
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-rose-100 text-rose-700"
+            }`}
           >
-            Keluar
-          </button>
-          <button
-            type="button"
-            onClick={() => onSelect(draftDate)}
-            className="flex h-9 items-center justify-center rounded-lg bg-gradient-to-r from-[#004AC6] to-[#2563EB] px-6 text-sm font-bold leading-5 text-white shadow-sm transition hover:brightness-105"
-          >
-            Add
-          </button>
+            {isSuccess ? "+" : "!"}
+          </div>
+          <h3 className="mt-5 text-xl font-extrabold text-[#191C1E]">
+            {feedback.title}
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-[#434655]">
+            {feedback.message}
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className={`flex h-14 w-full items-center justify-center text-sm font-bold uppercase text-white ${
+            isSuccess ? "bg-emerald-600 hover:bg-emerald-700" : "bg-rose-600 hover:bg-rose-700"
+          }`}
+        >
+          Tutup
+        </button>
       </div>
     </div>
   );
 }
 
 export default function ReservasiAdmin() {
-  const [pages, setPages] = useState(reservationPages);
-  const [currentPage, setCurrentPage] = useState(0);
+  const [reservations, setReservations] = useState([]);
   const [selectedDate, setSelectedDate] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("Semua Status");
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState("semua");
+  const [isLoading, setIsLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [feedback, setFeedback] = useState(null);
+  const [tables, setTables] = useState([]);
+  const [tableAssignments, setTableAssignments] = useState({});
 
-  const matchesFilters = (item) => {
-    const matchesDate = selectedDate ? item.dateValue === selectedDate : true;
-    const matchesStatus =
-      selectedStatus === "Semua Status" ? true : item.status === selectedStatus;
+  useEffect(() => {
+    let isMounted = true;
 
-    return matchesDate && matchesStatus;
-  };
+    const loadReservations = async () => {
+      setIsLoading(true);
+      setErrorMessage("");
 
-  const filteredPages = pages.map((pageItems) => pageItems.filter(matchesFilters));
-  const currentReservations = filteredPages[currentPage] ?? [];
-  const filteredTotal = filteredPages.reduce(
-    (total, pageItems) => total + pageItems.length,
-    0
-  );
-  const previousFilteredCount = filteredPages
-    .slice(0, currentPage)
-    .reduce((total, pageItems) => total + pageItems.length, 0);
-  const firstShown =
-    currentReservations.length === 0 ? 0 : previousFilteredCount + 1;
-  const lastShown = previousFilteredCount + currentReservations.length;
+      try {
+        const [reservationResponse, tableResponse] = await Promise.all([
+          getAdminReservations(),
+          getAdminTables(),
+        ]);
 
-  const updateReservationStatus = (reservationId, status) => {
-    setPages((currentPages) =>
-      currentPages.map((pageItems) =>
-        pageItems.map((item) =>
-          item.id === reservationId ? { ...item, status } : item
-        )
-      )
-    );
-  };
+        if (isMounted) {
+          const reservationData = reservationResponse.data || [];
 
-  const handleDateSelect = (dateValue) => {
-    setSelectedDate(dateValue);
-    setCurrentPage(0);
-    setIsCalendarOpen(false);
-  };
+          setReservations(reservationData);
+          setTables((tableResponse.data || []).filter((table) => table.status_meja === "active"));
+          setTableAssignments(
+            reservationData.reduce((assignments, reservation) => {
+              if (reservation.meja_id) {
+                assignments[reservation.id] = String(reservation.meja_id);
+              }
 
-  const handleStatusChange = (event) => {
-    setSelectedStatus(event.target.value);
-    setCurrentPage(0);
+              return assignments;
+            }, {}),
+          );
+        }
+      } catch (error) {
+        if (isMounted) {
+          setErrorMessage(error.message);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadReservations();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const filteredReservations = useMemo(() => {
+    return reservations.filter((reservation) => {
+      const matchesDate = selectedDate
+        ? reservation.tgl_reservasi === selectedDate
+        : true;
+      const matchesStatus =
+        selectedStatus === "semua"
+          ? true
+          : reservation.status_reservasi === selectedStatus;
+
+      return matchesDate && matchesStatus;
+    });
+  }, [reservations, selectedDate, selectedStatus]);
+
+  const pendingCount = reservations.filter(
+    (reservation) => reservation.status_reservasi === "menunggu_konfirmasi",
+  ).length;
+
+  const handleDecision = async (reservationId, nextStatus) => {
+    setUpdatingId(reservationId);
+    setErrorMessage("");
+
+    try {
+      const selectedMejaId = tableAssignments[reservationId];
+
+      if (nextStatus === "dikonfirmasi" && !selectedMejaId) {
+        throw new Error("Pilih meja dulu sebelum ACC reservasi.");
+      }
+
+      const response = await updateAdminReservationStatus(
+        reservationId,
+        nextStatus,
+        nextStatus === "dikonfirmasi" ? selectedMejaId : null,
+      );
+
+      setReservations((current) =>
+        current.map((reservation) =>
+          reservation.id === reservationId ? response.data : reservation,
+        ),
+      );
+      setFeedback({
+        type: "success",
+        title:
+          nextStatus === "dikonfirmasi"
+            ? "Reservasi berhasil di-ACC"
+            : "Reservasi berhasil ditolak",
+        message: response.message || "Status reservasi berhasil diperbarui.",
+      });
+    } catch (error) {
+      setErrorMessage(error.message);
+      setFeedback({
+        type: "error",
+        title: "Aksi gagal",
+        message: error.message || "Status reservasi belum berhasil diperbarui.",
+      });
+    } finally {
+      setUpdatingId(null);
+    }
   };
 
   return (
     <section className="flex w-full flex-col gap-8 bg-[#F7F9FB] font-['Inter',Arial,sans-serif] text-[#191C1E]">
-      <div className="flex flex-col gap-6 lg:flex-row">
-        <div className="flex flex-1 flex-col gap-4 rounded-lg bg-white p-6 shadow-[0_10px_30px_rgba(25,28,30,0.04)] lg:flex-row lg:items-end">
-          <Field label="Filter Tanggal">
-            <button
-              type="button"
-              onClick={() => setIsCalendarOpen(true)}
-              className="h-[43px] rounded border border-b-2 border-[#C3C6D7] bg-[#F2F4F6] px-4 text-sm text-[#191C1E] outline-none transition focus:border-blue-500"
-            >
-              <span className="flex items-center justify-between gap-3">
-                {formatDateLabel(selectedDate)}
-                <CalendarIcon className="h-4 w-4 text-[#434655]" />
-              </span>
-            </button>
-          </Field>
+      <div className="grid gap-6 lg:grid-cols-[1fr_220px]">
+        <div className="grid gap-4 rounded-lg bg-white p-6 shadow-[0_10px_30px_rgba(25,28,30,0.04)] md:grid-cols-2">
+          <label className="flex flex-col gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#434655]">
+              Filter Tanggal
+            </span>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(event) => setSelectedDate(event.target.value)}
+              className="h-11 rounded border border-b-2 border-[#C3C6D7] bg-[#F2F4F6] px-4 text-sm text-[#191C1E] outline-none transition focus:border-blue-500"
+            />
+          </label>
 
-          <Field label="Status Reservasi">
+          <label className="flex flex-col gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#434655]">
+              Status Reservasi
+            </span>
             <select
               value={selectedStatus}
-              onChange={handleStatusChange}
-              className="h-[43px] rounded border border-b-2 border-[#C3C6D7] bg-[#F2F4F6] px-4 text-sm text-[#191C1E] outline-none transition focus:border-blue-500"
+              onChange={(event) => setSelectedStatus(event.target.value)}
+              className="h-11 rounded border border-b-2 border-[#C3C6D7] bg-[#F2F4F6] px-4 text-sm text-[#191C1E] outline-none transition focus:border-blue-500"
             >
-              <option>Semua Status</option>
-              <option>Pending</option>
-              <option>Confirmed</option>
-              <option>Cancelled</option>
+              <option value="semua">Semua Status</option>
+              <option value="menunggu_konfirmasi">Menunggu</option>
+              <option value="dikonfirmasi">Dikonfirmasi</option>
+              <option value="dibatalkan">Ditolak</option>
             </select>
-          </Field>
-
-          <button
-            type="button"
-            onClick={() => setCurrentPage(0)}
-            className="h-10 rounded-lg bg-gradient-to-br from-[#004AC6] to-[#2563EB] px-8 text-sm font-semibold text-white shadow-[0_10px_15px_-3px_rgba(59,130,246,0.2)] transition hover:brightness-105"
-          >
-            Terapkan
-          </button>
+          </label>
         </div>
 
-        <aside className="relative min-h-[123px] overflow-hidden rounded-lg bg-[#2563EB] p-6 text-white shadow-[0_10px_30px_rgba(25,28,30,0.04)] lg:w-[222px]">
-          <CalendarIcon className="absolute -right-2 bottom-2 h-20 w-20 text-white/20" />
+        <aside className="rounded-lg bg-[#2563EB] p-6 text-white shadow-[0_10px_30px_rgba(25,28,30,0.04)]">
           <p className="text-xs font-medium uppercase tracking-[0.05em] text-white/70">
-            Total hari ini
+            Belum diproses
           </p>
-          <p className="mt-1 text-3xl font-extrabold tracking-[-0.025em]">
-            {filteredTotal}
+          <p className="mt-2 text-4xl font-extrabold tracking-[-0.025em]">
+            {pendingCount}
           </p>
         </aside>
       </div>
 
-      <div className="overflow-hidden rounded-2xl bg-white shadow-[0_10px_30px_rgba(25,28,30,0.04)]">
-        <div className="flex items-center justify-between border-b border-[#E6E8EA] p-6">
-          <div>
-            <h3 className="text-lg font-bold text-[#191C1E]">
-              Reservasi yang masuk
-            </h3>
-            <p className="mt-1 text-sm text-[#434655]">
-              Status booking meja secara real-time
-            </p>
-          </div>
+      {errorMessage && (
+        <div className="rounded-lg border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-medium text-rose-700">
+          {errorMessage}
+        </div>
+      )}
 
-          <div className="flex items-center gap-2">
-            <button className="rounded p-2 text-[#434655] transition hover:bg-slate-100">
-              <DotsIcon />
-            </button>
-          </div>
+      <div className="overflow-hidden rounded-2xl bg-white shadow-[0_10px_30px_rgba(25,28,30,0.04)]">
+        <div className="border-b border-[#E6E8EA] p-6">
+          <h3 className="text-lg font-bold text-[#191C1E]">
+            Reservasi yang masuk
+          </h3>
+          <p className="mt-1 text-sm text-[#434655]">
+            Data di bawah ini langsung berasal dari backend.
+          </p>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm">
+          <table className="w-full min-w-[980px] text-sm">
             <thead className="bg-[#F2F4F6]/50 text-[10px] font-bold uppercase tracking-[0.1em] text-[#434655]">
               <tr>
-                <th className="px-6 py-4 text-left">Nama Pelanggan</th>
-                <th className="px-6 py-4 text-left">Tamu</th>
-                <th className="px-6 py-4 text-left">Tanggal</th>
+                <th className="px-6 py-4 text-left">Pelanggan</th>
+                <th className="px-6 py-4 text-left">Kontak</th>
+                <th className="px-6 py-4 text-left">Jadwal</th>
+                <th className="px-6 py-4 text-left">Meja</th>
+                <th className="px-6 py-4 text-left">Orang</th>
                 <th className="px-6 py-4 text-center">Status</th>
                 <th className="px-6 py-4 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E6E8EA]">
-              {currentReservations.map((item) => (
-                <tr key={item.id} className="transition hover:bg-slate-50">
-                  <td className="px-6 py-5">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-xs font-bold text-slate-500">
-                        {item.initials}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-[#191C1E]">{item.name}</p>
-                        <p className="text-[10px] text-[#434655]">{item.phone}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5 font-medium">{item.guests}</td>
-                  <td className="px-6 py-5">
-                    <p className="font-medium">{item.date}</p>
-                    <p className="text-xs text-[#434655]">{item.time}</p>
-                  </td>
-                  <td className="px-6 py-5 text-center">
-                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${statusStyles[item.status]}`}>
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5">
-                    <div className="flex justify-end gap-2">
-                      {item.status === "Pending" ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => updateReservationStatus(item.id, "Confirmed")}
-                            className="rounded bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-600 transition hover:bg-blue-100"
-                          >
-                            Terima
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => updateReservationStatus(item.id, "Cancelled")}
-                            className="rounded bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100"
-                          >
-                            Tolak
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                            item.status === "Confirmed"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                          disabled
-                        >
-                          {item.status === "Confirmed" ? (
-                            <CheckIcon className="h-4 w-4" />
-                          ) : (
-                            <XIcon className="h-4 w-4" />
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {currentReservations.length === 0 && (
+              {isLoading ? (
                 <tr>
-                  <td colSpan="5" className="px-6 py-10 text-center text-sm text-[#434655]">
-                    Tidak ada reservasi yang cocok dengan filter.
+                  <td colSpan="7" className="px-6 py-12 text-center text-sm text-[#434655]">
+                    Memuat reservasi...
                   </td>
                 </tr>
+              ) : filteredReservations.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="px-6 py-12 text-center text-sm text-[#434655]">
+                    Belum ada reservasi yang cocok dengan filter.
+                  </td>
+                </tr>
+              ) : (
+                filteredReservations.map((reservation) => {
+                  const status = statusConfig[reservation.status_reservasi];
+                  const isPending =
+                    reservation.status_reservasi === "menunggu_konfirmasi";
+                  const isUpdating = updatingId === reservation.id;
+
+                  return (
+                    <tr key={reservation.id} className="transition hover:bg-slate-50">
+                      <td className="px-6 py-5">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-xs font-bold text-slate-500">
+                            {getInitials(reservation.nama_reservasi)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold text-[#191C1E]">
+                              {reservation.nama_reservasi}
+                            </p>
+                            <p className="mt-1 max-w-[220px] text-xs leading-5 text-[#434655]">
+                              {reservation.catatan_reservasi || "Tanpa catatan"}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 font-medium text-[#191C1E]">
+                        {reservation.no_hp}
+                      </td>
+                      <td className="px-6 py-5">
+                        <p className="font-medium">{formatDate(reservation.tgl_reservasi)}</p>
+                        <p className="text-xs text-[#434655]">
+                          {formatTime(reservation.jam_reservasi)}
+                        </p>
+                      </td>
+                      <td className="px-6 py-5">
+                        {isPending ? (
+                          <select
+                            value={tableAssignments[reservation.id] || ""}
+                            onChange={(event) =>
+                              setTableAssignments((current) => ({
+                                ...current,
+                                [reservation.id]: event.target.value,
+                              }))
+                            }
+                            className="h-9 rounded border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500"
+                          >
+                            <option value="">Pilih meja</option>
+                            {tables.map((table) => (
+                              <option key={table.id} value={table.id}>
+                                {table.nomor_meja}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="font-semibold text-slate-700">
+                            {reservation.meja?.nomor_meja || "-"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-5 font-semibold">
+                        {reservation.jml_orang}
+                      </td>
+                      <td className="px-6 py-5 text-center">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
+                            status?.badge || "bg-slate-100 text-slate-700"
+                          }`}
+                        >
+                          {status?.label || reservation.status_reservasi}
+                        </span>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="flex justify-end gap-2">
+                          {isPending ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleDecision(reservation.id, "dikonfirmasi")
+                                }
+                                disabled={isUpdating}
+                                className="rounded bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                ACC
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleDecision(reservation.id, "dibatalkan")
+                                }
+                                disabled={isUpdating}
+                                className="rounded bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                Tolak
+                              </button>
+                            </>
+                          ) : (
+                            <span className="text-xs font-medium text-[#434655]">
+                              Sudah diproses
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
-
-        <div className="flex flex-col gap-4 border-t border-[#E6E8EA] bg-[#F2F4F6] p-6 text-xs font-medium text-[#434655] sm:flex-row sm:items-center sm:justify-between">
-          <span>
-            Showing {firstShown} to {lastShown} of {filteredTotal} entries
-          </span>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              disabled={currentPage === 0}
-              onClick={() => setCurrentPage((page) => Math.max(page - 1, 0))}
-              className="rounded border border-[#C3C6D7] px-3 py-1.5 disabled:opacity-40"
-            >
-              Previous
-            </button>
-            {pages.map((_, pageIndex) => (
-              <button
-                key={pageIndex}
-                type="button"
-                onClick={() => setCurrentPage(pageIndex)}
-                className={`rounded px-3 py-1.5 ${
-                  currentPage === pageIndex
-                    ? "bg-[#004AC6] font-bold text-white shadow-sm"
-                    : "border border-[#C3C6D7]"
-                }`}
-              >
-                {pageIndex + 1}
-              </button>
-            ))}
-            <button
-              type="button"
-              disabled={currentPage === pages.length - 1}
-              onClick={() =>
-                setCurrentPage((page) => Math.min(page + 1, pages.length - 1))
-              }
-              className="rounded border border-[#C3C6D7] px-3 py-1.5 disabled:opacity-40"
-            >
-              Next
-            </button>
-          </div>
-        </div>
       </div>
 
-      {isCalendarOpen && (
-        <CalendarPopup
-          value={selectedDate}
-          onClose={() => setIsCalendarOpen(false)}
-          onSelect={handleDateSelect}
-        />
-      )}
+      <DecisionPopup
+        feedback={feedback}
+        onClose={() => setFeedback(null)}
+      />
     </section>
   );
 }

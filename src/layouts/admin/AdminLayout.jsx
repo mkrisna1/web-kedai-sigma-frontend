@@ -1,8 +1,15 @@
 import Sidebar from "../../components/admin/Sidebar";
 import TopBar from "../../components/admin/TopBar";
-import { Outlet } from "react-router-dom";
+import { Navigate, Outlet } from "react-router-dom";
 
 export default function AdminLayout() {
+  const hasAdminToken =
+    localStorage.getItem("admin_token") || localStorage.getItem("token");
+
+  if (!hasAdminToken) {
+    return <Navigate to="/login" replace />;
+  }
+
   return (
     <div className="flex">
       

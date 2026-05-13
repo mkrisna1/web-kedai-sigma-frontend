@@ -17,6 +17,7 @@ import MejaAdmin from "../features/admin/pages/MejaAdmin";
 import ReservasiAdmin from "../features/admin/pages/ReservasiAdmin";
 import ReviewAdmin from "../features/admin/pages/ReviewAdmin";
 import Laporan from "../features/admin/pages/Laporan";
+import QRMenu from "../features/qr/pages/QRMenu";
 
 
 function AppRoutes() {
@@ -25,6 +26,8 @@ function AppRoutes() {
       <Routes>
         {/* PUBLIC */}
         <Route path="/login" element={<Login />} />
+        <Route path="/qr" element={<Navigate to="/qr/menu" replace />} />
+        <Route path="/qr/menu" element={<QRMenu />} />
 
         {/* USER */}
         <Route path="/" element={<MainLayout />}>
@@ -46,10 +49,10 @@ function AppRoutes() {
           <Route path="pesanan" element={<Pesanan />} />
 
           {/*Menu*/}
-          <Route path="Menu" element={<MenuAdmin />} />
+          <Route path="menu" element={<MenuAdmin />} />
 
           {/*Meja*/}
-          <Route path="Meja" element={<MejaAdmin />} />
+          <Route path="meja" element={<MejaAdmin />} />
 
           {/*Reservasi*/}
           <Route path="reservasi" element={<ReservasiAdmin />} />
@@ -67,3 +70,8 @@ function AppRoutes() {
 }
 
 export default AppRoutes;
+
+
+
+
+
