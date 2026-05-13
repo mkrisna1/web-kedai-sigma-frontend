@@ -38,19 +38,19 @@ body {
 @keyframes favorite-card-in {
   from {
     opacity: 0;
-    scale: 0.98;
     translate: 0 28px;
+    scale: 0.98;
   }
 
   to {
     opacity: 1;
-    scale: 1;
     translate: 0 0;
+    scale: 1;
   }
 }
 
 .favorite-card-motion {
-  will-change: opacity, scale, translate;
+  will-change: opacity, translate, scale;
 }
 
 @keyframes stat-card-in {
@@ -219,101 +219,6 @@ body {
   }
 }
 
-@keyframes popup-backdrop {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes popup-panel {
-  from {
-    opacity: 0;
-    transform: translateY(18px) scale(0.96);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes picker-panel {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -8px) scale(0.98);
-  }
-
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0) scale(1);
-  }
-}
-
-@keyframes check-draw {
-  from {
-    stroke-dashoffset: 30;
-  }
-
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-@keyframes check-pop {
-  0% {
-    opacity: 0;
-    transform: scale(0.7);
-  }
-
-  70% {
-    opacity: 1;
-    transform: scale(1.1);
-  }
-
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes dashboard-row-in {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes admin-modal-backdrop {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes admin-modal-panel {
-  from {
-    opacity: 0;
-    transform: translateY(18px) scale(0.94);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
 @keyframes qr-modal-backdrop {
   from {
     opacity: 0;
@@ -373,10 +278,7 @@ body {
 @keyframes warning-pulse {
   0%,
   100% {
-    transform: scale(1);
-  }
-
-  50% {
+    opacity: 0;
     transform: scale(1.08);
   }
 }
