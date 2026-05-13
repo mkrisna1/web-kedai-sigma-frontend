@@ -1,4 +1,11 @@
+import { useMemo, useState } from "react";
+
 const cn = (...classes) => classes.filter(Boolean).join(" ");
+
+const formatRupiah = (value) => `Rp ${value.toLocaleString("id-ID")}`;
+
+const getOrderTotal = (items) =>
+  items.reduce((total, item) => total + item.price, 0);
 
 const statusConfig = {
   pending: {
@@ -71,12 +78,6 @@ const ShieldIcon = () => (
   </svg>
 );
 
-const DotsIcon = () => (
-  <svg width="12" height="3" viewBox="0 0 12 3" fill="none">
-    <path d="M1.5 3C1.0875 3 0.734375 2.85313 0.440625 2.55938C0.146875 2.26562 0 1.9125 0 1.5C0 1.0875 0.146875 0.734375 0.440625 0.440625C0.734375 0.146875 1.0875 0 1.5 0C1.9125 0 2.26562 0.146875 2.55938 0.440625C2.85313 0.734375 3 1.0875 3 1.5C3 1.9125 2.85313 2.26562 2.55938 2.55938C2.26562 2.85313 1.9125 3 1.5 3ZM6 3C5.5875 3 5.23438 2.85313 4.94063 2.55938C4.64688 2.26562 4.5 1.9125 4.5 1.5C4.5 1.0875 4.64688 0.734375 4.94063 0.440625C5.23438 0.146875 5.5875 0 6 0C6.4125 0 6.76562 0.146875 7.05937 0.440625C7.35312 0.734375 7.5 1.0875 7.5 1.5C7.5 1.9125 7.35312 2.26562 7.05937 2.55938C6.76562 2.85313 6.4125 3 6 3ZM10.5 3C10.0875 3 9.73438 2.85313 9.44063 2.55938C9.14688 2.26562 9 1.9125 9 1.5C9 1.0875 9.14688 0.734375 9.44063 0.440625C9.73438 0.146875 10.0875 0 10.5 0C10.9125 0 11.2656 0.146875 11.5594 0.440625C11.8531 0.734375 12 1.0875 12 1.5C12 1.9125 11.8531 2.26562 11.5594 2.55938C11.2656 2.85313 10.9125 3 10.5 3Z" fill="#434655" />
-  </svg>
-);
-
 function StatCard({ label, value, icon, accentColor, valueColor }) {
   return (
     <div className={cn("flex flex-col gap-1 p-6 rounded-lg bg-white shadow-sm border-b-4", accentColor)}>
@@ -87,11 +88,22 @@ function StatCard({ label, value, icon, accentColor, valueColor }) {
   );
 }
 
-function OrderCard({ tableNumber, orderId, timeLabel, status, items, total }) {
+function OrderCard({
+  tableNumber,
+  orderId,
+  timeLabel,
+  status,
+  items,
+  onAccept,
+  onCancel,
+  onMarkReady,
+  onPrint,
+}) {
   const cfg = statusConfig[status] ?? statusConfig.pending;
   const isCompleted = status === "completed";
   const isCancelled = status === "cancelled";
   const isDimmed = isCompleted || isCancelled;
+  const total = formatRupiah(getOrderTotal(items));
 
   return (
     <div className={cn("flex flex-col rounded-lg bg-white shadow-sm overflow-hidden", isCompleted && "border border-[rgba(0,108,73,0.10)]")}>
@@ -116,8 +128,15 @@ function OrderCard({ tableNumber, orderId, timeLabel, status, items, total }) {
         <div className="flex flex-col gap-3">
           {items.map((item, idx) => (
             <div key={`${item.name}-${idx}`} className={cn("flex justify-between items-start", isDimmed && "opacity-60")}>
-              <span className={cn("text-[#434655] text-sm leading-5", isDimmed && "line-through")}>{item.name}</span>
-              <span className="text-[#191C1E] text-sm font-semibold leading-5 flex-shrink-0 ml-2">{item.price}</span>
+              <div className="flex flex-col">
+                <span className={cn("text-[#434655] text-sm leading-5", isDimmed && "line-through")}>{item.name}</span>
+                {item.note && (
+                  <span className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-[#BA1A1A]">
+                    {item.note}
+                  </span>
+                )}
+              </div>
+              <span className="text-[#191C1E] text-sm font-semibold leading-5 flex-shrink-0 ml-2">{formatRupiah(item.price)}</span>
             </div>
           ))}
         </div>
@@ -135,11 +154,20 @@ function OrderCard({ tableNumber, orderId, timeLabel, status, items, total }) {
       <div className="px-4 py-4 bg-[#F2F4F6] flex gap-2">
         {status === "pending" && (
           <>
-            <button className="flex-1 py-3 rounded bg-[#004AC6] text-white text-xs font-bold tracking-wide shadow-md hover:bg-blue-800 transition-colors">
+            <button
+              type="button"
+              onClick={onAccept}
+              className="flex-1 py-3 rounded bg-[#004AC6] text-white text-xs font-bold tracking-wide shadow-md hover:bg-blue-800 transition-colors"
+            >
               Accept Order
             </button>
 
-            <button className="flex items-center justify-center w-10 h-10 rounded border border-[rgba(195,198,215,0.20)] bg-white text-[#BA1A1A] hover:bg-red-50 transition-colors flex-shrink-0">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex items-center justify-center w-10 h-10 rounded border border-[rgba(195,198,215,0.20)] bg-white text-[#BA1A1A] hover:bg-red-50 transition-colors flex-shrink-0"
+              aria-label="Cancel order"
+            >
               <CancelIcon />
             </button>
           </>
@@ -147,18 +175,31 @@ function OrderCard({ tableNumber, orderId, timeLabel, status, items, total }) {
 
         {status === "processing" && (
           <>
-            <button className="flex-1 py-3 rounded bg-[#F59E0B] text-white text-xs font-bold tracking-wide shadow-md hover:bg-amber-500 transition-colors">
+            <button
+              type="button"
+              onClick={onMarkReady}
+              className="flex-1 py-3 rounded bg-[#F59E0B] text-white text-xs font-bold tracking-wide shadow-md hover:bg-amber-500 transition-colors"
+            >
               Mark as Ready
             </button>
 
-            <button className="flex items-center justify-center w-10 h-10 rounded border border-[rgba(195,198,215,0.20)] bg-white hover:bg-slate-50 transition-colors flex-shrink-0">
-              <DotsIcon />
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex items-center justify-center w-10 h-10 rounded border border-[rgba(195,198,215,0.20)] bg-white hover:bg-red-50 hover:text-[#BA1A1A] transition-colors flex-shrink-0"
+              aria-label="Cancel order"
+            >
+              <CancelIcon />
             </button>
           </>
         )}
 
         {(isCompleted || isCancelled) && (
-          <button className="flex-1 py-2 rounded border border-[rgba(195,198,215,0.20)] bg-white text-[#434655] text-xs font-bold hover:bg-slate-50 transition-colors">
+          <button
+            type="button"
+            onClick={onPrint}
+            className="flex-1 py-2 rounded border border-[rgba(195,198,215,0.20)] bg-white text-[#434655] text-xs font-bold hover:bg-slate-50 transition-colors"
+          >
             Print Receipt
           </button>
         )}
@@ -167,90 +208,368 @@ function OrderCard({ tableNumber, orderId, timeLabel, status, items, total }) {
   );
 }
 
+function StockIssuePopup({ order, replacementOptions, onClose, onResolve }) {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [resolution, setResolution] = useState("replace");
+  const [replacementName, setReplacementName] = useState(
+    replacementOptions[0]?.name ?? ""
+  );
+
+  if (!order) {
+    return null;
+  }
+
+  const selectedItem = order.items[selectedIndex];
+  const selectedReplacement = replacementOptions.find(
+    (option) => option.name === replacementName
+  );
+  const canResolve = resolution === "remove" || Boolean(selectedReplacement);
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+
+    if (!canResolve) {
+      return;
+    }
+
+    onResolve({
+      itemIndex: selectedIndex,
+      resolution,
+      replacement: selectedReplacement,
+    });
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/40 px-4 py-8 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="stock-issue-title"
+    >
+      <div className="w-full max-w-[560px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-2xl bg-white shadow-[0_24px_70px_rgba(15,23,42,0.25)]">
+        <div className="px-7 pb-5 pt-7">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2
+                id="stock-issue-title"
+                className="text-2xl font-black leading-8 text-[#191C1E]"
+              >
+                Stok menu habis
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-[#434655]">
+                Pilih item dari pesanan {order.orderId}, lalu ganti dengan menu lain atau hapus dari pesanan.
+              </p>
+            </div>
+
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#FFDAD6] text-[#BA1A1A]">
+              <XIcon />
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
+            <fieldset className="flex flex-col gap-3">
+              <legend className="text-xs font-bold uppercase leading-4 tracking-[0.6px] text-[#434655]">
+                Item yang stoknya habis
+              </legend>
+
+              <div className="grid gap-2">
+                {order.items.map((item, index) => (
+                  <label
+                    key={`${item.name}-${index}`}
+                    className={cn(
+                      "flex cursor-pointer items-center justify-between gap-3 rounded-lg border px-4 py-3 transition",
+                      selectedIndex === index
+                        ? "border-[#BA1A1A] bg-[#FFF4F2]"
+                        : "border-[rgba(195,198,215,0.45)] bg-white hover:bg-slate-50"
+                    )}
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <input
+                        type="radio"
+                        name="outOfStockItem"
+                        checked={selectedIndex === index}
+                        onChange={() => setSelectedIndex(index)}
+                        className="h-4 w-4 accent-[#BA1A1A]"
+                      />
+                      <span className="truncate text-sm font-bold leading-5 text-[#191C1E]">
+                        {item.name}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-sm font-semibold text-[#434655]">
+                      {formatRupiah(item.price)}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setResolution("replace")}
+                className={cn(
+                  "rounded-lg border px-4 py-3 text-sm font-bold transition",
+                  resolution === "replace"
+                    ? "border-[#004AC6] bg-[#DBE1FF] text-[#00174B]"
+                    : "border-[rgba(195,198,215,0.60)] bg-white text-[#434655] hover:bg-slate-50"
+                )}
+              >
+                Ganti menu
+              </button>
+              <button
+                type="button"
+                onClick={() => setResolution("remove")}
+                className={cn(
+                  "rounded-lg border px-4 py-3 text-sm font-bold transition",
+                  resolution === "remove"
+                    ? "border-[#BA1A1A] bg-[#FFDAD6] text-[#93000A]"
+                    : "border-[rgba(195,198,215,0.60)] bg-white text-[#434655] hover:bg-slate-50"
+                )}
+              >
+                Hapus item
+              </button>
+            </div>
+
+            {resolution === "replace" && (
+              <label className="flex flex-col gap-2">
+                <span className="text-xs font-bold uppercase leading-4 tracking-[0.6px] text-[#434655]">
+                  Menu pengganti
+                </span>
+                <select
+                  value={replacementName}
+                  onChange={(event) => setReplacementName(event.target.value)}
+                  className="h-11 rounded-lg border border-[rgba(195,198,215,0.70)] bg-white px-3 text-sm font-semibold text-[#191C1E] outline-none transition focus:border-[#004AC6]"
+                >
+                  {replacementOptions.map((option) => (
+                    <option key={option.name} value={option.name}>
+                      {option.name} - {formatRupiah(option.price)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            <div className="rounded-lg bg-[#F2F4F6] px-4 py-3 text-xs font-semibold leading-5 text-[#434655]">
+              {resolution === "replace"
+                ? `${selectedItem?.name ?? "Item"} akan ditandai stok habis dan diganti dengan ${selectedReplacement?.name ?? "menu pengganti"}.`
+                : `${selectedItem?.name ?? "Item"} akan ditandai stok habis lalu dihapus dari pesanan.`}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-lg border border-[rgba(195,198,215,0.60)] bg-white px-4 py-3 text-sm font-bold text-[#434655] transition hover:bg-slate-50"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={!canResolve}
+                className="rounded-lg bg-[#BA1A1A] px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Simpan Perubahan
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+const replacementMenuOptions = [
+  { name: "Kentang", price: 10000 },
+  { name: "Risol Mayo", price: 13000 },
+  { name: "Sosis Solo", price: 13000 },
+  { name: "Tahu Bakso Goreng", price: 13000 },
+  { name: "Piscok", price: 13000 },
+  { name: "Nugget", price: 13000 },
+  { name: "Siomay Ayam", price: 15000 },
+  { name: "Ayam Popcorn", price: 15000 },
+  { name: "Coffee Milk", price: 13000 },
+  { name: "Coffee Latte Ice", price: 13000 },
+  { name: "Americano Hot", price: 10000 },
+  { name: "V6 Drip Susu Hot", price: 13000 },
+  { name: "Coffee Bear Ice", price: 16000 },
+  { name: "Lemon Tea Ice", price: 10000 },
+  { name: "Lychee Tea Ice", price: 10000 },
+  { name: "Matcha Ice", price: 13000 },
+  { name: "Coklat Classic Roti", price: 15000 },
+];
+const initialOrders = [
+  {
+    tableNumber: "01",
+    orderId: "#ORD-001",
+    timeLabel: "10 menit lalu",
+    status: "pending",
+    items: [
+      { name: "Coffee Milk", price: 13000 },
+      { name: "Risol Mayo", price: 13000 },
+      { name: "Kentang", price: 10000 },
+    ],
+  },
+  {
+    tableNumber: "07",
+    orderId: "#ORD-002",
+    timeLabel: "18 menit lalu",
+    status: "processing",
+    items: [
+      { name: "Coffee Latte Ice", price: 13000 },
+      { name: "Mix Platter", price: 20000 },
+      { name: "Lemon Tea Ice", price: 10000 },
+    ],
+  },
+  {
+    tableNumber: "03",
+    orderId: "#ORD-003",
+    timeLabel: "35 menit lalu",
+    status: "completed",
+    items: [
+      { name: "Americano Hot", price: 10000 },
+      { name: "Siomay Ayam", price: 15000 },
+      { name: "Coklat Classic Roti", price: 15000 },
+    ],
+  },
+  {
+    tableNumber: "04",
+    orderId: "#ORD-004",
+    timeLabel: "50 menit lalu",
+    status: "cancelled",
+    items: [
+      {
+        name: "Mix Platter",
+        price: 20000,
+        note: "Stok habis",
+      },
+      { name: "Indomie Nyemek Vinsen", price: 15000 },
+    ],
+  },
+  {
+    tableNumber: "05",
+    orderId: "#ORD-005",
+    timeLabel: "12 menit lalu",
+    status: "pending",
+    items: [
+      { name: "V6 Drip Susu Hot", price: 13000 },
+      { name: "Ayam Popcorn", price: 15000 },
+      { name: "Lychee Tea Ice", price: 10000 },
+    ],
+  },
+  {
+    tableNumber: "06",
+    orderId: "#ORD-006",
+    timeLabel: "6 menit lalu",
+    status: "pending",
+    items: [
+      { name: "Matcha Ice", price: 13000 },
+      { name: "Tahu Bakso Goreng", price: 13000 },
+      { name: "Coffee Bear Ice", price: 16000 },
+    ],
+  },
+];
+
 export default function Pesanan() {
-  const orders = [
-    {
-      tableNumber: "12",
-      orderId: "#ORD-001",
-      timeLabel: "10 menit lalu",
-      status: "pending",
-      total: "Rp 85.000",
-      items: [
-        { name: "Nasi Goreng Spesial", price: "Rp 35.000" },
-        { name: "Es Teh Manis", price: "Rp 8.000" },
-      ],
-    },
-    {
-      tableNumber: "07",
-      orderId: "#ORD-002",
-      timeLabel: "18 menit lalu",
-      status: "processing",
-      total: "Rp 120.000",
-      items: [
-        { name: "Ayam Bakar", price: "Rp 45.000" },
-        { name: "Jus Alpukat", price: "Rp 18.000" },
-      ],
-    },
-    {
-      tableNumber: "03",
-      orderId: "#ORD-003",
-      timeLabel: "35 menit lalu",
-      status: "completed",
-      total: "Rp 65.000",
-      items: [
-        { name: "Mie Goreng", price: "Rp 30.000" },
-        { name: "Kopi Susu", price: "Rp 15.000" },
-      ],
-    },
-    {
-      tableNumber: "09",
-      orderId: "#ORD-004",
-      timeLabel: "50 menit lalu",
-      status: "cancelled",
-      total: "Rp 42.000",
-      items: [
-        { name: "Soto Ayam", price: "Rp 28.000" },
-        { name: "Air Mineral", price: "Rp 6.000" },
-      ],
-    },
-    {
-      tableNumber: "12",
-      orderId: "#ORD-005",
-      timeLabel: "10 menit lalu",
-      status: "pending",
-      total: "Rp 85.000",
-      items: [
-        { name: "Nasi Goreng Spesial", price: "Rp 35.000" },
-        { name: "Es Teh Manis", price: "Rp 8.000" },
-      ],
-    },
-    {
-      tableNumber: "12",
-      orderId: "#ORD-006",
-      timeLabel: "10 menit lalu",
-      status: "pending",
-      total: "Rp 85.000",
-      items: [
-        { name: "Nasi Goreng Spesial", price: "Rp 35.000" },
-        { name: "Es Teh Manis", price: "Rp 8.000" },
-      ],
-    },
-  ];
+  const [orders, setOrders] = useState(initialOrders);
+  const [orderToCancel, setOrderToCancel] = useState(null);
+  const statusCounts = useMemo(
+    () =>
+      orders.reduce(
+        (counts, order) => ({
+          ...counts,
+          [order.status]: counts[order.status] + 1,
+        }),
+        { pending: 0, processing: 0, completed: 0, cancelled: 0 },
+      ),
+    [orders],
+  );
+
+  const updateOrderStatus = (orderId, nextStatus) => {
+    setOrders((currentOrders) =>
+      currentOrders.map((order) =>
+        order.orderId === orderId ? { ...order, status: nextStatus } : order,
+      ),
+    );
+  };
+
+  const resolveStockIssue = ({ itemIndex, resolution, replacement }) => {
+    if (!orderToCancel) {
+      return;
+    }
+
+    setOrders((currentOrders) =>
+      currentOrders.map((order) => {
+        if (order.orderId !== orderToCancel.orderId) {
+          return order;
+        }
+
+        const outOfStockItem = order.items[itemIndex];
+        const nextItems = order.items.map((item, index) =>
+          index === itemIndex ? { ...item, note: "Stok habis" } : item
+        );
+
+        if (resolution === "replace" && replacement) {
+          nextItems[itemIndex] = {
+            ...replacement,
+            note: `Pengganti ${outOfStockItem.name}`,
+          };
+        }
+
+        const resolvedItems =
+          resolution === "remove"
+            ? nextItems.filter((_, index) => index !== itemIndex)
+            : nextItems;
+
+        return {
+          ...order,
+          status: resolvedItems.length ? order.status : "cancelled",
+          items: resolvedItems.length
+            ? resolvedItems
+            : [{ ...outOfStockItem, note: "Stok habis" }],
+        };
+      })
+    );
+    setOrderToCancel(null);
+  };
+
+  const printOrderReceipt = (order) => {
+    const summary = order.items
+      .map((item) => `${item.name} - ${formatRupiah(item.price)}`)
+      .join("\n");
+
+    window.alert(
+      `${order.orderId} | Meja ${order.tableNumber}\n${summary}\nTotal: ${formatRupiah(getOrderTotal(order.items))}`,
+    );
+  };
 
   return (
     <main className="min-h-screen bg-[#F6F7FB] p-6 font-['Inter',sans-serif]">
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Pending" value="3" accentColor="border-[#004AC6]" valueColor="text-[#004AC6]" icon={<div className="w-10 h-10 rounded bg-[#DBE1FF] text-[#004AC6] flex items-center justify-center"><ClockIcon /></div>} />
-        <StatCard label="Processing" value="1" accentColor="border-[#F59E0B]" valueColor="text-[#D97706]" icon={<div className="w-10 h-10 rounded bg-[#FFDDB8] text-[#D97706] flex items-center justify-center"><ProcessingIcon /></div>} />
-        <StatCard label="Completed" value="1" accentColor="border-[#006C49]" valueColor="text-[#006C49]" icon={<div className="w-10 h-10 rounded bg-[#6CF8BB] text-[#006C49] flex items-center justify-center"><CheckIcon /></div>} />
-        <StatCard label="Cancelled" value="1" accentColor="border-[#BA1A1A]" valueColor="text-[#BA1A1A]" icon={<div className="w-10 h-10 rounded bg-[#FFDAD6] text-[#BA1A1A] flex items-center justify-center"><XIcon /></div>} />
+        <StatCard label="Pending" value={statusCounts.pending} accentColor="border-[#004AC6]" valueColor="text-[#004AC6]" icon={<div className="w-10 h-10 rounded bg-[#DBE1FF] text-[#004AC6] flex items-center justify-center"><ClockIcon /></div>} />
+        <StatCard label="Processing" value={statusCounts.processing} accentColor="border-[#F59E0B]" valueColor="text-[#D97706]" icon={<div className="w-10 h-10 rounded bg-[#FFDDB8] text-[#D97706] flex items-center justify-center"><ProcessingIcon /></div>} />
+        <StatCard label="Completed" value={statusCounts.completed} accentColor="border-[#006C49]" valueColor="text-[#006C49]" icon={<div className="w-10 h-10 rounded bg-[#6CF8BB] text-[#006C49] flex items-center justify-center"><CheckIcon /></div>} />
+        <StatCard label="Cancelled" value={statusCounts.cancelled} accentColor="border-[#BA1A1A]" valueColor="text-[#BA1A1A]" icon={<div className="w-10 h-10 rounded bg-[#FFDAD6] text-[#BA1A1A] flex items-center justify-center"><XIcon /></div>} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
         {orders.map((order) => (
-          <OrderCard key={order.orderId} {...order} />
+          <OrderCard
+            key={order.orderId}
+            {...order}
+            onAccept={() => updateOrderStatus(order.orderId, "processing")}
+            onCancel={() => setOrderToCancel(order)}
+            onMarkReady={() => updateOrderStatus(order.orderId, "completed")}
+            onPrint={() => printOrderReceipt(order)}
+          />
         ))}
       </div>
+
+      <StockIssuePopup
+        key={orderToCancel?.orderId ?? "stock-issue"}
+        order={orderToCancel}
+        replacementOptions={replacementMenuOptions}
+        onClose={() => setOrderToCancel(null)}
+        onResolve={resolveStockIssue}
+      />
     </main>
   );
 }

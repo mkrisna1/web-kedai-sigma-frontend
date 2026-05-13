@@ -7,26 +7,52 @@ export const loginAdmin = async (username, password) => {
         const response = await fetch(`${BASE_URL}/admin/login`, {
             method: 'POST',
             headers: {
-                // Memberitahu backend bahwa kita mengirim dan menerima JSON
                 'Content-Type': 'application/json',
                 'Accept': 'application/json' 
             },
-            body: JSON.stringify({ 
-                username: username, 
-                password: password 
-            })
+            body: JSON.stringify({ username, password })
         });
 
         const data = await response.json();
 
-        // Jika status HTTP bukan 200 OK (misal: 401 Unauthorized karena password salah)
         if (!response.ok) {
-            throw new Error(data.message || 'Login gagal, periksa kembali username dan password.');
+            throw new Error(data.message || 'Login gagal');
         }
+
+        // Simpan token ke localStorage
+        localStorage.setItem('token', data.data.token);
 
         return data; 
     } catch (error) {
         console.error("Error pada api.js:", error);
         throw error; 
+    }
+};
+
+export const logoutAdmin = async () => {
+    try {
+        const token = localStorage.getItem('admin_token');
+
+        const response = await fetch(`${BASE_URL}/admin/logout`, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || 'Logout gagal');
+        }
+
+        // Hapus token dari localStorage
+        localStorage.removeItem('admin_token');
+
+        return data;
+    } catch (error) {
+        console.error("Error pada api.js:", error);
+        throw error;
     }
 };
