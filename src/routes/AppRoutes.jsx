@@ -7,6 +7,11 @@ import Reservasi from "../features/user/pages/Reservasi";
 import Review from "../features/user/pages/Review";
 import MainLayout from "../layouts/user/MainLayout";
 
+// QR
+import QRLayout from "../layouts/qr/QRLayout";
+import QRMenu from "../features/qr/pages/QRMenu";
+import Keranjang from "../features/qr/pages/Keranjang";
+
 // Admin
 import Login from "../features/admin/pages/Login";
 import AdminLayout from "../layouts/admin/AdminLayout";
@@ -25,6 +30,13 @@ function AppRoutes() {
       <Routes>
         {/* PUBLIC */}
         <Route path="/login" element={<Login />} />
+
+        {/* QR */}
+        <Route path="/qr" element={<QRLayout />}>
+          <Route index element={<Navigate to="menu" replace />} />
+          <Route path="menu" element={<QRMenu />} />
+          <Route path="keranjang" element={<Keranjang />} />
+        </Route>
 
         {/* USER */}
         <Route path="/" element={<MainLayout />}>
