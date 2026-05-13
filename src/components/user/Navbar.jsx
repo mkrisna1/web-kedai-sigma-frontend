@@ -12,33 +12,52 @@ const navLinks = [
 export default function Navbar() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const activeIndex = Math.max(
+    navLinks.findIndex((link) =>
+      link.href === "/"
+        ? location.pathname === "/" || location.pathname === "/home"
+        : location.pathname === link.href
+    ),
+    0
+  );
+  const activeLineWidths = [46, 46, 88, 56];
 
   return (
     <header className="fixed left-0 right-0 top-0 z-50 h-[95px] bg-[#091421]/90 px-6 py-4 shadow-[0_0_40px_rgba(220,38,38,0.05)] backdrop-blur-md">
       <Link
         to="/"
-        className="absolute left-6 top-1/2 flex h-[176px] w-[440px] -translate-y-1/2 items-center"
+        className="absolute left-4 top-1/2 flex h-10 w-[173px] -translate-y-1/2 items-center justify-start transition duration-300 hover:opacity-90"
         onClick={() => setMenuOpen(false)}
       >
         <img
           src={logoSigma}
           alt="Kedai Sigma"
-          className="h-[176px] w-[440px] object-contain"
+          className="h-20 w-[190px] -translate-x-4 object-cover object-center mix-blend-screen"
         />
       </Link>
 
-      <nav className="absolute left-1/2 top-1/2 hidden h-8 -translate-x-1/2 -translate-y-1/2 items-center gap-8 md:flex">
+      <nav className="absolute left-1/2 top-1/2 hidden h-10 w-[430px] -translate-x-1/2 -translate-y-1/2 grid-cols-4 items-center md:grid">
+        <span
+          className="pointer-events-none absolute bottom-0 h-1 -translate-x-1/2 bg-[#DC2626] transition-[left,width] duration-300 ease-out"
+          style={{
+            left: `${activeIndex * 25 + 12.5}%`,
+            width: `${activeLineWidths[activeIndex]}px`,
+          }}
+        />
         {navLinks.map((link) => {
-          const isActive = location.pathname === link.href;
+          const isActive =
+            link.href === "/"
+              ? location.pathname === "/" || location.pathname === "/home"
+              : location.pathname === link.href;
 
           return (
             <Link
               key={link.href}
               to={link.href}
-              className={`flex h-8 items-start border-b-4 font-grotesk text-base uppercase leading-6 tracking-[-0.05em] transition-colors ${
+              className={`flex h-10 items-start justify-center pt-1 font-grotesk text-base uppercase leading-6 tracking-[-0.05em] transition-colors ${
                 isActive
-                  ? "border-[#DC2626] pb-1 font-bold text-[#FFB4AB]"
-                  : "border-transparent font-black text-[#94A3B8] hover:text-[#D9E3F6]"
+                  ? "font-bold text-[#FFB4AB]"
+                  : "font-black text-[#94A3B8] hover:text-[#D9E3F6]"
               }`}
             >
               {link.label}

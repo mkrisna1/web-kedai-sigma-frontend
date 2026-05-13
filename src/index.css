@@ -24,11 +24,216 @@ body {
 @keyframes menu-card-in {
   from {
     opacity: 0;
-    transform: translateY(18px);
+    translate: 0 18px;
   }
 
   to {
     opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes favorite-card-in {
+  from {
+    opacity: 0;
+    translate: 0 28px;
+    scale: 0.98;
+  }
+
+  to {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+}
+
+.favorite-card-motion {
+  will-change: opacity, translate, scale;
+}
+
+@keyframes stat-card-in {
+  from {
+    opacity: 0;
+    translate: 0 18px;
+  }
+
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+.stat-card-motion {
+  will-change: opacity, translate;
+}
+
+@keyframes page-route-in {
+  from {
+    filter: blur(6px);
+    opacity: 0;
+    translate: 0 18px;
+  }
+
+  to {
+    filter: blur(0);
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+.page-route-transition {
+  animation: page-route-in 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: filter, opacity, translate;
+}
+
+@keyframes location-scroll-track {
+  from {
+    transform: translateX(-105%);
+  }
+
+  to {
+    transform: translateX(105%);
+  }
+}
+
+@keyframes location-arrow-drop {
+  0%,
+  100% {
     transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(5px);
+  }
+}
+
+.location-scroll-trigger::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(60, 47, 0, 0.86),
+    transparent
+  );
+  bottom: 0;
+  content: "";
+  height: 4px;
+  left: 0;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  transform: translateX(-105%);
+  width: 100%;
+}
+
+.location-scroll-active {
+  background: #EEC200;
+  border-color: #EEC200;
+  box-shadow: 0 18px 38px rgba(238, 194, 0, 0.22);
+  color: #3C2F00;
+}
+
+.location-scroll-active::after {
+  animation: location-scroll-track 760ms ease-in-out infinite;
+  opacity: 1;
+}
+
+.location-scroll-active .location-scroll-pin {
+  background: #3C2F00;
+  color: #EEC200;
+}
+
+.location-scroll-active .location-scroll-arrow {
+  animation: location-arrow-drop 620ms ease-in-out infinite;
+}
+
+@keyframes location-map-drift {
+  from {
+    transform: scale(1.1) translate3d(-1%, 0, 0);
+  }
+
+  to {
+    transform: scale(1.16) translate3d(1%, -1%, 0);
+  }
+}
+
+.location-map-motion {
+  animation: location-map-drift 18s ease-in-out infinite alternate;
+  transform: scale(1.1);
+  transform-origin: center;
+}
+
+@keyframes location-pin-breathe {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 rgba(220, 38, 38, 0));
+    transform: translateY(0) scale(1);
+  }
+
+  50% {
+    filter: drop-shadow(0 14px 18px rgba(220, 38, 38, 0.38));
+    transform: translateY(-7px) scale(1.04);
+  }
+}
+
+.location-pin-motion {
+  animation: location-pin-breathe 2.4s ease-in-out infinite;
+  transform-origin: 50% 85%;
+}
+
+.location-card-motion {
+  outline: none;
+}
+
+.location-focus-ring {
+  border-color: #EEC200 !important;
+  box-shadow:
+    0 0 0 8px rgba(238, 194, 0, 0.15),
+    0 24px 60px rgba(220, 38, 38, 0.26);
+}
+
+.location-focus-ring::after {
+  animation: location-focus-sweep 1500ms cubic-bezier(0.16, 1, 0.3, 1)
+    forwards;
+  border: 2px solid rgba(238, 194, 0, 0.74);
+  content: "";
+  inset: -2px;
+  pointer-events: none;
+  position: absolute;
+}
+
+@keyframes location-focus-sweep {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  22% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .favorite-card-motion,
+  .stat-card-motion,
+  .page-route-transition,
+  .location-focus-ring {
+    animation: none !important;
+    filter: none !important;
+    opacity: 1 !important;
+    scale: 1 !important;
+    translate: 0 0 !important;
+  }
+
+  .location-map-motion,
+  .location-pin-motion,
+  .location-scroll-active::after,
+  .location-scroll-active .location-scroll-arrow,
+  .location-focus-ring::after {
+    animation: none !important;
   }
 }
