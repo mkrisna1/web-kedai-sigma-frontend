@@ -118,6 +118,62 @@ body {
   }
 }
 
+@keyframes qr-modal-backdrop {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes qr-modal-panel {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes qr-menu-grid-in {
+  from {
+    opacity: 0.78;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes qr-menu-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes qr-category-line {
+  from {
+    opacity: 0;
+    transform: scaleX(0.35);
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
 @keyframes warning-pulse {
   0%,
   100% {

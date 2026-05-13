@@ -4,8 +4,15 @@ const cn = (...classes) => classes.filter(Boolean).join(" ");
 
 const formatRupiah = (value) => `Rp ${value.toLocaleString("id-ID")}`;
 
+const STOCK_OUT_NOTE = "Stok habis";
+
+const isStockOutItem = (item) => item.note === STOCK_OUT_NOTE;
+
 const getOrderTotal = (items) =>
-  items.reduce((total, item) => total + item.price, 0);
+  items.reduce(
+    (total, item) => total + (isStockOutItem(item) ? 0 : item.price),
+    0,
+  );
 
 const statusConfig = {
   pending: {
@@ -126,19 +133,43 @@ function OrderCard({
 
       <div className="flex flex-col gap-4 px-5 py-5 flex-1">
         <div className="flex flex-col gap-3">
-          {items.map((item, idx) => (
-            <div key={`${item.name}-${idx}`} className={cn("flex justify-between items-start", isDimmed && "opacity-60")}>
-              <div className="flex flex-col">
-                <span className={cn("text-[#434655] text-sm leading-5", isDimmed && "line-through")}>{item.name}</span>
-                {item.note && (
-                  <span className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-[#BA1A1A]">
-                    {item.note}
-                  </span>
+          {items.map((item, idx) => {
+            const isStockOut = isStockOutItem(item);
+
+            return (
+              <div
+                key={`${item.name}-${idx}`}
+                className={cn(
+                  "flex justify-between items-start",
+                  (isDimmed || isStockOut) && "opacity-60",
                 )}
+              >
+                <div className="flex flex-col">
+                  <span
+                    className={cn(
+                      "text-[#434655] text-sm leading-5",
+                      (isDimmed || isStockOut) && "line-through",
+                    )}
+                  >
+                    {item.name}
+                  </span>
+                  {item.note && (
+                    <span className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-[#BA1A1A]">
+                      {item.note}
+                    </span>
+                  )}
+                </div>
+                <span
+                  className={cn(
+                    "text-[#191C1E] text-sm font-semibold leading-5 flex-shrink-0 ml-2",
+                    isStockOut && "line-through",
+                  )}
+                >
+                  {formatRupiah(item.price)}
+                </span>
               </div>
-              <span className="text-[#191C1E] text-sm font-semibold leading-5 flex-shrink-0 ml-2">{formatRupiah(item.price)}</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="flex justify-between items-center pt-4 border-t border-[rgba(195,198,215,0.15)] mt-auto">
@@ -352,7 +383,7 @@ function StockIssuePopup({ order, replacementOptions, onClose, onResolve }) {
             <div className="rounded-lg bg-[#F2F4F6] px-4 py-3 text-xs font-semibold leading-5 text-[#434655]">
               {resolution === "replace"
                 ? `${selectedItem?.name ?? "Item"} akan ditandai stok habis dan diganti dengan ${selectedReplacement?.name ?? "menu pengganti"}.`
-                : `${selectedItem?.name ?? "Item"} akan ditandai stok habis lalu dihapus dari pesanan.`}
+                : `${selectedItem?.name ?? "Item"} akan ditandai stok habis dan tidak dihitung di total pesanan.`}
             </div>
 
             <div className="grid grid-cols-2 gap-3 pt-1">
@@ -439,7 +470,7 @@ const initialOrders = [
       {
         name: "Mix Platter",
         price: 20000,
-        note: "Stok habis",
+        note: STOCK_OUT_NOTE,
       },
       { name: "Indomie Nyemek Vinsen", price: 15000 },
     ],
@@ -504,7 +535,7 @@ export default function Pesanan() {
 
         const outOfStockItem = order.items[itemIndex];
         const nextItems = order.items.map((item, index) =>
-          index === itemIndex ? { ...item, note: "Stok habis" } : item
+          index === itemIndex ? { ...item, note: STOCK_OUT_NOTE } : item
         );
 
         if (resolution === "replace" && replacement) {
@@ -514,17 +545,15 @@ export default function Pesanan() {
           };
         }
 
-        const resolvedItems =
-          resolution === "remove"
-            ? nextItems.filter((_, index) => index !== itemIndex)
-            : nextItems;
+        const resolvedItems = nextItems;
+        const hasAvailableItems = resolvedItems.some(
+          (item) => !isStockOutItem(item),
+        );
 
         return {
           ...order,
-          status: resolvedItems.length ? order.status : "cancelled",
-          items: resolvedItems.length
-            ? resolvedItems
-            : [{ ...outOfStockItem, note: "Stok habis" }],
+          status: hasAvailableItems ? order.status : "cancelled",
+          items: resolvedItems,
         };
       })
     );
@@ -533,7 +562,12 @@ export default function Pesanan() {
 
   const printOrderReceipt = (order) => {
     const summary = order.items
-      .map((item) => `${item.name} - ${formatRupiah(item.price)}`)
+      .map((item) => {
+        const itemPrice = isStockOutItem(item) ? 0 : item.price;
+        const itemNote = item.note ? ` (${item.note})` : "";
+
+        return `${item.name}${itemNote} - ${formatRupiah(itemPrice)}`;
+      })
       .join("\n");
 
     window.alert(

@@ -446,13 +446,13 @@ function AddMenuModal({ item, onClose, onConfirm }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+      className="fixed inset-0 z-50 flex animate-[qr-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
       onMouseDown={onClose}
     >
       <form
         onSubmit={handleSubmit}
         onMouseDown={(event) => event.stopPropagation()}
-        className="relative h-[342px] w-[300px] overflow-hidden rounded-xl bg-[#091421] shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+        className="relative h-[342px] w-[300px] animate-[qr-modal-panel_260ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-xl bg-[#091421] shadow-[0_1px_2px_rgba(0,0,0,0.05),0_24px_70px_rgba(0,0,0,0.32)]"
       >
         <header className="flex h-[52px] items-start justify-center border-b border-white/50 px-5 pt-4">
           <h2 className="text-center text-xs font-normal leading-5 text-white">
@@ -552,8 +552,8 @@ function AddMenuModal({ item, onClose, onConfirm }) {
 
 function CartSuccessModal({ onClose }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <section className="relative h-[338px] w-[348px] overflow-hidden rounded-xl bg-[#091421] shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+    <div className="fixed inset-0 z-50 flex animate-[qr-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+      <section className="relative h-[338px] w-[min(348px,calc(100vw-32px))] animate-[qr-modal-panel_260ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-xl bg-[#091421] shadow-[0_1px_2px_rgba(0,0,0,0.05),0_24px_70px_rgba(0,0,0,0.32)]">
         <header className="flex h-[44px] items-start justify-center border-b border-white/50 pt-3">
           <h2 className="text-xl font-normal leading-5 text-white">System</h2>
         </header>
@@ -624,6 +624,7 @@ export default function QRMenu() {
   const handleConfiguredAdd = (configuredItem) => {
     addToCart(configuredItem);
     setConfigItem(null);
+    setIsSuccessModalOpen(true);
   };
 
   return (
@@ -655,7 +656,7 @@ export default function QRMenu() {
             >
               {tab.label}
               {isActive && (
-                <span className="absolute -bottom-[18px] left-0 right-0 h-1 bg-[#FFB4AB]" />
+                <span className="absolute -bottom-[18px] left-0 right-0 h-1 animate-[qr-category-line_220ms_ease-out] bg-[#FFB4AB]" />
               )}
             </button>
           );
@@ -690,9 +691,18 @@ export default function QRMenu() {
         </Link>
       </section>
 
-      <section className="grid w-full max-w-[334px] grid-cols-2 gap-x-8 gap-y-8">
-        {visibleItems.map((item) => (
-          <QRMenuCard key={item.id} item={item} onAdd={handleAddRequest} />
+      <section
+        key={`${activeCategory}-${query.trim().toLowerCase()}`}
+        className="grid w-full max-w-[334px] grid-cols-2 gap-x-8 gap-y-8 animate-[qr-menu-grid-in_220ms_ease-out]"
+      >
+        {visibleItems.map((item, index) => (
+          <div
+            key={item.id}
+            className="animate-[qr-menu-card-in_260ms_ease-out_both]"
+            style={{ animationDelay: `${index * 45}ms` }}
+          >
+            <QRMenuCard item={item} onAdd={handleAddRequest} />
+          </div>
         ))}
       </section>
 

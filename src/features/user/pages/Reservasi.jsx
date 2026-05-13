@@ -4,7 +4,7 @@ import fotoKedai2 from "../../../assets/Foto Kedai 2.PNG";
 import logoSigma from "../../../assets/Logo Sigma.png";
 
 const inputClass =
-  "h-[62px] w-full border-0 border-b-2 border-[#5C403C] bg-transparent px-1 py-4 font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-7 text-[#D9E3F6] outline-none transition placeholder:text-[#2B3544]/55 focus:border-[#EEC200]";
+  "h-[62px] w-full border-0 border-b-2 border-[#5C403C] bg-transparent px-1 py-4 font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-7 text-[#D9E3F6] outline-none transition placeholder:text-[#94A3B8]/75 focus:border-[#EEC200]";
 
 function SkewBadge({ children, className = "bg-[#00B954] text-[#003915]" }) {
   return (
@@ -396,7 +396,7 @@ function ReservationSuccessPopup({ onClose }) {
                 Terima kasih sudah reservasi!
               </h2>
               <div className="h-px w-full bg-white/15" />
-              <p className="max-w-[439px] font-['Be_Vietnam_Pro',sans-serif] text-xl leading-6 text-white/50">
+              <p className="max-w-[439px] font-['Be_Vietnam_Pro',sans-serif] text-xl leading-6 text-white/70">
                 Terima kasih telah melakukan reservasi.
                 <br />
                 Kami akan menyiapkan yang terbaik untuk menyambut kedatangan Anda.
@@ -442,7 +442,7 @@ function ReservationWarningPopup({ onClose }) {
           >
             Mohon isi yang lengkap
           </h2>
-          <p className="mx-auto mt-3 max-w-[360px] font-['Be_Vietnam_Pro',sans-serif] text-sm leading-6 text-white/55">
+          <p className="mx-auto mt-3 max-w-[360px] font-['Be_Vietnam_Pro',sans-serif] text-sm leading-6 text-white/70">
             Lengkapi nama, nomor telepon, tanggal, waktu, jumlah orang, dan catatan sebelum mengirim reservasi.
           </p>
         </div>
@@ -474,10 +474,11 @@ export default function Reservasi() {
 
   const handleChange = (event) => {
     const { name, value } = event.target;
+    const nextValue = name === "phone" ? value.replace(/\D/g, "") : value;
 
     setFormData((current) => ({
       ...current,
-      [name]: value,
+      [name]: nextValue,
     }));
   };
 
@@ -561,7 +562,9 @@ export default function Reservasi() {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    placeholder="+62-000-0000-0000"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="620000000000"
                   />
                 </Field>
 
@@ -578,7 +581,7 @@ export default function Reservasi() {
                         className={`${inputClass} flex items-center text-left`}
                       >
                         {selectedDate || (
-                          <span className="text-[#2B3544]/55">MM/DD/YYYY</span>
+                          <span className="text-[#94A3B8]/75">MM/DD/YYYY</span>
                         )}
                       </button>
                       {openPicker === "date" && (
@@ -606,7 +609,7 @@ export default function Reservasi() {
                         className={`${inputClass} flex items-center text-left`}
                       >
                         {selectedTime || (
-                          <span className="text-[#2B3544]/55">--:-- --</span>
+                          <span className="text-[#94A3B8]/75">--:-- --</span>
                         )}
                       </button>
                       {openPicker === "time" && (
@@ -653,7 +656,7 @@ export default function Reservasi() {
 
                 <Field label="Catatan">
                   <textarea
-                    className="min-h-[106px] w-full resize-none border-0 border-b-2 border-[#5C403C] bg-transparent px-1 py-4 font-['Space_Grotesk',sans-serif] text-base font-bold leading-6 text-[#D9E3F6] outline-none transition placeholder:text-[#2B3544]/55 focus:border-[#EEC200]"
+                    className="min-h-[106px] w-full resize-none border-0 border-b-2 border-[#5C403C] bg-transparent px-1 py-4 font-['Space_Grotesk',sans-serif] text-base font-bold leading-6 text-[#D9E3F6] outline-none transition placeholder:text-[#94A3B8]/75 focus:border-[#EEC200]"
                     name="note"
                     value={formData.note}
                     onChange={handleChange}
@@ -682,7 +685,7 @@ export default function Reservasi() {
 
           <section className="relative grid w-full max-w-[960px] gap-12 pt-12 lg:grid-cols-[448px_1fr] lg:gap-16">
             <div className="relative">
-              <span className="pointer-events-none absolute -left-8 -top-8 font-['Be_Vietnam_Pro',sans-serif] text-[110px] font-black uppercase leading-none text-[#DC2626]/10 md:text-[120px]">
+              <span className="pointer-events-none absolute -left-8 -top-8 font-['Be_Vietnam_Pro',sans-serif] text-[110px] font-black uppercase leading-none text-[#DC2626]/20 md:text-[120px]">
                 INFO
               </span>
 

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 
 const formatRupiah = (value) => `Rp ${value.toLocaleString("id-ID")}`;
@@ -107,6 +108,48 @@ function CartItemCard({ item, onQuantityChange, onRemove }) {
   );
 }
 
+function OrderSubmittedModal({ onClose }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex animate-[qr-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/70 px-4 py-8 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="order-submitted-title"
+    >
+      <section className="relative h-[295px] w-[min(549px,calc(100vw-32px))] animate-[qr-modal-panel_260ms_cubic-bezier(0.16,1,0.3,1)]">
+        <div className="absolute left-0 top-2 h-[287px] w-full overflow-hidden rounded-xl bg-[#091421] shadow-[0_1px_2px_rgba(0,0,0,0.05),0_24px_70px_rgba(0,0,0,0.32)]">
+          <p className="absolute left-1/2 top-[11px] flex h-[14px] w-[197px] -translate-x-1/2 items-center justify-center font-['Be_Vietnam_Pro',Arial,sans-serif] text-xl font-normal leading-5 text-white">
+            System
+          </p>
+
+          <div className="absolute left-0 top-[36.65px] h-px w-full bg-white/40" />
+
+          <h2
+            id="order-submitted-title"
+            className="absolute left-1/2 top-[70px] flex h-[26px] w-[260px] -translate-x-1/2 items-center justify-center text-center font-['Space_Grotesk',Arial,sans-serif] text-2xl font-bold uppercase leading-8 tracking-[-1.2px] text-white"
+          >
+            Pesanan telah masuk ke dapur
+          </h2>
+
+          <div className="absolute left-[26.2%] top-[96px] h-px w-[73.8%] bg-white/15" />
+
+          <p className="absolute left-1/2 top-[122px] flex h-[109px] w-[min(284px,calc(100%-48px))] -translate-x-1/2 items-center font-['Be_Vietnam_Pro',Arial,sans-serif] text-xl font-normal leading-5 text-white/50">
+            Pesanan Anda sudah masuk ke dapur. Mohon menunggu, pesanan sedang diproses.
+          </p>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute bottom-0 left-0 flex h-[39px] w-full items-center justify-center gap-2 bg-[#DC2626] px-4 font-['Space_Grotesk',Arial,sans-serif] text-base font-bold uppercase leading-6 tracking-[1.6px] text-white transition hover:bg-[#B91C1C] focus:outline-none focus:ring-2 focus:ring-white/70 focus:ring-offset-2 focus:ring-offset-[#091421]"
+          >
+            Berhasil (Bayar di Kasir ya)
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export default function Keranjang() {
   const {
     cartItems,
@@ -115,9 +158,8 @@ export default function Keranjang() {
     removeFromCart,
     updateCartQuantity,
   } = useOutletContext();
+  const [isOrderSubmitted, setIsOrderSubmitted] = useState(false);
   const [searchParams] = useSearchParams();
-  const tableLabel =
-    searchParams.get("name") || searchParams.get("table") || "meja 04";
   const queryString = searchParams.toString();
   const menuPath = queryString ? `/qr/menu?${queryString}` : "/qr/menu";
 
@@ -126,9 +168,7 @@ export default function Keranjang() {
       return;
     }
 
-    window.alert(
-      `Pesanan ${tableLabel} diterima.\nTotal: ${formatRupiah(cartTotal)}`
-    );
+    setIsOrderSubmitted(true);
     clearCart();
   };
 
@@ -192,6 +232,10 @@ export default function Keranjang() {
             </button>
           </section>
         </>
+      )}
+
+      {isOrderSubmitted && (
+        <OrderSubmittedModal onClose={() => setIsOrderSubmitted(false)} />
       )}
     </main>
   );
