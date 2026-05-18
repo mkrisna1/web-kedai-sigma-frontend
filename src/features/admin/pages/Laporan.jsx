@@ -612,15 +612,6 @@ export default function Laporan() {
             Ringkasan menu terjual tahun {reportYear}, log transaksi per tanggal
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setIsCalendarOpen(true)}
-            className="rounded-lg bg-[#E6E8EA] px-4 py-2 text-sm font-semibold"
-          >
-            {formatCalendarLabel(selectedDate)}
-          </button>
-        </div>
       </header>
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -738,20 +729,38 @@ export default function Laporan() {
         </article>
 
         <article className="overflow-hidden rounded-lg bg-white shadow-sm">
-          <div className="flex items-center justify-between p-6 md:px-8">
+          <div className="flex flex-col gap-4 p-6 md:px-8 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h3 className="text-lg font-bold">Log Transaksi</h3>
               <p className="text-xs font-medium text-[#434655]">
-                Transaksi harian, export bisa harian, bulanan, atau tahunan
+                Menampilkan {visibleTransactions.length.toLocaleString("id-ID")} dari {transactions.length.toLocaleString("id-ID")} transaksi pada {formatCalendarLabel(selectedDate)}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsExportModalOpen(true)}
-              className="rounded-lg bg-gradient-to-br from-[#004AC6] to-[#2563EB] px-5 py-2 text-xs font-bold text-white shadow-[0_10px_15px_-3px_rgba(0,74,198,0.2)] transition hover:brightness-105"
-            >
-              Ekspor Data
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsCalendarOpen(true)}
+                className="rounded-lg bg-[#E6E8EA] px-4 py-2 text-xs font-bold text-[#191C1E] transition hover:bg-[#DDE1E6]"
+              >
+                {formatCalendarLabel(selectedDate)}
+              </button>
+              {hasHiddenTransactions && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllTransactions((value) => !value)}
+                  className="rounded-lg bg-[#E6E8EA] px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#191C1E] transition hover:bg-[#DDE1E6]"
+                >
+                  {showAllTransactions ? "Tampilkan 6" : "Lihat Semua"}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsExportModalOpen(true)}
+                className="rounded-lg bg-gradient-to-br from-[#004AC6] to-[#2563EB] px-5 py-2 text-xs font-bold text-white shadow-[0_10px_15px_-3px_rgba(0,74,198,0.2)] transition hover:brightness-105"
+              >
+                Ekspor Data
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -799,7 +808,7 @@ export default function Laporan() {
                 onClick={() => setShowAllTransactions((value) => !value)}
                 className="rounded-lg bg-[#E6E8EA] px-6 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#191C1E] transition hover:bg-[#DDE1E6]"
               >
-                {showAllTransactions ? "Tampilkan 6" : "View All"}
+                {showAllTransactions ? "Tampilkan 6" : "Lihat Semua"}
               </button>
             </div>
           )}

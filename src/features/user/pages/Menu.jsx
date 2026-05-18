@@ -360,6 +360,9 @@ const staticMenuAliasBySlug = {
   "cofee-milk-v2": "Coffe Milk V2",
   "teh-tarik": "Tarik Tea",
   "tarik-tea": "Tarik Tea",
+  matcha: "Hot/Ice Matcha",
+  redvelvet: "Hot/Ice Redvelvet",
+  "red-velvet": "Hot/Ice Redvelvet",
   "coklat-classic": "Hot/Ice Coklat Classic",
   "coklat-clasic": "Hot/Ice Coklat Classic",
   "coklat-classic-roti": "Hot/Ice Coklat Classic Roti",
@@ -387,6 +390,11 @@ const localImageBySlug = {
   "cofee-milk-v2": coffeMilkV2Image,
   "teh-tarik": tehTarikImage,
   "tarik-tea": tehTarikImage,
+  matcha: matchaImage,
+  "hot-ice-matcha": matchaImage,
+  redvelvet: redvelvetImage,
+  "red-velvet": redvelvetImage,
+  "hot-ice-redvelvet": redvelvetImage,
   "coklat-classic": coklatClassicImage,
   "coklat-clasic": coklatClassicImage,
   "hot-ice-coklat-classic": coklatClassicImage,
@@ -440,6 +448,50 @@ const getCategoryLabel = (categoryValue, categoryName) =>
   categoryName ||
   "Menu";
 
+const formatRupiah = (value) =>
+  `Rp ${Number(value || 0).toLocaleString("id-ID")}`;
+
+const toNullableNumber = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const number = Number(value);
+
+  return Number.isFinite(number) ? number : null;
+};
+
+const formatVariantPriceLabel = (item, baseItem, basePrice) => {
+  const option =
+    item.opsi_suhu ||
+    (String(baseItem?.price || "").includes("/") ? "hot_ice" : "none");
+  const hotPrice = toNullableNumber(item.harga_hot);
+  const icePrice = toNullableNumber(item.harga_ice);
+
+  if (option === "hot_ice") {
+    if (hotPrice === null && icePrice === null && baseItem?.price) {
+      return String(baseItem.price).replace(/^IDR/i, "Rp");
+    }
+
+    const hot = hotPrice ?? basePrice;
+    const ice = icePrice ?? basePrice;
+
+    return hot === ice
+      ? `${formatRupiah(hot)} Hot/Ice`
+      : `Hot ${formatRupiah(hot)} / Ice ${formatRupiah(ice)}`;
+  }
+
+  if (option === "hot") {
+    return `Hot ${formatRupiah(hotPrice ?? basePrice)}`;
+  }
+
+  if (option === "ice") {
+    return `Ice ${formatRupiah(icePrice ?? basePrice)}`;
+  }
+
+  return formatRupiah(basePrice);
+};
+
 const mapMenuFromApi = (item) => {
   const name = item.nama_produk || "Menu";
   const baseItem = getStaticMenuItem(name);
@@ -453,7 +505,7 @@ const mapMenuFromApi = (item) => {
     id: item.id ?? item.id_produk,
     name,
     description: item.deskripsi_produk || baseItem?.description || `${name} tersedia di Kedai Sigma.`,
-    price: `Rp ${price.toLocaleString("id-ID")}`,
+    price: formatVariantPriceLabel(item, baseItem, price),
     category: categoryValue,
     categoryLabel: baseItem?.categoryLabel || getCategoryLabel(categoryValue, item.kategori?.nama_kategori),
     image: imageUrl || localImage,
@@ -462,13 +514,11 @@ const mapMenuFromApi = (item) => {
 };
 
 const mergeMenuItems = (apiItems) => {
-  if (!Array.isArray(apiItems) || apiItems.length === 0) {
+  if (!Array.isArray(apiItems)) {
     return menuItems;
   }
 
-  const mergedBySlug = new Map(
-    menuItems.map((item) => [slugify(item.name), item]),
-  );
+  const mergedBySlug = new Map();
 
   apiItems.forEach((item) => {
     mergedBySlug.set(getMergeSlug(item.name), item);
@@ -551,7 +601,11 @@ function MenuCard({ item, index }) {
 
   return (
     <article
-      className="group flex min-h-[540px] flex-col bg-[#121C2A] p-6 opacity-0 shadow-[0_0_40px_rgba(220,38,38,0.1)] transition-[transform,background-color,box-shadow] duration-500 ease-out hover:-translate-y-1.5 hover:bg-[#16202E] hover:shadow-[0_18px_48px_rgba(220,38,38,0.16)]"
+      className={`group flex min-h-[540px] flex-col border p-6 opacity-0 transition-[transform,background-color,box-shadow] duration-500 ease-out ${
+        isOutOfStock
+          ? "border-[#DC2626]/70 bg-[#16202E] shadow-[0_0_0_3px_rgba(220,38,38,0.10)]"
+          : "border-transparent bg-[#121C2A] shadow-[0_0_40px_rgba(220,38,38,0.1)] hover:-translate-y-1.5 hover:bg-[#16202E] hover:shadow-[0_18px_48px_rgba(220,38,38,0.16)]"
+      }`}
       style={{
         animation: "menu-card-in 520ms cubic-bezier(0.16, 1, 0.3, 1) forwards",
         animationDelay: `${Math.min(index % LOAD_MORE_COUNT, 5) * 70}ms`,
@@ -568,14 +622,21 @@ function MenuCard({ item, index }) {
               }`}
             />
             <div className="absolute inset-0 bg-black/10 transition duration-500 group-hover:bg-black/0" />
-            {isOutOfStock && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/35">
-                <span className="border border-[#DC2626] bg-[#091421]/90 px-5 py-3 font-['Space_Grotesk',sans-serif] text-lg font-black uppercase tracking-normal text-[#FF4D4D]">
-                  Stok Habis
-                </span>
-              </div>
-            )}
           </>
+        )}
+
+        {!item.image && (
+          <div className="flex h-full w-full items-center justify-center bg-[#2B3544] px-6 text-center font-['Space_Grotesk',sans-serif] text-lg font-black uppercase text-[#D9E3F6]/50">
+            {item.name}
+          </div>
+        )}
+
+        {isOutOfStock && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/35">
+            <span className="border border-[#DC2626] bg-[#091421]/90 px-5 py-3 font-['Space_Grotesk',sans-serif] text-lg font-black uppercase tracking-normal text-[#FF4D4D]">
+              Stok Habis
+            </span>
+          </div>
         )}
       </div>
 
@@ -589,9 +650,21 @@ function MenuCard({ item, index }) {
           </p>
         </div>
 
-        <p className="mt-auto font-['Space_Grotesk',sans-serif] text-xl font-bold leading-7 text-[#4AE176]">
-          {item.price}
-        </p>
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
+          <p
+            className={`font-['Space_Grotesk',sans-serif] text-xl font-bold leading-7 ${
+              isOutOfStock ? "text-[#7B8798] line-through" : "text-[#4AE176]"
+            }`}
+          >
+            {item.price}
+          </p>
+
+          {isOutOfStock && (
+            <span className="border border-[#DC2626] bg-[#091421] px-3 py-2 font-['Space_Grotesk',sans-serif] text-xs font-black uppercase tracking-[1.4px] text-[#FF4D4D]">
+              Stok Habis
+            </span>
+          )}
+        </div>
       </div>
     </article>
   );

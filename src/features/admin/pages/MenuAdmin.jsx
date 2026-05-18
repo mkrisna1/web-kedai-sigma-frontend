@@ -43,10 +43,14 @@ const API_ORIGIN = (
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api"
 ).replace(/\/api\/?$/, "");
 
+const parsePriceValues = (price) =>
+  String(price || "")
+    .match(/\d[\d.]*/g)
+    ?.map((value) => Number(value.replace(/\D/g, "")))
+    .filter((value) => Number.isFinite(value)) || [];
+
 const parsePrice = (price) => {
-  const values = price.match(/\d[\d.]*/g)?.map((value) =>
-    Number(value.replace(/\D/g, ""))
-  );
+  const values = parsePriceValues(price);
 
   if (!values?.length) {
     return 0;
@@ -54,6 +58,9 @@ const parsePrice = (price) => {
 
   return values.reduce((total, value) => total + value, 0) / values.length;
 };
+
+const parseMoneyInput = (value) =>
+  Number(String(value || "").replace(/\D/g, "")) || 0;
 
 const formatShortPrice = (price) => `Rp ${Math.round(price / 1000)}rb`;
 
@@ -215,6 +222,59 @@ const resolveAssetUrl = (path) => {
 const formatRupiah = (price) =>
   `Rp ${Number(price || 0).toLocaleString("id-ID")}`;
 
+const toNullableNumber = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const number = Number(value);
+
+  return Number.isFinite(number) ? number : null;
+};
+
+const formatMenuPrice = ({
+  priceValue,
+  hotPriceValue,
+  icePriceValue,
+  temperatureOption,
+}) => {
+  const basePrice = Number(priceValue) || 0;
+  const hotPrice = hotPriceValue ?? basePrice;
+  const icePrice = icePriceValue ?? basePrice;
+
+  if (temperatureOption === "hot_ice") {
+    return hotPrice === icePrice
+      ? `${formatRupiah(hotPrice)} Hot/Ice`
+      : `Hot ${formatRupiah(hotPrice)} / Ice ${formatRupiah(icePrice)}`;
+  }
+
+  if (temperatureOption === "hot") {
+    return `Hot ${formatRupiah(hotPrice)}`;
+  }
+
+  if (temperatureOption === "ice") {
+    return `Ice ${formatRupiah(icePrice)}`;
+  }
+
+  return formatRupiah(basePrice);
+};
+
+const appendTemperaturePrices = (payload, option, basePrice, formData) => {
+  if (option === "hot" || option === "hot_ice") {
+    payload.append(
+      "harga_hot",
+      String(parseMoneyInput(formData.get("hot_price")) || basePrice),
+    );
+  }
+
+  if (option === "ice" || option === "hot_ice") {
+    payload.append(
+      "harga_ice",
+      String(parseMoneyInput(formData.get("ice_price")) || basePrice),
+    );
+  }
+};
+
 const translateCategoryName = (name) => {
   const normalized = String(name || "").toLowerCase();
 
@@ -246,16 +306,22 @@ const mapCategoryFromApi = (category) => ({
   name: translateCategoryName(category.nama_kategori || "Kategori"),
 });
 
-const mapStaticMenuItem = (item, index = 0) => ({
-  rawId: null,
-  categoryId: null,
-  description: `${item.name} tersedia di Kedai Sigma.`,
-  priceValue: parsePrice(item.price),
-  temperatureOption: inferTemperatureOption(item.name, item.price),
-  temperatureLabel: getTemperatureLabel(inferTemperatureOption(item.name, item.price)),
-  ...item,
-  sku: item.sku || `SKU-FE-${String(index + 1).padStart(3, "0")}`,
-});
+const mapStaticMenuItem = (item, index = 0) => {
+  const temperatureOption = inferTemperatureOption(item.name, item.price);
+
+  return {
+    rawId: null,
+    categoryId: null,
+    description: `${item.name} tersedia di Kedai Sigma.`,
+    priceValue: parsePrice(item.price),
+    hotPriceValue: null,
+    icePriceValue: null,
+    temperatureOption,
+    temperatureLabel: getTemperatureLabel(temperatureOption),
+    ...item,
+    sku: item.sku || `SKU-FE-${String(index + 1).padStart(3, "0")}`,
+  };
+};
 
 const mapMenuFromApi = (item, index = 0) => {
   const name = item.nama_produk || "Menu";
@@ -266,6 +332,9 @@ const mapMenuFromApi = (item, index = 0) => {
   const temperatureOption = normalizeTemperatureOption(
     item.opsi_suhu || inferTemperatureOption(name),
   );
+  const priceValue = Number(item.harga_produk) || 0;
+  const hotPriceValue = toNullableNumber(item.harga_hot);
+  const icePriceValue = toNullableNumber(item.harga_ice);
 
   return {
     rawId,
@@ -276,8 +345,15 @@ const mapMenuFromApi = (item, index = 0) => {
     ).padStart(3, "0")}`,
     category: translateCategoryName(categoryName),
     description: item.deskripsi_produk || `${name} tersedia di Kedai Sigma.`,
-    price: formatRupiah(item.harga_produk),
-    priceValue: Number(item.harga_produk) || 0,
+    price: formatMenuPrice({
+      priceValue,
+      hotPriceValue,
+      icePriceValue,
+      temperatureOption,
+    }),
+    priceValue,
+    hotPriceValue,
+    icePriceValue,
     temperatureOption,
     temperatureLabel: getTemperatureLabel(temperatureOption),
     status:
@@ -388,6 +464,7 @@ function SelectChevronIcon() {
 function AddMenuModal({ categories, onClose, onSave }) {
   const [previewImage, setPreviewImage] = useState("");
   const [previewObjectUrl, setPreviewObjectUrl] = useState("");
+  const [temperatureOption, setTemperatureOption] = useState("none");
 
   useEffect(
     () => () => {
@@ -421,7 +498,7 @@ function AddMenuModal({ categories, onClose, onSave }) {
     const formData = new FormData(event.currentTarget);
     const name = formData.get("name").trim() || "Menu Baru";
     const selectedCategory = formData.get("category");
-    const price = Number(formData.get("price")) || 0;
+    const price = parseMoneyInput(formData.get("price"));
     const status = formData.get("status");
     const photo = formData.get("foto_produk");
     const payload = new FormData();
@@ -430,7 +507,8 @@ function AddMenuModal({ categories, onClose, onSave }) {
     payload.append("kategori_id", selectedCategory || categories[0]?.id || "");
     payload.append("harga_produk", String(price));
     payload.append("deskripsi_produk", formData.get("description")?.trim() || "");
-    payload.append("opsi_suhu", formData.get("opsi_suhu") || "none");
+    payload.append("opsi_suhu", temperatureOption);
+    appendTemperaturePrices(payload, temperatureOption, price, formData);
     payload.append(
       "ketersediaan_produk",
       status === "OUT OF STOCK" ? "tidak_tersedia" : "tersedia",
@@ -522,7 +600,8 @@ function AddMenuModal({ categories, onClose, onSave }) {
               <div className="relative">
                 <select
                   name="opsi_suhu"
-                  defaultValue="none"
+                  value={temperatureOption}
+                  onChange={(event) => setTemperatureOption(event.target.value)}
                   className="h-[38px] w-full appearance-none border-0 border-b-2 border-[#C3C6D7] bg-transparent px-3 pr-10 text-sm font-medium leading-5 text-[#191C1E] outline-none focus:border-[#2563EB]"
                 >
                   {temperatureOptionChoices.map((option) => (
@@ -554,6 +633,46 @@ function AddMenuModal({ categories, onClose, onSave }) {
                 />
               </div>
             </label>
+
+            {(temperatureOption === "hot" || temperatureOption === "hot_ice") && (
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-bold leading-4 text-[#434655]">
+                  Harga Hot (Rp)
+                </span>
+                <div className="relative h-[38px] border-b-2 border-[#C3C6D7] focus-within:border-[#2563EB]">
+                  <span className="absolute bottom-2 left-0 text-sm font-medium leading-5 text-[#434655]">
+                    Rp
+                  </span>
+                  <input
+                    name="hot_price"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Ikuti harga utama"
+                    className="h-full w-full border-0 bg-transparent pl-7 pr-3 text-sm font-medium leading-[17px] text-[#191C1E] outline-none placeholder:text-[#434655]/40"
+                  />
+                </div>
+              </label>
+            )}
+
+            {(temperatureOption === "ice" || temperatureOption === "hot_ice") && (
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-bold leading-4 text-[#434655]">
+                  Harga Ice (Rp)
+                </span>
+                <div className="relative h-[38px] border-b-2 border-[#C3C6D7] focus-within:border-[#2563EB]">
+                  <span className="absolute bottom-2 left-0 text-sm font-medium leading-5 text-[#434655]">
+                    Rp
+                  </span>
+                  <input
+                    name="ice_price"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Ikuti harga utama"
+                    className="h-full w-full border-0 bg-transparent pl-7 pr-3 text-sm font-medium leading-[17px] text-[#191C1E] outline-none placeholder:text-[#434655]/40"
+                  />
+                </div>
+              </label>
+            )}
 
             <label className="col-span-2 flex flex-col gap-1">
               <span className="text-xs font-bold leading-4 text-[#434655]">
@@ -630,6 +749,9 @@ function AddMenuModal({ categories, onClose, onSave }) {
 function EditMenuModal({ categories, item, onClose, onSave }) {
   const [previewImage, setPreviewImage] = useState(item?.image || "");
   const [previewObjectUrl, setPreviewObjectUrl] = useState("");
+  const [temperatureOption, setTemperatureOption] = useState(
+    item?.temperatureOption || "none",
+  );
 
   useEffect(() => {
     setPreviewImage(item?.image || "");
@@ -651,9 +773,17 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
     [previewObjectUrl],
   );
 
+  useEffect(() => {
+    setTemperatureOption(item?.temperatureOption || "none");
+  }, [item?.rawId, item?.temperatureOption]);
+
   if (!item) {
     return null;
   }
+
+  const basePriceValue = item.priceValue ?? parsePrice(item.price);
+  const defaultHotPrice = item.hotPriceValue ?? basePriceValue;
+  const defaultIcePrice = item.icePriceValue ?? basePriceValue;
 
   const handlePhotoChange = (event) => {
     const file = event.target.files?.[0];
@@ -676,7 +806,7 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
-    const price = Number(formData.get("price")) || 0;
+    const price = parseMoneyInput(formData.get("price"));
     const photo = formData.get("foto_produk");
     const payload = new FormData();
 
@@ -684,7 +814,8 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
     payload.append("kategori_id", formData.get("category") || item.categoryId || "");
     payload.append("harga_produk", String(price));
     payload.append("deskripsi_produk", formData.get("description").trim());
-    payload.append("opsi_suhu", formData.get("opsi_suhu") || "none");
+    payload.append("opsi_suhu", temperatureOption);
+    appendTemperaturePrices(payload, temperatureOption, price, formData);
     payload.append(
       "ketersediaan_produk",
       formData.get("status") === "OUT OF STOCK"
@@ -809,7 +940,7 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
                   name="price"
                   type="text"
                   inputMode="numeric"
-                  defaultValue={item.priceValue ?? parsePrice(item.price)}
+                  defaultValue={basePriceValue}
                   className="h-full w-full border-0 bg-transparent pl-12 text-base font-medium leading-6 text-[#191C1E] outline-none"
                 />
               </div>
@@ -822,7 +953,8 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
               <div className="relative">
                 <select
                   name="opsi_suhu"
-                  defaultValue={item.temperatureOption || "none"}
+                  value={temperatureOption}
+                  onChange={(event) => setTemperatureOption(event.target.value)}
                   className="h-[42px] w-full appearance-none border-0 border-b-2 border-[#C3C6D7] bg-transparent pr-8 text-base font-medium leading-6 text-[#191C1E] outline-none focus:border-[#2563EB]"
                 >
                   {temperatureOptionChoices.map((option) => (
@@ -836,6 +968,46 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
                 </span>
               </div>
             </label>
+
+            {(temperatureOption === "hot" || temperatureOption === "hot_ice") && (
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
+                  Harga Hot
+                </span>
+                <div className="relative h-[42px] border-b-2 border-[#C3C6D7] focus-within:border-[#2563EB]">
+                  <span className="absolute left-0 top-2 text-sm font-medium leading-5 text-[#434655]">
+                    Rp
+                  </span>
+                  <input
+                    name="hot_price"
+                    type="text"
+                    inputMode="numeric"
+                    defaultValue={defaultHotPrice}
+                    className="h-full w-full border-0 bg-transparent pl-12 text-base font-medium leading-6 text-[#191C1E] outline-none"
+                  />
+                </div>
+              </label>
+            )}
+
+            {(temperatureOption === "ice" || temperatureOption === "hot_ice") && (
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
+                  Harga Ice
+                </span>
+                <div className="relative h-[42px] border-b-2 border-[#C3C6D7] focus-within:border-[#2563EB]">
+                  <span className="absolute left-0 top-2 text-sm font-medium leading-5 text-[#434655]">
+                    Rp
+                  </span>
+                  <input
+                    name="ice_price"
+                    type="text"
+                    inputMode="numeric"
+                    defaultValue={defaultIcePrice}
+                    className="h-full w-full border-0 bg-transparent pl-12 text-base font-medium leading-6 text-[#191C1E] outline-none"
+                  />
+                </div>
+              </label>
+            )}
 
             <label className="flex flex-col gap-1">
               <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">

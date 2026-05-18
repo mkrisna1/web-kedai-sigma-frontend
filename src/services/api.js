@@ -33,6 +33,24 @@ const getAdminToken = () => {
   return window.localStorage.getItem(ADMIN_TOKEN_KEY) || "";
 };
 
+const clearAdminSession = () => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(ADMIN_TOKEN_KEY);
+  window.localStorage.removeItem("admin_data");
+};
+
+const redirectAdminToLogin = () => {
+  if (
+    typeof window !== "undefined" &&
+    window.location?.pathname?.startsWith("/admin")
+  ) {
+    window.location.assign("/login");
+  }
+};
+
 const buildUrl = (endpoint, params) => {
   const normalizedEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
   const url = new URL(`${API_BASE_URL}${normalizedEndpoint}`);
@@ -84,6 +102,11 @@ const request = async (
     : null;
 
   if (!response.ok) {
+    if (auth && response.status === 401) {
+      clearAdminSession();
+      redirectAdminToLogin();
+    }
+
     const validationMessage = data?.errors
       ? Object.values(data.errors).flat().join(" ")
       : "";
@@ -117,7 +140,7 @@ export const logoutAdmin = async () => {
       auth: true,
     });
   } finally {
-    window.localStorage.removeItem(ADMIN_TOKEN_KEY);
+    clearAdminSession();
   }
 };
 
@@ -205,6 +228,12 @@ export const updateAdminReservationStatus = (
     },
   });
 
+export const deleteAdminReservation = (reservationId) =>
+  request(`/admin/reservasi/${reservationId}`, {
+    method: "DELETE",
+    auth: true,
+  });
+
 export const getAdminReviews = () => request("/admin/review", { auth: true });
 
 export const replyAdminReview = (reviewId, reply) =>
@@ -257,6 +286,9 @@ export const getPublicMenu = (params) =>
   request("/public/menu", { params });
 
 export const getPublicMenuCategories = () => request("/public/kategori");
+
+export const getPublicReservationTables = (params) =>
+  request("/public/reservasi/meja", { params });
 
 export const createPublicReview = (payload) =>
   request("/public/review", {

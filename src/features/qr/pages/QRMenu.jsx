@@ -37,6 +37,23 @@ import v6DripSusuImage from "../../../assets/V6 Drip Susu.jpg";
 
 const formatRupiah = (value) => `Rp${value.toLocaleString("id-ID")}`;
 
+const toNullableNumber = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const number = Number(value);
+
+  return Number.isFinite(number) ? number : null;
+};
+
+const formatShortK = (value) => `${Math.round(Number(value || 0) / 1000)}K`;
+
+const formatPriceLabel = (price, temperatureOptions = []) =>
+  temperatureOptions.length
+    ? temperatureOptions.map((option) => formatShortK(option.price)).join("/")
+    : formatShortK(price);
+
 const menuItems = [
   {
     id: "matcha",
@@ -465,23 +482,39 @@ const inferCategoryFromMenuItem = (item) => {
   return item.category === "coffee" ? "coffee-based" : item.category;
 };
 
-const getTemperatureOptionsFromType = (optionType, baseItem, price) => {
-  if (baseItem?.temperatureOptions?.length) {
+const getTemperatureOptionsFromType = (
+  optionType,
+  baseItem,
+  price,
+  hotPrice,
+  icePrice,
+) => {
+  const hasApiVariantPrice = hotPrice !== null || icePrice !== null;
+
+  if (!optionType && baseItem?.temperatureOptions?.length) {
+    return baseItem.temperatureOptions;
+  }
+
+  if (
+    optionType === "hot_ice" &&
+    !hasApiVariantPrice &&
+    baseItem?.temperatureOptions?.length
+  ) {
     return baseItem.temperatureOptions;
   }
 
   if (optionType === "hot") {
-    return [{ id: "hot", label: "Hot", price }];
+    return [{ id: "hot", label: "Hot", price: hotPrice ?? price }];
   }
 
   if (optionType === "ice") {
-    return [{ id: "ice", label: "Ice", price }];
+    return [{ id: "ice", label: "Ice", price: icePrice ?? price }];
   }
 
   if (optionType === "hot_ice") {
     return [
-      { id: "hot", label: "Hot", price },
-      { id: "ice", label: "Ice", price },
+      { id: "hot", label: "Hot", price: hotPrice ?? price },
+      { id: "ice", label: "Ice", price: icePrice ?? price },
     ];
   }
 
@@ -493,6 +526,15 @@ const mapMenuFromApi = (item) => {
   const imageKey = name.toLowerCase();
   const baseItem = staticMenuBySlug.get(slugify(name));
   const price = Number(item.harga_produk) || baseItem?.price || 0;
+  const hotPrice = toNullableNumber(item.harga_hot);
+  const icePrice = toNullableNumber(item.harga_ice);
+  const temperatureOptions = getTemperatureOptionsFromType(
+    item.opsi_suhu,
+    baseItem,
+    price,
+    hotPrice,
+    icePrice,
+  );
   const rawId = item.id ?? item.id_produk;
 
   return {
@@ -502,10 +544,10 @@ const mapMenuFromApi = (item) => {
     name,
     category: inferCategory(item.kategori?.nama_kategori || baseItem?.category),
     price,
-    priceLabel: baseItem?.priceLabel || `${Math.round(price / 1000)}K`,
+    priceLabel: formatPriceLabel(price, temperatureOptions),
     image: baseItem?.image || imageByName[imageKey] || coffeeMilkImage,
     description: item.deskripsi_produk || baseItem?.description || "Menu Kedai Sigma.",
-    temperatureOptions: getTemperatureOptionsFromType(item.opsi_suhu, baseItem, price),
+    temperatureOptions,
     isAvailable: item.ketersediaan_produk !== "tidak_tersedia",
   };
 };

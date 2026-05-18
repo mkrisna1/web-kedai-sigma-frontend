@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import fotoKedai1 from "../../../assets/Foto Kedai 1.png";
 import fotoKedai2 from "../../../assets/Foto Kedai 2.PNG";
 import logoSigma from "../../../assets/Logo Sigma.png";
-import { createPublicReservation } from "../../../services/api";
+import {
+  createPublicReservation,
+  getPublicReservationTables,
+} from "../../../services/api";
 
 const inputClass =
   "h-[62px] w-full border-0 border-b-2 border-[#5C403C] bg-transparent px-1 py-4 font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-7 text-[#D9E3F6] outline-none transition placeholder:text-[#94A3B8]/75 focus:border-[#EEC200]";
@@ -115,6 +118,14 @@ const timeOptions = [
   "23:00",
   "23:30",
 ];
+
+const mapTableFromApi = (item) => ({
+  id: item.id ?? item.id_meja,
+  label: item.nomor_meja || "Meja",
+  capacity: Number(item.capacity) || 0,
+  usedSeats: Number(item.used_seats) || 0,
+  status: item.status_meja || "active",
+});
 
 function formatDateValue(year, month, date) {
   return `${String(month + 1).padStart(2, "0")}/${String(date).padStart(2, "0")}/${year}`;
@@ -385,6 +396,74 @@ function TimePopup({ selectedTime, onClose, onSelect }) {
   );
 }
 
+function TablePopup({ tables, selectedTableId, guestCount, onClose, onSelect }) {
+  return (
+    <div className="absolute left-1/2 top-full z-30 mt-4 w-[min(384px,calc(100vw-48px))] -translate-x-1/2 animate-[picker-panel_180ms_ease-out] overflow-hidden rounded-lg border border-[#2B3544] bg-[#212B39] shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
+      <div className="flex flex-col gap-6 p-6">
+        <div>
+          <h2 className="font-['Inter',sans-serif] text-lg font-bold leading-7 tracking-[-0.025em] text-[#D9E3F6]">
+            Pilih Meja
+          </h2>
+          <p className="mt-1 font-['Inter',sans-serif] text-sm text-[#94A3B8]">
+            {guestCount ? `${guestCount} orang` : "Pilih jumlah orang dulu"}
+          </p>
+        </div>
+
+        {tables.length > 0 ? (
+          <div className="grid grid-cols-2 gap-3">
+            {tables.map((table) => {
+              const isSelected = String(selectedTableId) === String(table.id);
+
+              return (
+                <button
+                  key={table.id}
+                  type="button"
+                  onClick={() => onSelect(table.id)}
+                  className={`flex min-h-[82px] flex-col items-start justify-between rounded-lg border p-4 text-left font-['Inter',sans-serif] transition ${
+                    isSelected
+                      ? "border-[#DC2626] bg-[#DC2626] text-white shadow-[0_8px_18px_rgba(220,38,38,0.35)]"
+                      : "border-[#2B3544] bg-[#121C2A] text-[#D9E3F6] hover:border-[#DC2626]/50 hover:bg-[#2B3544]"
+                  }`}
+                >
+                  <span className="text-sm font-bold leading-5">{table.label}</span>
+                  <span
+                    className={`text-[10px] font-bold uppercase tracking-[0.12em] ${
+                      isSelected ? "text-white/80" : "text-[#EEC200]"
+                    }`}
+                  >
+                    {table.capacity} kursi
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex min-h-[112px] items-center justify-center rounded-lg border border-[#2B3544] bg-[#121C2A] px-5 text-center font-['Inter',sans-serif] text-sm font-bold text-[#EEC200]">
+            Meja penuh
+          </div>
+        )}
+      </div>
+
+      <div className="flex h-[68px] items-center justify-end gap-3 bg-[#121C2A] px-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="h-9 px-5 font-['Inter',sans-serif] text-sm font-semibold text-[#94A3B8] transition hover:text-[#D9E3F6]"
+        >
+          Keluar
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="h-9 rounded-lg bg-[#DC2626] px-6 font-['Inter',sans-serif] text-sm font-bold text-white shadow-sm transition hover:bg-red-700"
+        >
+          Pilih
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ReservationSuccessPopup({ onClose }) {
   return (
     <div
@@ -491,13 +570,62 @@ export default function Reservasi() {
   });
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
+  const [selectedTableId, setSelectedTableId] = useState("");
+  const [tableOptions, setTableOptions] = useState([]);
+  const [isLoadingTables, setIsLoadingTables] = useState(false);
   const [openPicker, setOpenPicker] = useState(null);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [showWarningPopup, setShowWarningPopup] = useState(false);
   const [warningMessage, setWarningMessage] = useState(
-    "Lengkapi nama, nomor telepon, tanggal, waktu, dan jumlah orang sebelum mengirim reservasi.",
+    "Lengkapi nama, nomor telepon, tanggal, waktu, jumlah orang, dan meja sebelum mengirim reservasi.",
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const guestCount = Number.parseInt(formData.people, 10) || undefined;
+
+    setIsLoadingTables(true);
+    getPublicReservationTables(guestCount ? { jml_orang: guestCount } : undefined)
+      .then((response) => {
+        if (!isMounted) {
+          return;
+        }
+
+        const tables = (response.data || []).map(mapTableFromApi);
+        setTableOptions(tables);
+
+        setSelectedTableId((currentTableId) => {
+          if (!currentTableId) {
+            return "";
+          }
+
+          return tables.some((table) => String(table.id) === String(currentTableId))
+            ? currentTableId
+            : "";
+        });
+      })
+      .catch((error) => {
+        console.error("Gagal mengambil meja reservasi:", error);
+        if (isMounted) {
+          setTableOptions([]);
+          setSelectedTableId("");
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingTables(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [formData.people]);
+
+  const selectedTable = tableOptions.find(
+    (table) => String(table.id) === String(selectedTableId),
+  );
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -518,11 +646,12 @@ export default function Reservasi() {
       formData.phone.trim() &&
       selectedDate &&
       selectedTime &&
-      formData.people;
+      formData.people &&
+      selectedTableId;
 
     if (!isFormComplete) {
       setWarningMessage(
-        "Lengkapi nama, nomor telepon, tanggal, waktu, dan jumlah orang sebelum mengirim reservasi.",
+        "Lengkapi nama, nomor telepon, tanggal, waktu, jumlah orang, dan meja sebelum mengirim reservasi.",
       );
       setShowWarningPopup(true);
       return;
@@ -534,6 +663,7 @@ export default function Reservasi() {
       await createPublicReservation({
         nama_reservasi: formData.name.trim(),
         no_hp: formData.phone.trim(),
+        meja_id: Number.parseInt(selectedTableId, 10),
         tgl_reservasi: toApiDate(selectedDate),
         jam_reservasi: selectedTime,
         jml_orang: Number.parseInt(formData.people, 10) || 1,
@@ -548,6 +678,7 @@ export default function Reservasi() {
       });
       setSelectedDate("");
       setSelectedTime("");
+      setSelectedTableId("");
     } catch (error) {
       console.error("Gagal membuat reservasi:", error);
       setWarningMessage(error.message || "Reservasi belum bisa dikirim. Coba lagi sebentar ya.");
@@ -691,22 +822,72 @@ export default function Reservasi() {
                     <option className="bg-[#212B39]" value="">
                       Pilih jumlah orang
                     </option>
-                    <option className="bg-[#212B39]" value="1 Person">
-                      1 Orang
-                    </option>
-                    <option className="bg-[#212B39]" value="2 Person">
-                      2 Orang
-                    </option>
-                    <option className="bg-[#212B39]" value="3 Person">
-                      3 Orang
-                    </option>
-                    <option className="bg-[#212B39]" value="4 Person">
-                      4 Orang
-                    </option>
-                    <option className="bg-[#212B39]" value="5+ Person">
-                      5+ Orang
-                    </option>
+                    {Array.from({ length: 8 }, (_, index) => {
+                      const guestCount = index + 1;
+
+                      return (
+                        <option
+                          key={guestCount}
+                          className="bg-[#212B39]"
+                          value={guestCount}
+                        >
+                          {guestCount} Orang
+                        </option>
+                      );
+                    })}
                   </select>
+                </Field>
+
+                <Field label="Pilih meja">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (formData.people && !isLoadingTables && tableOptions.length > 0) {
+                          setOpenPicker((current) =>
+                            current === "table" ? null : "table",
+                          );
+                        }
+                      }}
+                      disabled={!formData.people || isLoadingTables || tableOptions.length === 0}
+                      className={`${inputClass} flex items-center justify-between text-left disabled:cursor-not-allowed disabled:opacity-50`}
+                    >
+                      <span>
+                        {!formData.people
+                          ? "Pilih jumlah orang dulu"
+                          : isLoadingTables
+                            ? "Memuat meja..."
+                            : selectedTable
+                              ? `${selectedTable.label} - ${selectedTable.capacity} kursi`
+                              : tableOptions.length === 0
+                                ? "Meja penuh"
+                                : "Pilih meja"}
+                      </span>
+                      <span className="text-base text-[#EEC200]">v</span>
+                    </button>
+                    {openPicker === "table" && (
+                      <TablePopup
+                        tables={tableOptions}
+                        selectedTableId={selectedTableId}
+                        guestCount={formData.people}
+                        onClose={() => setOpenPicker(null)}
+                        onSelect={(value) => {
+                          setSelectedTableId(String(value));
+                          setOpenPicker(null);
+                        }}
+                      />
+                    )}
+                  </div>
+                  {formData.people && !isLoadingTables && tableOptions.length === 0 && (
+                    <p className="mt-2 font-['Be_Vietnam_Pro',sans-serif] text-xs font-semibold text-[#EEC200]">
+                      Meja sedang penuh atau tidak ada meja kosong dengan kapasitas {formData.people} orang.
+                    </p>
+                  )}
+                  {Number.parseInt(formData.people, 10) <= 4 && tableOptions.length > 0 && (
+                    <p className="mt-2 font-['Be_Vietnam_Pro',sans-serif] text-xs font-semibold text-[#94A3B8]">
+                      Untuk 1-4 orang, meja yang ditampilkan maksimal kapasitas 4 kursi.
+                    </p>
+                  )}
                 </Field>
 
                 <Field label="Catatan">

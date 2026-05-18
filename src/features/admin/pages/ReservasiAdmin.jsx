@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  deleteAdminReservation,
   getAdminReservations,
   updateAdminReservationStatus,
 } from "../../../services/api";
@@ -103,9 +104,13 @@ const mapReservationFromApi = (item) => ({
   name: item.nama_reservasi || "-",
   phone: item.no_hp || "-",
   guests: `${item.jml_orang || 0} Orang`,
+  note: item.catatan_reservasi || "-",
   date: formatDateLabel(item.tgl_reservasi),
   dateValue: item.tgl_reservasi || "",
   time: formatTimeLabel(item.jam_reservasi),
+  tableId: item.meja?.id ?? item.meja?.id_meja ?? item.id_meja,
+  table: item.meja?.nomor_meja || "Meja belum dipilih",
+  tableCapacity: Number(item.meja?.capacity) || 0,
   status: uiStatusByApiStatus[item.status_reservasi] || "Menunggu",
 });
 
@@ -163,6 +168,14 @@ function XIcon({ className = "h-4 w-4" }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
       <path d="M6.4 19 5 17.6 10.6 12 5 6.4 6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19Z" />
+    </svg>
+  );
+}
+
+function TrashIcon({ className = "h-4 w-4" }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+      <path d="M9 3h6l1 2h5v2H3V5h5l1-2Zm-3 6h12l-1 12H7L6 9Zm3 2v8h2v-8H9Zm4 0v8h2v-8h-2Z" />
     </svg>
   );
 }
@@ -309,12 +322,70 @@ function CalendarPopup({ value, onClose, onSelect }) {
   );
 }
 
+function ConfirmActionModal({ action, item, onCancel, onConfirm }) {
+  const isDelete = action === "delete";
+  const title = isDelete ? "Konfirmasi Hapus" : "Konfirmasi Batalkan";
+  const body = isDelete
+    ? `Apakah Anda yakin ingin menghapus reservasi "${item?.name || "ini"}"? Tindakan ini tidak dapat dibatalkan.`
+    : `Apakah Anda yakin ingin membatalkan reservasi "${item?.name || "ini"}"? Meja akan dilepas jika tidak sedang dipakai.`;
+  const confirmLabel = isDelete ? "Hapus" : "Batalkan";
+
+  return (
+    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/40 p-6 backdrop-blur-sm">
+      <div className="relative box-border flex h-[321.8px] w-full max-w-96 animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start rounded-2xl border border-[#C3C6D7]/10 bg-white shadow-2xl shadow-black/25">
+        <div className="flex h-[319.8px] w-full flex-col items-start gap-[10.8px] p-8">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#BA1A1A]/10 text-[#BA1A1A]">
+            {isDelete ? (
+              <TrashIcon className="h-[23.75px] w-[27.5px]" />
+            ) : (
+              <XIcon className="h-[23.75px] w-[27.5px]" />
+            )}
+          </div>
+
+          <h3 className="flex h-[41.2px] w-full items-center pt-[13.2px] text-xl font-bold leading-7 tracking-[-0.5px] text-[#191C1E]">
+            {title}
+          </h3>
+
+          <p className="flex h-[69px] w-full items-center text-sm font-normal leading-[23px] text-[#434655]">
+            {body}
+          </p>
+
+          <div className="relative h-[65.2px] w-full">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="absolute left-0 top-[21.2px] flex h-11 w-[153.75px] items-center justify-center rounded-lg bg-[#E6E8EA] text-sm font-bold leading-5 tracking-[0.35px] text-[#191C1E] transition hover:brightness-95"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="absolute left-[165px] top-[21.2px] flex h-11 w-[162.34px] items-center justify-center rounded-lg bg-[#BA1A1A] text-sm font-bold leading-5 tracking-[0.35px] text-white shadow-[0_10px_15px_-3px_rgba(186,26,26,0.2),0_4px_6px_-4px_rgba(186,26,26,0.2)] transition hover:brightness-105"
+            >
+              {confirmLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ReservasiAdmin() {
   const [pages, setPages] = useState(emptyReservationPages);
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("Semua Status");
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState(null);
+
+  const setReservationItems = (items) => {
+    const nextPages = chunkReservations(items);
+
+    setPages(nextPages);
+    setCurrentPage((page) => Math.min(page, nextPages.length - 1));
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -361,14 +432,11 @@ export default function ReservasiAdmin() {
 
   const updateReservationStatus = async (reservationId, status) => {
     const previousPages = pages;
+    const nextItems = pages
+      .flat()
+      .map((item) => (item.id === reservationId ? { ...item, status } : item));
 
-    setPages((currentPages) =>
-      currentPages.map((pageItems) =>
-        pageItems.map((item) =>
-          item.id === reservationId ? { ...item, status } : item
-        )
-      )
-    );
+    setReservationItems(nextItems);
 
     const target = pages.flat().find((item) => item.id === reservationId);
 
@@ -383,15 +451,44 @@ export default function ReservasiAdmin() {
       );
       const updatedReservation = mapReservationFromApi(response.data);
 
-      setPages((currentPages) =>
-        currentPages.map((pageItems) =>
-          pageItems.map((item) =>
+      setReservationItems(
+        pages
+          .flat()
+          .map((item) =>
             item.rawId === updatedReservation.rawId ? updatedReservation : item
-          )
-        )
+          ),
       );
     } catch (error) {
       console.error("Gagal memperbarui status reservasi:", error);
+      setPages(previousPages);
+    }
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmTarget?.item) {
+      return;
+    }
+
+    const { action, item } = confirmTarget;
+
+    if (action === "cancel") {
+      await updateReservationStatus(item.id, "Dibatalkan");
+      setConfirmTarget(null);
+      return;
+    }
+
+    const previousPages = pages;
+    const remainingItems = pages
+      .flat()
+      .filter((reservation) => reservation.rawId !== item.rawId);
+
+    setReservationItems(remainingItems);
+
+    try {
+      await deleteAdminReservation(item.rawId);
+      setConfirmTarget(null);
+    } catch (error) {
+      console.error("Gagal menghapus reservasi:", error);
       setPages(previousPages);
     }
   };
@@ -476,11 +573,13 @@ export default function ReservasiAdmin() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm">
+          <table className="w-full min-w-[1060px] text-sm">
             <thead className="bg-[#F2F4F6]/50 text-[10px] font-bold uppercase tracking-[0.1em] text-[#434655]">
               <tr>
                 <th className="px-6 py-4 text-left">Nama Pelanggan</th>
                 <th className="px-6 py-4 text-left">Tamu</th>
+                <th className="px-6 py-4 text-left">Meja</th>
+                <th className="px-6 py-4 text-left">Catatan</th>
                 <th className="px-6 py-4 text-left">Tanggal</th>
                 <th className="px-6 py-4 text-center">Status</th>
                 <th className="px-6 py-4 text-right">Aksi</th>
@@ -501,6 +600,15 @@ export default function ReservasiAdmin() {
                     </div>
                   </td>
                   <td className="px-6 py-5 font-medium">{item.guests}</td>
+                  <td className="px-6 py-5">
+                    <p className="font-semibold">{item.table}</p>
+                    <p className="text-xs text-[#434655]">
+                      {item.tableCapacity ? `${item.tableCapacity} kursi` : "-"}
+                    </p>
+                  </td>
+                  <td className="max-w-[240px] px-6 py-5 text-xs font-medium leading-5 text-[#434655]">
+                    <p className="line-clamp-3">{item.note}</p>
+                  </td>
                   <td className="px-6 py-5">
                     <p className="font-medium">{item.date}</p>
                     <p className="text-xs text-[#434655]">{item.time}</p>
@@ -523,12 +631,20 @@ export default function ReservasiAdmin() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => updateReservationStatus(item.id, "Dibatalkan")}
+                            onClick={() => setConfirmTarget({ action: "cancel", item })}
                             className="rounded bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100"
                           >
                             Tolak
                           </button>
                         </>
+                      ) : item.status === "Dikonfirmasi" ? (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmTarget({ action: "cancel", item })}
+                          className="rounded bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100"
+                        >
+                          Batalkan
+                        </button>
                       ) : (
                         <button
                           type="button"
@@ -546,13 +662,20 @@ export default function ReservasiAdmin() {
                           )}
                         </button>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => setConfirmTarget({ action: "delete", item })}
+                        className="rounded bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-200"
+                      >
+                        Hapus
+                      </button>
                     </div>
                   </td>
                 </tr>
               ))}
               {currentReservations.length === 0 && (
                 <tr>
-                  <td colSpan="5" className="px-6 py-10 text-center text-sm text-[#434655]">
+                  <td colSpan="7" className="px-6 py-10 text-center text-sm text-[#434655]">
                     Tidak ada reservasi yang cocok dengan filter.
                   </td>
                 </tr>
@@ -607,6 +730,14 @@ export default function ReservasiAdmin() {
           value={selectedDate}
           onClose={() => setIsCalendarOpen(false)}
           onSelect={handleDateSelect}
+        />
+      )}
+      {confirmTarget && (
+        <ConfirmActionModal
+          action={confirmTarget.action}
+          item={confirmTarget.item}
+          onCancel={() => setConfirmTarget(null)}
+          onConfirm={handleConfirmAction}
         />
       )}
     </section>
