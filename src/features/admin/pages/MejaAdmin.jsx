@@ -54,6 +54,24 @@ const getTableNumber = (value, fallback = "") => {
   return String(Number(number)).padStart(2, "0");
 };
 
+const getCanonicalTableName = (value, fallback = "") => {
+  const tableNumber = getTableNumber(value, fallback);
+
+  return tableNumber ? `Meja ${tableNumber}` : String(value || "").trim();
+};
+
+const hasDuplicateTableNumber = (tables, name, excludeId = "") => {
+  const tableNumber = getTableNumber(name);
+
+  if (!tableNumber) {
+    return false;
+  }
+
+  return tables.some(
+    (table) => table.id !== excludeId && getTableNumber(table.name) === tableNumber,
+  );
+};
+
 const getTableDisplayId = (name, id, fallbackNumber) => {
   const tableNumber =
     getTableNumber(name) || getTableNumber(id) || fallbackNumber;
@@ -69,7 +87,7 @@ const normalizeTable = (table, index = 0) => {
     status === "Maintenance"
       ? 0
       : Math.min(parseSeatCount(table.used, 0), capacity);
-  const name = String(table.name || "").trim() || `Meja ${fallbackNumber}`;
+  const name = getCanonicalTableName(table.name, fallbackNumber) || `Meja ${fallbackNumber}`;
   const id = getTableDisplayId(name, table.id, fallbackNumber);
 
   return {
@@ -322,17 +340,20 @@ function StatCard({ stat }) {
   );
 }
 
-function AddTableModal({ suggestedId, onClose, onSave }) {
+function AddTableModal({ suggestedId, existingTables, onClose, onSave }) {
   const tableNumber = suggestedId.replace("T-", "");
   const [form, setForm] = useState({
     name: `Meja ${tableNumber}`,
     capacity: "4",
     status: "Tersedia",
   });
+  const [errorMessage, setErrorMessage] = useState("");
   const rawCapacity = parseSeatCount(form.capacity, 0);
   const capacity = Math.max(rawCapacity, 1);
 
   const handleChange = (field, value) => {
+    setErrorMessage("");
+
     setForm((current) => {
       if (field === "capacity") {
         const nextValue = value.replace(/\D/g, "");
@@ -356,10 +377,16 @@ function AddTableModal({ suggestedId, onClose, onSave }) {
 
   const handleSubmit = (event) => {
     event.preventDefault();
+    const nextName = getCanonicalTableName(form.name, tableNumber);
+
+    if (hasDuplicateTableNumber(existingTables, nextName)) {
+      setErrorMessage("Nomor meja sudah ada.");
+      return;
+    }
 
     onSave({
       id: suggestedId,
-      name: form.name.trim() || `Meja ${tableNumber}`,
+      name: nextName || `Meja ${tableNumber}`,
       capacity,
       used: getUsedMarker(form.status),
       status: form.status === "Maintenance" ? "Maintenance" : "Aktif",
@@ -399,6 +426,11 @@ function AddTableModal({ suggestedId, onClose, onSave }) {
               onChange={(event) => handleChange("name", event.target.value)}
               className={`mt-2 ${inputClass}`}
             />
+            {errorMessage && (
+              <span className="mt-2 block text-xs font-bold text-[#BA1A1A]">
+                {errorMessage}
+              </span>
+            )}
           </label>
 
           <label>
@@ -831,12 +863,18 @@ export default function MejaAdmin() {
   }, [tables]);
 
   const handleAddTable = async (newTable) => {
-    const normalizedTable = normalizeTable(newTable, tables.length);
-
-    setTables((currentTables) =>
-      withTableDisplayIds([...currentTables, normalizedTable]),
+    const normalizedTable = normalizeTable(
+      {
+        ...newTable,
+        name: getCanonicalTableName(newTable.name, getTableNumber(newTable.id)),
+      },
+      tables.length,
     );
-    setIsAddModalOpen(false);
+
+    if (hasDuplicateTableNumber(tables, normalizedTable.name)) {
+      window.alert("Nomor meja sudah ada.");
+      return;
+    }
 
     try {
       const response = await createAdminTable({
@@ -849,14 +887,12 @@ export default function MejaAdmin() {
       const createdTable = mapTableFromApi(response.data);
 
       setTables((currentTables) =>
-        withTableDisplayIds(
-          currentTables.map((table) =>
-            table.id === normalizedTable.id ? createdTable : table,
-          ),
-        ),
+        withTableDisplayIds([...currentTables, createdTable]),
       );
+      setIsAddModalOpen(false);
     } catch (error) {
       console.error("Gagal menambah meja:", error);
+      window.alert("Gagal menambah meja. Pastikan nomor meja belum digunakan.");
     }
   };
 
@@ -1010,6 +1046,7 @@ export default function MejaAdmin() {
       {isAddModalOpen && (
         <AddTableModal
           suggestedId={suggestedTableId}
+          existingTables={tables}
           onClose={() => setIsAddModalOpen(false)}
           onSave={handleAddTable}
         />

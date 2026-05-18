@@ -410,7 +410,7 @@ const Dashboard = () => {
                   Transaksi Terakhir
                 </h3>
                 <p className="mt-1 text-lg text-[#434655]">
-                  Transaksi hari ini
+                  Transaksi periode {incomePeriodLabel.toLowerCase()}
                 </p>
               </div>
               <button

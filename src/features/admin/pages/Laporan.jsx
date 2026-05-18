@@ -130,7 +130,7 @@ const mapTransaction = (order) => {
       order.detail_pesanans
         ?.map((detail) => {
           const qty = Number(detail.jumlah_item) || 1;
-          const name = detail.produk?.nama_produk || "Menu";
+          const name = detail.produk?.nama_produk || "Menu dihapus";
 
           return `${qty}x ${name}`;
         })
@@ -461,12 +461,14 @@ export default function Laporan() {
   ];
   const bestSellers = useMemo(
     () =>
-      (report.best_seller_menu || []).map((item) => ({
-        name: item.produk?.nama_produk || "Menu",
-        category: item.produk?.kategori?.nama_kategori || "Tanpa Kategori",
-        quantity: Number(item.jumlah) || 0,
-        revenue: formatRupiah(item.subtotal),
-      })),
+      (report.best_seller_menu || [])
+        .filter((item) => item.produk?.nama_produk)
+        .map((item) => ({
+          name: item.produk.nama_produk,
+          category: item.produk?.kategori?.nama_kategori || "Tanpa Kategori",
+          quantity: Number(item.jumlah) || 0,
+          revenue: formatRupiah(item.subtotal),
+        })),
     [report.best_seller_menu],
   );
   const totalCategoryItems = (report.kategori_populer || []).reduce(
@@ -622,7 +624,7 @@ export default function Laporan() {
 
       <div className="grid gap-6 xl:grid-cols-[1fr_304px]">
         <article className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h3 className="text-lg font-bold text-slate-900">Best Seller Menu</h3>
+          <h3 className="text-lg font-bold text-slate-900">Top 5 Best Seller</h3>
           <div className="mt-6 flex flex-col gap-4">
             {bestSellers.map((item, index) => (
               <div key={item.name} className="flex items-center gap-4 rounded-xl bg-[#F8FAFC] p-3">

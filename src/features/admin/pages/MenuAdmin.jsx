@@ -304,6 +304,9 @@ const mapCategoryFromApi = (category) => ({
   name: translateCategoryName(category.nama_kategori || "Kategori"),
 });
 
+const sanitizeCategoryOptions = (options) =>
+  options.filter((category) => category.name !== "Kopi Susu");
+
 const mapStaticMenuItem = (item, index = 0) => {
   const temperatureOption = inferTemperatureOption(item.name, item.price);
 
@@ -1203,14 +1206,43 @@ export default function MenuAdmin() {
     withSequentialMenuIds(menuItems.map(mapStaticMenuItem)),
   );
   const [categories, setCategories] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(0);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
-  const menuPageItems = useMemo(() => chunkItems(flatMenuItems, 8), [flatMenuItems]);
+  const categoryOptions = sanitizeCategoryOptions(
+    categories.length > 0
+      ? categories
+      : fallbackCategoryOptions.map((name) => ({ id: "", name })),
+  );
+  const filteredMenuItems = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    return flatMenuItems.filter((item) => {
+      const matchesSearch =
+        !normalizedQuery ||
+        item.name.toLowerCase().includes(normalizedQuery) ||
+        String(item.sku || "").toLowerCase().includes(normalizedQuery) ||
+        String(item.description || "").toLowerCase().includes(normalizedQuery);
+      const matchesCategory =
+        categoryFilter === "all" || item.category === categoryFilter;
+      const matchesStatus =
+        statusFilter === "all" || item.status === statusFilter;
+
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+  }, [categoryFilter, flatMenuItems, searchQuery, statusFilter]);
+  const menuPageItems = useMemo(
+    () => chunkItems(filteredMenuItems, 8),
+    [filteredMenuItems],
+  );
   const maxPageIndex = Math.max(menuPageItems.length - 1, 0);
   const visiblePage = Math.min(currentPage, maxPageIndex);
   const items = menuPageItems[visiblePage] || [];
   const totalMenuItems = flatMenuItems.length;
+  const totalFilteredItems = filteredMenuItems.length;
   const activeCategories = new Set(flatMenuItems.map((item) => item.category)).size;
   const outOfStockCount = flatMenuItems.filter(
     (item) => item.status === "OUT OF STOCK"
@@ -1229,11 +1261,6 @@ export default function MenuAdmin() {
     { label: "Harga Rata-rata", value: formatShortPrice(averagePrice) },
   ];
 
-  const categoryOptions =
-    categories.length > 0
-      ? categories
-      : fallbackCategoryOptions.map((name) => ({ id: "", name }));
-
   useEffect(() => {
     let isMounted = true;
 
@@ -1244,7 +1271,9 @@ export default function MenuAdmin() {
         }
 
         setFlatMenuItems(withSequentialMenuIds((menuResponse.data || []).map(mapMenuFromApi)));
-        setCategories((categoryResponse.data || []).map(mapCategoryFromApi));
+        setCategories(
+          sanitizeCategoryOptions((categoryResponse.data || []).map(mapCategoryFromApi)),
+        );
       })
       .catch((error) => {
         console.error("Gagal mengambil data menu admin:", error);
@@ -1254,6 +1283,10 @@ export default function MenuAdmin() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [categoryFilter, searchQuery, statusFilter]);
 
   const handleAddMenu = async (payload) => {
     try {
@@ -1350,6 +1383,66 @@ export default function MenuAdmin() {
           ))}
         </section>
 
+        <section className="grid gap-4 rounded-lg bg-white p-5 shadow-sm md:grid-cols-[1fr_180px_180px_auto] md:items-end">
+          <label className="flex flex-col gap-2">
+            <span className="text-xs font-bold uppercase tracking-[0.08em] text-[#434655]">
+              Cari Menu
+            </span>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Nama, SKU, deskripsi..."
+              className="h-11 rounded-lg border border-[#C3C6D7] bg-white px-3 text-sm font-semibold text-[#191C1E] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            />
+          </label>
+
+          <label className="flex flex-col gap-2">
+            <span className="text-xs font-bold uppercase tracking-[0.08em] text-[#434655]">
+              Kategori
+            </span>
+            <select
+              value={categoryFilter}
+              onChange={(event) => setCategoryFilter(event.target.value)}
+              className="h-11 rounded-lg border border-[#C3C6D7] bg-white px-3 text-sm font-semibold text-[#191C1E] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            >
+              <option value="all">Semua Kategori</option>
+              {categoryOptions.map((category) => (
+                <option key={category.name} value={category.name}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-2">
+            <span className="text-xs font-bold uppercase tracking-[0.08em] text-[#434655]">
+              Status
+            </span>
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              className="h-11 rounded-lg border border-[#C3C6D7] bg-white px-3 text-sm font-semibold text-[#191C1E] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            >
+              <option value="all">Semua Status</option>
+              <option value="ACTIVE">Tersedia</option>
+              <option value="OUT OF STOCK">Stok Habis</option>
+            </select>
+          </label>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSearchQuery("");
+              setCategoryFilter("all");
+              setStatusFilter("all");
+            }}
+            className="h-11 rounded-lg px-5 text-sm font-bold text-[#434655] transition hover:bg-[#F2F4F6]"
+          >
+            Reset
+          </button>
+        </section>
+
         <section className="overflow-hidden rounded-lg bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[940px] table-fixed border-collapse">
@@ -1388,7 +1481,7 @@ export default function MenuAdmin() {
                       colSpan={5}
                       className="h-28 px-6 text-center text-sm font-semibold text-[#434655]"
                     >
-                      Belum ada menu di backend.
+                      Menu tidak ditemukan.
                     </td>
                   </tr>
                 )}
@@ -1398,7 +1491,7 @@ export default function MenuAdmin() {
 
           <footer className="flex h-[61px] items-center justify-between border-t border-[#E6E8EA] bg-[#F2F4F6]/10 px-6">
             <p className="text-xs leading-4 text-[#434655]">
-              Menampilkan {items.length} dari {totalMenuItems} menu
+              Menampilkan {items.length} dari {totalFilteredItems} menu
             </p>
             <div className="flex items-center gap-2">
               <button
