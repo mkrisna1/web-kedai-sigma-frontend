@@ -37,6 +37,32 @@ import v6DripSusuImage from "../../../assets/V6 Drip Susu.jpg";
 
 const formatRupiah = (value) => `Rp${value.toLocaleString("id-ID")}`;
 
+const isLocalHost = (hostname) =>
+  ["localhost", "127.0.0.1", "::1"].includes(hostname);
+
+const resolveAssetUrl = (value) => {
+  if (!value) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(value)) {
+    return value;
+  }
+
+  const hostname =
+    typeof window !== "undefined" && window.location?.hostname
+      ? window.location.hostname
+      : "";
+  const apiOrigin = hostname
+    ? `${window.location.protocol}//${hostname}:8000`
+    : "http://127.0.0.1:8000";
+  const fallbackOrigin = isLocalHost(hostname)
+    ? "http://127.0.0.1:8000"
+    : apiOrigin;
+
+  return `${fallbackOrigin}${value.startsWith("/") ? value : `/${value}`}`;
+};
+
 const toNullableNumber = (value) => {
   if (value === null || value === undefined || value === "") {
     return null;
@@ -363,11 +389,10 @@ const menuItems = [
 
 const categoryTabs = [
   { label: "semua menu", value: "all" },
+  { label: "kopi", value: "coffee" },
+  { label: "teh", value: "tea" },
+  { label: "susu", value: "milk" },
   { label: "makanan", value: "food" },
-  { label: "kopi", value: "coffee-based" },
-  { label: "kopi susu", value: "coffee-milk" },
-  { label: "teh", value: "tea-series" },
-  { label: "susu", value: "milk-series" },
 ];
 
 const imageByName = {
@@ -426,15 +451,15 @@ const inferCategory = (categoryName) => {
   }
 
   if (normalized.includes("tea") || normalized.includes("teh")) {
-    return "tea-series";
+    return "tea";
   }
 
   if (normalized.includes("coffee milk") || normalized.includes("kopi susu")) {
-    return "coffee-milk";
+    return "coffee";
   }
 
   if (normalized.includes("milk") || normalized.includes("susu")) {
-    return "milk-series";
+    return "milk";
   }
 
   if (
@@ -442,33 +467,33 @@ const inferCategory = (categoryName) => {
     normalized.includes("coffee") ||
     normalized.includes("espresso")
   ) {
-    return "coffee-based";
+    return "coffee";
   }
 
-  return "milk-series";
+  return "other";
 };
 
 const inferCategoryFromMenuItem = (item) => {
   const normalizedName = String(item.name || "").toLowerCase();
+  const normalizedCategory = String(item.category || "").toLowerCase();
 
   if (item.category === "food") {
     return "food";
   }
 
-  if (normalizedName.includes("tea") || normalizedName.includes("teh")) {
-    return "tea-series";
-  }
-
   if (
-    normalizedName.includes("coffee milk") ||
-    normalizedName.includes("latte") ||
-    normalizedName.includes("kopi tubruk susu") ||
-    normalizedName.includes("v6 drip susu")
+    normalizedCategory === "tea" ||
+    normalizedCategory === "tea-series" ||
+    normalizedName.includes("tea") ||
+    normalizedName.includes("teh")
   ) {
-    return "coffee-milk";
+    return "tea";
   }
 
   if (
+    normalizedCategory === "milk" ||
+    normalizedCategory === "milk-series" ||
+    normalizedCategory === "susu" ||
     normalizedName.includes("milo") ||
     normalizedName.includes("joshua") ||
     normalizedName.includes("matcha") ||
@@ -476,10 +501,25 @@ const inferCategoryFromMenuItem = (item) => {
     normalizedName.includes("coklat") ||
     normalizedName.includes("strawberry milk")
   ) {
-    return "milk-series";
+    return "milk";
   }
 
-  return item.category === "coffee" ? "coffee-based" : item.category;
+  if (
+    normalizedCategory === "coffee" ||
+    normalizedCategory === "coffee-based" ||
+    normalizedCategory === "coffee-milk" ||
+    normalizedName.includes("coffee milk") ||
+    normalizedName.includes("latte") ||
+    normalizedName.includes("coffee") ||
+    normalizedName.includes("kopi") ||
+    normalizedName.includes("espresso") ||
+    normalizedName.includes("kopi tubruk susu") ||
+    normalizedName.includes("v6 drip susu")
+  ) {
+    return "coffee";
+  }
+
+  return inferCategory(item.category);
 };
 
 const getTemperatureOptionsFromType = (
@@ -525,6 +565,7 @@ const mapMenuFromApi = (item) => {
   const name = item.nama_produk || "Menu";
   const imageKey = name.toLowerCase();
   const baseItem = staticMenuBySlug.get(slugify(name));
+  const imageUrl = resolveAssetUrl(item.foto_produk);
   const price = Number(item.harga_produk) || baseItem?.price || 0;
   const hotPrice = toNullableNumber(item.harga_hot);
   const icePrice = toNullableNumber(item.harga_ice);
@@ -545,7 +586,7 @@ const mapMenuFromApi = (item) => {
     category: inferCategory(item.kategori?.nama_kategori || baseItem?.category),
     price,
     priceLabel: formatPriceLabel(price, temperatureOptions),
-    image: baseItem?.image || imageByName[imageKey] || coffeeMilkImage,
+    image: imageUrl || baseItem?.image || imageByName[imageKey] || coffeeMilkImage,
     description: item.deskripsi_produk || baseItem?.description || "Menu Kedai Sigma.",
     temperatureOptions,
     isAvailable: item.ketersediaan_produk !== "tidak_tersedia",

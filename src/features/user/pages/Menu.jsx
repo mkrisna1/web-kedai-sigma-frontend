@@ -40,7 +40,6 @@ const filters = [
   { label: "Semua Menu", value: "all" },
   { label: "Makanan", value: "food" },
   { label: "Kopi", value: "coffee-based" },
-  { label: "Kopi Susu", value: "coffee-milk" },
   { label: "Teh", value: "tea-series" },
   { label: "Susu", value: "milk-series" },
 ];
@@ -180,48 +179,48 @@ const menuItems = [
     name: "Coffee Milk Chocholate",
     description: "Kopi susu coklat yang creamy dan manis.",
     price: "IDR 15K",
-    category: "coffee-milk",
-    categoryLabel: "Coffee Milk",
+    category: "coffee-based",
+    categoryLabel: "Kopi",
     image: coffeMilkChocholateImage,
   },
   {
     name: "Coffee Milk",
     description: "Kopi susu klasik dengan rasa seimbang.",
     price: "IDR 13K",
-    category: "coffee-milk",
-    categoryLabel: "Coffee Milk",
+    category: "coffee-based",
+    categoryLabel: "Kopi",
     image: coffeeMilkImage,
   },
   {
     name: "Hot/Ice Coffe Latte",
     description: "Latte lembut yang tersedia panas atau dingin.",
     price: "IDR 15K/13K",
-    category: "coffee-milk",
-    categoryLabel: "Coffee Milk",
+    category: "coffee-based",
+    categoryLabel: "Kopi",
     image: coffeLatteImage,
   },
   {
     name: "Coffe Milk V2",
     description: "Varian kopi susu dengan rasa khas Kedai Sigma.",
     price: "IDR 13K",
-    category: "coffee-milk",
-    categoryLabel: "Coffee Milk",
+    category: "coffee-based",
+    categoryLabel: "Kopi",
     image: coffeMilkV2Image,
   },
   {
     name: "V6 Drip Susu",
     description: "Manual brew susu dengan rasa lebih lembut.",
     price: "IDR 13K",
-    category: "coffee-milk",
-    categoryLabel: "Coffee Milk",
+    category: "coffee-based",
+    categoryLabel: "Kopi",
     image: v6DripSusuImage,
   },
   {
     name: "Kopi Tubruk Susu",
     description: "Kopi tubruk klasik dengan tambahan susu.",
     price: "IDR 10K",
-    category: "coffee-milk",
-    categoryLabel: "Coffee Milk",
+    category: "coffee-based",
+    categoryLabel: "Kopi",
     image: kopiTubrukSusuImage,
   },
   {
@@ -430,10 +429,12 @@ const inferCategoryValue = (categoryName) => {
     return "tea-series";
   }
 
+  if (normalized.includes("coffee milk") || normalized.includes("kopi susu")) {
+    return "coffee-based";
+  }
+
   if (normalized.includes("milk") || normalized.includes("susu")) {
-    return normalized.includes("coffee") || normalized.includes("kopi")
-      ? "coffee-milk"
-      : "milk-series";
+    return "milk-series";
   }
 
   if (normalized.includes("coffee") || normalized.includes("kopi")) {
