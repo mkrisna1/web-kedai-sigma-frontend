@@ -222,6 +222,9 @@ const resolveAssetUrl = (path) => {
 const formatRupiah = (price) =>
   `Rp ${Number(price || 0).toLocaleString("id-ID")}`;
 
+const formatCompactRupiah = (price) =>
+  Number(price || 0).toLocaleString("id-ID");
+
 const toNullableNumber = (value) => {
   if (value === null || value === undefined || value === "") {
     return null;
@@ -244,16 +247,16 @@ const formatMenuPrice = ({
 
   if (temperatureOption === "hot_ice") {
     return hotPrice === icePrice
-      ? `${formatRupiah(hotPrice)} Hot/Ice`
-      : `Hot ${formatRupiah(hotPrice)} / Ice ${formatRupiah(icePrice)}`;
+      ? formatRupiah(hotPrice)
+      : `${formatRupiah(hotPrice)} / ${formatCompactRupiah(icePrice)}`;
   }
 
   if (temperatureOption === "hot") {
-    return `Hot ${formatRupiah(hotPrice)}`;
+    return formatRupiah(hotPrice);
   }
 
   if (temperatureOption === "ice") {
-    return `Ice ${formatRupiah(icePrice)}`;
+    return formatRupiah(icePrice);
   }
 
   return formatRupiah(basePrice);
