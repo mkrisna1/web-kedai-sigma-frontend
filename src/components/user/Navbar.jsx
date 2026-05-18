@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import logoSigma from "../../assets/Logo Sigma.png";
 
 const navLinks = [
-  { label: "Home", href: "/" },
+  { label: "Beranda", href: "/" },
   { label: "Menu", href: "/menu" },
   { label: "Reservasi", href: "/reservasi" },
   { label: "Review", href: "/review" },
@@ -20,7 +20,7 @@ export default function Navbar() {
     ),
     0
   );
-  const activeLineWidths = [46, 46, 88, 56];
+  const activeLineWidths = [74, 48, 88, 58];
 
   return (
     <header className="fixed left-0 right-0 top-0 z-50 h-[95px] bg-[#091421]/90 px-6 py-4 shadow-[0_0_40px_rgba(220,38,38,0.05)] backdrop-blur-md">
@@ -36,7 +36,7 @@ export default function Navbar() {
         />
       </Link>
 
-      <nav className="absolute left-1/2 top-1/2 hidden h-10 w-[430px] -translate-x-1/2 -translate-y-1/2 grid-cols-4 items-center md:grid">
+      <nav className="absolute left-1/2 top-1/2 hidden h-10 w-[380px] -translate-x-1/2 -translate-y-1/2 grid-cols-4 items-center justify-items-center md:grid">
         <span
           className="pointer-events-none absolute bottom-0 h-1 -translate-x-1/2 bg-[#DC2626] transition-[left,width] duration-300 ease-out"
           style={{
@@ -54,7 +54,7 @@ export default function Navbar() {
             <Link
               key={link.href}
               to={link.href}
-              className={`flex h-10 items-start justify-center pt-1 font-grotesk text-base uppercase leading-6 tracking-[-0.05em] transition-colors ${
+              className={`flex h-10 items-start justify-center pt-1 font-grotesk text-base uppercase leading-6 tracking-normal transition-colors ${
                 isActive
                   ? "font-bold text-[#FFB4AB]"
                   : "font-black text-[#94A3B8] hover:text-[#D9E3F6]"
@@ -70,14 +70,14 @@ export default function Navbar() {
         to="/reservasi"
         className="absolute right-6 top-1/2 hidden h-10 w-[173px] -translate-y-1/2 items-center justify-center bg-[#DC2626] px-6 py-2 text-center font-grotesk text-base font-bold uppercase leading-6 text-[#FFF6F5] transition-colors hover:bg-red-700 md:flex"
       >
-        RESERVE NOW
+        Reservasi
       </Link>
 
       <button
         type="button"
         className="absolute right-6 top-1/2 flex -translate-y-1/2 flex-col gap-1.5 p-2 md:hidden"
         onClick={() => setMenuOpen((current) => !current)}
-        aria-label="Toggle menu"
+        aria-label="Buka menu navigasi"
         aria-expanded={menuOpen}
       >
         <span
@@ -100,14 +100,17 @@ export default function Navbar() {
       {menuOpen && (
         <div className="absolute left-0 right-0 top-[95px] flex flex-col gap-4 border-t border-[#16202E] bg-[#091421] p-6 md:hidden">
           {navLinks.map((link) => {
-            const isActive = location.pathname === link.href;
+            const isActive =
+              link.href === "/"
+                ? location.pathname === "/" || location.pathname === "/home"
+                : location.pathname === link.href;
 
             return (
               <Link
                 key={link.href}
                 to={link.href}
                 onClick={() => setMenuOpen(false)}
-                className={`font-grotesk text-base font-black uppercase tracking-[-0.05em] ${
+                className={`font-grotesk text-base font-black uppercase tracking-normal ${
                   isActive ? "text-[#FFB4AB]" : "text-[#94A3B8]"
                 }`}
               >
@@ -121,7 +124,7 @@ export default function Navbar() {
             onClick={() => setMenuOpen(false)}
             className="mt-2 flex items-center justify-center bg-[#DC2626] px-6 py-3 font-grotesk text-base font-bold uppercase text-[#FFF6F5]"
           >
-            RESERVE NOW
+            Reservasi
           </Link>
         </div>
       )}

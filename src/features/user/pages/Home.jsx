@@ -18,21 +18,21 @@ const stats = [
 
 const menuCards = [
   {
-    category: "Coffee Milk",
+    category: "Kopi Susu",
     name: "Coffee Latte",
     price: "IDR13K",
     accent: "#4AE176",
     image: coffeLatteImage,
   },
   {
-    category: "Milk Series",
+    category: "Susu",
     name: "Matcha",
     price: "IDR13K",
     accent: "#4AE176",
     image: matchaImage,
   },
   {
-    category: "Food",
+    category: "Makanan",
     name: "Indomie Nyemek Halu",
     price: "IDR15K",
     accent: "#4AE176",
@@ -42,7 +42,7 @@ const menuCards = [
 
 const gallery = [
   { label: "Kedai Sigma", image: fotoKedai1 },
-  { label: "Coffee Bar", image: fotoKedai2 },
+  { label: "Bar Kopi", image: fotoKedai2 },
   { label: "Underground Vibes", image: fotoKedai3 },
 ];
 
@@ -366,7 +366,7 @@ export default function Home() {
               <div className="absolute inset-x-0 bottom-0 p-8 md:p-10">
                 <div className="transition duration-500 ease-out group-hover:-translate-y-1">
                   <SkewLabel className="bg-[#4AE176] text-[#003915]">
-                    Best Seller
+                    Terlaris
                   </SkewLabel>
                 </div>
                 <div className="mt-4 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">

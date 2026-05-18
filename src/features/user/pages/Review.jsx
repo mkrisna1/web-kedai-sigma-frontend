@@ -1,18 +1,14 @@
-import { useState } from "react";
-import fotoKedai1 from "../../../assets/Foto Kedai 1.png";
-import fotoKedai2 from "../../../assets/Foto Kedai 2.PNG";
-import fotoKedai3 from "../../../assets/Foto Kedai 3.PNG";
+import { useEffect, useMemo, useState } from "react";
 import logoSigma from "../../../assets/Logo Sigma.png";
+import {
+  createPublicReview,
+  getPublicReviews,
+  likePublicReview,
+} from "../../../services/api";
 
-const ratingBars = [
-  { star: 5, percent: 100, color: "#00B954" },
-  { star: 4, percent: 0, color: "#00B954" },
-  { star: 3, percent: 0, color: "#00B954" },
-  { star: 2, percent: 0, color: "#00B954" },
-  { star: 1, percent: 0, color: "#DC2626" },
-];
+const LIKE_STORAGE_KEY = "kedai-sigma-liked-reviews";
 
-const categories = [
+const advantages = [
   {
     label: "Bersih",
     className: "border-[#4AE176]/30 bg-[#00B954]/20 text-[#6BFF8F]",
@@ -31,47 +27,83 @@ const categories = [
   },
 ];
 
-const reviews = [
-  {
-    name: "Jennie Madya",
-    time: "Sebulan lalu",
-    rating: 5,
+const getInitials = (name) =>
+  String(name || "-")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+
+const formatReviewTime = (value) => {
+  if (!value) {
+    return "Baru saja";
+  }
+
+  const createdAt = new Date(value);
+  const diffInMinutes = Math.round((createdAt.getTime() - Date.now()) / 60000);
+  const formatter = new Intl.RelativeTimeFormat("id-ID", { numeric: "auto" });
+
+  if (Math.abs(diffInMinutes) < 60) {
+    return formatter.format(diffInMinutes, "minute");
+  }
+
+  const diffInHours = Math.round(diffInMinutes / 60);
+
+  if (Math.abs(diffInHours) < 24) {
+    return formatter.format(diffInHours, "hour");
+  }
+
+  return formatter.format(Math.round(diffInHours / 24), "day");
+};
+
+const readLikedReviews = () => {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const storedLikes = JSON.parse(window.localStorage.getItem(LIKE_STORAGE_KEY));
+
+    return Array.isArray(storedLikes) ? storedLikes.map(String) : [];
+  } catch (error) {
+    console.warn("Gagal membaca data like review:", error);
+    return [];
+  }
+};
+
+const saveLikedReviews = (reviewIds) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(LIKE_STORAGE_KEY, JSON.stringify(reviewIds));
+};
+
+const mapReviewFromApi = (review) => {
+  const photos = Array.isArray(review.foto_review) ? review.foto_review : [];
+  const likes = Number(review.likes_count) || 0;
+
+  return {
+    id: review.id,
+    name: review.nama_pelanggan || "-",
+    time: formatReviewTime(review.created_at),
+    rating: Number(review.rating) || 0,
     accent: "#DC2626",
     avatarAccent: "#EEC200",
-    initials: "JM",
-    text: "Tempatnya lumayan bersih, sejuk karena banyak pepohonan, cocok buat ngopi santai.",
-    helpful: "12 suka",
-    replies: "Balas",
-    photos: [],
-  },
-  {
-    name: "Natasya Andita",
-    time: "2 minggu lalu",
-    rating: 5,
-    accent: "#EEC200",
-    avatarAccent: "#4AE176",
-    initials: "NA",
-    text: "Tempatnya bersih, aesthetic, dingin, pelayanannya cepat dan ramah, playlist lagunya sangat mantap dan sesuai dengan vibes kafe nya, makanannya enak, harganya affordable dan aman di kantong, juga disediakan permainan kartu dan ada gitar juga.",
-    helpful: "9 suka",
-    replies: "Balas",
-    photos: [
-      { src: fotoKedai1, alt: "Foto area duduk Kedai Sigma" },
-      { src: fotoKedai2, alt: "Foto suasana Kedai Sigma" },
-    ],
-  },
-  {
-    name: "Rama Pradana",
-    time: "3 hari lalu",
-    rating: 5,
-    accent: "#4AE176",
-    avatarAccent: "#FFB4AB",
-    initials: "RP",
-    text: "Kopi susunya pas, suasananya santai, dan meja outdoor paling enak buat ngobrol lama. Bakal balik lagi buat coba menu makanan lainnya.",
-    helpful: "7 suka",
-    replies: "Balas",
-    photos: [{ src: fotoKedai3, alt: "Foto halaman Kedai Sigma" }],
-  },
-];
+    initials: getInitials(review.nama_pelanggan),
+    text: review.komentar || "",
+    likes,
+    helpful: `${likes} suka`,
+    replies: review.balasan_admin ? "1 balasan" : "Balas",
+    adminReply: review.balasan_admin || "",
+    photos: photos.map((src, index) => ({
+      src,
+      alt: `Foto review ${review.nama_pelanggan || "pelanggan"} ${index + 1}`,
+    })),
+  };
+};
 
 function StarIcon({ className = "h-5 w-5", filled = true }) {
   return (
@@ -201,18 +233,40 @@ function RatingStars({ rating, size = "h-3 w-3", color = "text-[#4AE176]" }) {
   );
 }
 
-function RatingSummary() {
+function RatingSummary({ reviews }) {
+  const totalReviews = reviews.length;
+  const averageRating =
+    totalReviews === 0
+      ? 0
+      : reviews.reduce((total, review) => total + review.rating, 0) /
+        totalReviews;
+  const ratingBars = [5, 4, 3, 2, 1].map((star) => {
+    const totalByStar = reviews.filter((review) => review.rating === star).length;
+    const percent =
+      totalReviews === 0 ? 0 : Math.round((totalByStar / totalReviews) * 100);
+
+    return {
+      star,
+      percent,
+      color: star <= 2 ? "#DC2626" : "#00B954",
+    };
+  });
+
   return (
     <aside className="flex flex-col gap-8 lg:sticky lg:top-[127px]">
       <section className="border-l-8 border-[#EEC200] bg-[#121C2A] p-6 sm:p-8">
         <div className="flex flex-wrap items-end gap-4">
           <p className="font-['Space_Grotesk',sans-serif] text-7xl font-bold leading-none text-[#D9E3F6]">
-            5.0
+            {averageRating.toFixed(1)}
           </p>
           <div className="pb-1">
-            <RatingStars rating={5} size="h-5 w-5" color="text-[#EEC200]" />
+            <RatingStars
+              rating={Math.round(averageRating)}
+              size="h-5 w-5"
+              color="text-[#EEC200]"
+            />
             <p className="mt-1 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#64748B]">
-              7 total reviews
+              {totalReviews} total review
             </p>
           </div>
         </div>
@@ -240,10 +294,10 @@ function RatingSummary() {
       <section className="relative overflow-hidden bg-[#2B3544] p-6">
         <div className="relative z-10">
           <h3 className="font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-7 text-[#D9E3F6]">
-            Kategori
+            Keunggulan
           </h3>
           <div className="mt-4 flex flex-wrap gap-3">
-            {categories.map((item) => (
+            {advantages.map((item) => (
               <SkewTag key={item.label} label={item.label} className={item.className} />
             ))}
           </div>
@@ -256,7 +310,9 @@ function RatingSummary() {
   );
 }
 
-function ReviewCard({ review }) {
+function ReviewCard({ review, isLiked, onLike }) {
+  const [isReplyOpen, setIsReplyOpen] = useState(false);
+
   return (
     <article className="relative isolate flex flex-col gap-6 bg-[#121C2A] p-6 sm:flex-row sm:p-8">
       <div
@@ -287,7 +343,7 @@ function ReviewCard({ review }) {
           {review.text}
         </p>
 
-        {review.photos.length > 0 && (
+        {review.photos?.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">
             {review.photos.map((photo) => (
               <img
@@ -303,19 +359,37 @@ function ReviewCard({ review }) {
         <div className="mt-5 flex flex-wrap items-center gap-4">
           <button
             type="button"
-            className="flex items-center gap-2 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 text-[#94A3B8] transition hover:text-[#D9E3F6]"
+            onClick={() => onLike(review)}
+            disabled={isLiked}
+            className="flex items-center gap-2 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 text-[#94A3B8] transition hover:text-[#D9E3F6] disabled:cursor-not-allowed disabled:text-[#EEC200]"
+            aria-pressed={isLiked}
           >
             <LikeIcon />
-            {review.helpful}
+            {isLiked ? `${review.likes} suka` : review.helpful}
           </button>
           <button
             type="button"
+            onClick={() =>
+              review.adminReply && setIsReplyOpen((current) => !current)
+            }
+            aria-expanded={review.adminReply ? isReplyOpen : undefined}
             className="flex items-center gap-2 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 text-[#94A3B8] transition hover:text-[#D9E3F6]"
           >
             <ReplyIcon />
             {review.replies}
           </button>
         </div>
+
+        {review.adminReply && isReplyOpen && (
+          <div className="mt-5 border-l-4 border-[#EEC200] bg-[#16202E] px-5 py-4 font-['Be_Vietnam_Pro',sans-serif]">
+            <p className="font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 text-[#EEC200]">
+              Balasan admin
+            </p>
+            <p className="mt-2 text-sm leading-6 text-[#D9E3F6]">
+              {review.adminReply}
+            </p>
+          </div>
+        )}
       </div>
     </article>
   );
@@ -332,7 +406,7 @@ function ReviewSuccessPopup({ onClose }) {
       <div className="relative h-auto min-h-[415px] w-full max-w-[850px] overflow-hidden rounded-xl bg-[#091421] font-['Be_Vietnam_Pro',sans-serif] text-white shadow-[0_18px_60px_rgba(0,0,0,0.35)] [animation:review-popup-in_320ms_cubic-bezier(0.16,1,0.3,1)] sm:h-[415px]">
         <div className="flex h-[53px] items-center border-b border-white/40 px-6 sm:px-0">
           <p className="mx-auto font-['Be_Vietnam_Pro',sans-serif] text-xl leading-5 text-white sm:ml-[369px] sm:mr-0 sm:w-[305px]">
-            System
+            Sistem
           </p>
         </div>
 
@@ -355,7 +429,7 @@ function ReviewSuccessPopup({ onClose }) {
           <div className="flex items-start gap-3 sm:absolute sm:left-[253px] sm:top-[95px]">
             <SuccessIcon />
             <p className="max-w-[409px] text-left font-['Be_Vietnam_Pro',sans-serif] text-xl leading-6 text-white/50 sm:flex sm:h-[60px] sm:items-center sm:leading-5">
-              Terima kasih banyak sudah memberikan review! Feedback dari kamu bakal bantu kami jadi
+              Terima kasih banyak sudah memberikan review! Masukan dari kamu bakal bantu kami jadi
               lebih baik lagi!
             </p>
           </div>
@@ -373,10 +447,18 @@ function ReviewSuccessPopup({ onClose }) {
   );
 }
 
-function ReviewForm() {
+function ReviewForm({ onReviewCreated }) {
   const [rating, setRating] = useState(0);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [submitWarning, setSubmitWarning] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [photoPreviews, setPhotoPreviews] = useState([]);
+
+  useEffect(() => {
+    return () => {
+      photoPreviews.forEach((photo) => URL.revokeObjectURL(photo.url));
+    };
+  }, [photoPreviews]);
 
   function clearSubmitWarning() {
     if (submitWarning) {
@@ -384,10 +466,25 @@ function ReviewForm() {
     }
   }
 
-  function handleSubmit(event) {
+  function handlePhotoChange(event) {
+    clearSubmitWarning();
+
+    const files = Array.from(event.target.files || []).slice(0, 5);
+    const previews = files.map((file) => ({
+      id: `${file.name}-${file.lastModified}`,
+      name: file.name,
+      url: URL.createObjectURL(file),
+    }));
+
+    photoPreviews.forEach((photo) => URL.revokeObjectURL(photo.url));
+    setPhotoPreviews(previews);
+  }
+
+  async function handleSubmit(event) {
     event.preventDefault();
 
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     const name = formData.get("name")?.toString().trim();
     const comment = formData.get("comment")?.toString().trim();
 
@@ -396,8 +493,33 @@ function ReviewForm() {
       return;
     }
 
+    setIsSubmitting(true);
     setSubmitWarning("");
-    setShowSuccessPopup(true);
+
+    try {
+      const reviewPayload = new FormData();
+      reviewPayload.append("nama_pelanggan", name);
+      reviewPayload.append("rating", String(rating));
+      reviewPayload.append("komentar", comment);
+
+      Array.from(form.elements.photos?.files || [])
+        .slice(0, 5)
+        .forEach((file) => reviewPayload.append("photos[]", file));
+
+      const response = await createPublicReview(reviewPayload);
+
+      onReviewCreated?.(mapReviewFromApi(response.data));
+      form.reset();
+      photoPreviews.forEach((photo) => URL.revokeObjectURL(photo.url));
+      setPhotoPreviews([]);
+      setRating(0);
+      setShowSuccessPopup(true);
+    } catch (error) {
+      console.error("Gagal mengirim review:", error);
+      setSubmitWarning("Review belum bisa dikirim. Coba lagi sebentar ya.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -417,7 +539,7 @@ function ReviewForm() {
                 <input
                   type="text"
                   name="name"
-                  placeholder="ALIASES ONLY..."
+                  placeholder="NAMA PANGGILAN..."
                   onChange={clearSubmitWarning}
                   aria-invalid={Boolean(submitWarning)}
                   className="h-16 w-full border-2 border-[#5C403C] bg-transparent px-4 pt-1 font-['Space_Grotesk',sans-serif] text-lg uppercase tracking-[0.08em] text-[#D9E3F6] outline-none transition placeholder:text-[#475569] focus:border-[#EEC200]"
@@ -458,7 +580,7 @@ function ReviewForm() {
               </span>
               <textarea
                 name="comment"
-                placeholder="WHAT'S THE WORD ON THE STREET?"
+                placeholder="TULIS KESANMU DI SINI..."
                 onChange={clearSubmitWarning}
                 aria-invalid={Boolean(submitWarning)}
                 className="min-h-36 w-full resize-y border-2 border-[#5C403C] bg-transparent px-4 py-5 font-['Space_Grotesk',sans-serif] text-lg text-[#D9E3F6] outline-none transition placeholder:text-[#475569] focus:border-[#EEC200]"
@@ -479,21 +601,48 @@ function ReviewForm() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <label className="flex h-14 cursor-pointer items-center gap-2 border-2 border-dashed border-[#5C403C] px-4 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase text-[#94A3B8] transition hover:border-[#AC8884] hover:text-[#D9E3F6]">
                   <CameraIcon />
-                  Add images (photos)
-                  <input type="file" name="photos" multiple accept="image/*" className="sr-only" />
+                  Tambah foto
+                  <input
+                    type="file"
+                    name="photos"
+                    multiple
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                    className="sr-only"
+                  />
                 </label>
                 <p className="max-w-[150px] font-['Be_Vietnam_Pro',sans-serif] text-[10px] font-bold uppercase leading-3 text-[#64748B]">
-                  Max 3 files, keep it real.
+                  Maksimal 5 file, 5MB/foto.
                 </p>
               </div>
 
               <button
                 type="submit"
-                className="-skew-x-12 bg-[#DC2626] px-10 py-5 font-['Space_Grotesk',sans-serif] text-2xl font-black uppercase leading-8 text-[#FFF6F5] shadow-[8px_8px_0_#EEC200] transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-[#EEC200] focus:ring-offset-2 focus:ring-offset-[#16202E]"
+                disabled={isSubmitting}
+                className="-skew-x-12 bg-[#DC2626] px-10 py-5 font-['Space_Grotesk',sans-serif] text-2xl font-black uppercase leading-8 text-[#FFF6F5] shadow-[8px_8px_0_#EEC200] transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-[#EEC200] focus:ring-offset-2 focus:ring-offset-[#16202E] disabled:cursor-not-allowed disabled:opacity-70"
               >
-                <span className="block skew-x-12">Kirim</span>
+                <span className="block skew-x-12">
+                  {isSubmitting ? "Kirim..." : "Kirim"}
+                </span>
               </button>
             </div>
+
+            {photoPreviews.length > 0 && (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                {photoPreviews.map((photo) => (
+                  <figure
+                    key={photo.id}
+                    className="overflow-hidden border-2 border-[#5C403C] bg-[#091421]"
+                  >
+                    <img
+                      src={photo.url}
+                      alt={photo.name}
+                      className="h-24 w-full object-cover"
+                    />
+                  </figure>
+                ))}
+              </div>
+            )}
           </form>
         </div>
       </section>
@@ -504,6 +653,67 @@ function ReviewForm() {
 }
 
 export default function Review() {
+  const [reviews, setReviews] = useState([]);
+  const [likedReviews, setLikedReviews] = useState(readLikedReviews);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getPublicReviews()
+      .then((response) => {
+        if (isMounted) {
+          setReviews((response.data || []).map(mapReviewFromApi));
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setReviews([]);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleLikeReview = async (review) => {
+    const reviewId = String(review.id || "");
+
+    if (!reviewId || likedReviews.includes(reviewId)) {
+      return;
+    }
+
+    const nextLikedReviews = [...likedReviews, reviewId];
+    setLikedReviews(nextLikedReviews);
+    saveLikedReviews(nextLikedReviews);
+    setReviews((currentReviews) =>
+      currentReviews.map((item) =>
+        String(item.id) === reviewId
+          ? {
+              ...item,
+              likes: item.likes + 1,
+              helpful: `${item.likes + 1} suka`,
+            }
+          : item,
+      ),
+    );
+
+    try {
+      const response = await likePublicReview(review.id);
+      const updatedReview = mapReviewFromApi(response.data);
+
+      setReviews((currentReviews) =>
+        currentReviews.map((item) =>
+          String(item.id) === reviewId ? updatedReview : item,
+        ),
+      );
+    } catch (error) {
+      console.error("Gagal menyimpan like review:", error);
+    }
+  };
+
+  const sortedReviews = useMemo(() => reviews, [reviews]);
+
   return (
     <div className="min-h-screen bg-[#091421] text-[#D9E3F6]">
       <div className="h-1 bg-[#050F1C]" />
@@ -519,13 +729,27 @@ export default function Review() {
         </header>
 
         <div className="grid gap-8 lg:grid-cols-[minmax(280px,373px)_1fr]">
-          <RatingSummary />
+          <RatingSummary reviews={sortedReviews} />
 
           <div className="flex flex-col gap-8">
-            {reviews.map((review) => (
-              <ReviewCard key={review.name} review={review} />
+            {sortedReviews.map((review) => (
+              <ReviewCard
+                key={review.id || review.name}
+                review={review}
+                isLiked={likedReviews.includes(String(review.id))}
+                onLike={handleLikeReview}
+              />
             ))}
-            <ReviewForm />
+            {sortedReviews.length === 0 && (
+              <div className="bg-[#121C2A] p-8 font-['Be_Vietnam_Pro',sans-serif] text-sm leading-6 text-[#E6BDB8]">
+                Belum ada review.
+              </div>
+            )}
+            <ReviewForm
+              onReviewCreated={(review) =>
+                setReviews((currentReviews) => [review, ...currentReviews])
+              }
+            />
           </div>
         </div>
       </section>

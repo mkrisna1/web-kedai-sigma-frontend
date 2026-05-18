@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import americanoImage from "../../../assets/Americano.jpg";
 import ayamPopcornImage from "../../../assets/Ayam Popcorn.jpg";
 import coffeeBearImage from "../../../assets/Coffee Bear.jpg";
@@ -31,6 +31,17 @@ import tahuBaksoGorengImage from "../../../assets/Tahu Bakso Goreng.jpg";
 import tarikTeaImage from "../../../assets/Teh Tarik.jpg";
 import v6DripImage from "../../../assets/V6 Drip.jpg";
 import v6DripSusuImage from "../../../assets/V6 Drip Susu.jpg";
+import {
+  createAdminMenuItem,
+  deleteAdminMenuItem,
+  getAdminMenu,
+  getAdminMenuCategories,
+  updateAdminMenuItem,
+} from "../../../services/api";
+
+const API_ORIGIN = (
+  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api"
+).replace(/\/api\/?$/, "");
 
 const parsePrice = (price) => {
   const values = price.match(/\d[\d.]*/g)?.map((value) =>
@@ -44,15 +55,57 @@ const parsePrice = (price) => {
   return values.reduce((total, value) => total + value, 0) / values.length;
 };
 
-const formatShortPrice = (price) => `IDR ${Math.round(price / 1000)}k`;
+const formatShortPrice = (price) => `Rp ${Math.round(price / 1000)}rb`;
 
-const categoryOptions = [
-  "Food",
-  "Coffee Based",
-  "Coffee Milk",
-  "Tea Series",
-  "Milk Series",
+const fallbackCategoryOptions = [
+  "Makanan",
+  "Kopi",
+  "Kopi Susu",
+  "Teh",
+  "Susu",
 ];
+
+const temperatureOptionChoices = [
+  { value: "none", label: "Tanpa Opsi" },
+  { value: "hot", label: "Hot" },
+  { value: "ice", label: "Ice" },
+  { value: "hot_ice", label: "Hot/Ice" },
+];
+
+const normalizeTemperatureOption = (value) =>
+  temperatureOptionChoices.some((option) => option.value === value)
+    ? value
+    : "none";
+
+const getTemperatureLabel = (value) =>
+  temperatureOptionChoices.find((option) => option.value === value)?.label ||
+  "Tanpa Opsi";
+
+const inferTemperatureOption = (name, price = "") => {
+  const normalizedName = String(name || "").toLowerCase();
+  const normalizedPrice = String(price || "");
+
+  if (
+    normalizedPrice.includes("/") ||
+    normalizedName.includes("americano") ||
+    normalizedName.includes("latte") ||
+    normalizedName.includes("matcha") ||
+    normalizedName.includes("redvelvet") ||
+    normalizedName.includes("coklat classic")
+  ) {
+    return "hot_ice";
+  }
+
+  if (normalizedName.includes("ice")) {
+    return "ice";
+  }
+
+  if (normalizedName.includes("hot")) {
+    return "hot";
+  }
+
+  return "none";
+};
 
 const menuItems = [
   { name: "Kentang", sku: "SKU-FO-001", category: "Food", price: "Rp 10.000", status: "ACTIVE", image: kentangImage, thumbnail: "from-yellow-100 via-amber-200 to-orange-300" },
@@ -89,12 +142,163 @@ const menuItems = [
   { name: "Strawberry Milk", sku: "SKU-MS-007", category: "Milk Series", price: "Rp 15.000", status: "ACTIVE", image: strawberryMilkImage, thumbnail: "from-pink-100 via-rose-200 to-red-300" },
 ];
 
+const normalizeName = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const localImageByName = menuItems.reduce((images, item) => {
+  images[normalizeName(item.name)] = item.image;
+
+  return images;
+}, {});
+
+const localImageAliases = {
+  "coffe latte": coffeeLatteImage,
+  "cofee latte": coffeeLatteImage,
+  "coffee milk chocholate": coffeeMilkChocolateImage,
+  "coffe milk chocolate": coffeeMilkChocolateImage,
+  "coffe milk chocholate": coffeeMilkChocolateImage,
+  "cofee milk chocolate": coffeeMilkChocolateImage,
+  "coffee milk cholate": coffeeMilkChocolateImage,
+  "coffe milk cholate": coffeeMilkChocolateImage,
+  "cofee milk cholate": coffeeMilkChocolateImage,
+  "cofee milk chocholate": coffeeMilkChocolateImage,
+  "coffe milk v2": coffeeMilkV2Image,
+  "cofee milk v2": coffeeMilkV2Image,
+  "tarik tea": tarikTeaImage,
+  "teh tarik": tarikTeaImage,
+};
+
+const getLocalImage = (name) =>
+  localImageByName[normalizeName(name)] || localImageAliases[normalizeName(name)];
+
+const localThumbnailByName = menuItems.reduce((thumbnails, item) => {
+  thumbnails[normalizeName(item.name)] = item.thumbnail;
+
+  return thumbnails;
+}, {});
+
+const localThumbnailAliases = {
+  "coffe latte": localThumbnailByName["coffee latte"],
+  "cofee latte": localThumbnailByName["coffee latte"],
+  "coffee milk chocholate": localThumbnailByName["coffee milk chocolate"],
+  "coffe milk chocolate": localThumbnailByName["coffee milk chocolate"],
+  "coffe milk chocholate": localThumbnailByName["coffee milk chocolate"],
+  "cofee milk chocolate": localThumbnailByName["coffee milk chocolate"],
+  "coffee milk cholate": localThumbnailByName["coffee milk chocolate"],
+  "coffe milk cholate": localThumbnailByName["coffee milk chocolate"],
+  "cofee milk cholate": localThumbnailByName["coffee milk chocolate"],
+  "cofee milk chocholate": localThumbnailByName["coffee milk chocolate"],
+  "coffe milk v2": localThumbnailByName["coffee milk v2"],
+  "cofee milk v2": localThumbnailByName["coffee milk v2"],
+  "tarik tea": localThumbnailByName["tarik tea"],
+  "teh tarik": localThumbnailByName["tarik tea"],
+};
+
+const getLocalThumbnail = (name) =>
+  localThumbnailByName[normalizeName(name)] ||
+  localThumbnailAliases[normalizeName(name)];
+
+const resolveAssetUrl = (path) => {
+  if (!path) {
+    return undefined;
+  }
+
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+
+  return `${API_ORIGIN}${path.startsWith("/") ? path : `/${path}`}`;
+};
+
+const formatRupiah = (price) =>
+  `Rp ${Number(price || 0).toLocaleString("id-ID")}`;
+
+const translateCategoryName = (name) => {
+  const normalized = String(name || "").toLowerCase();
+
+  if (normalized.includes("food") || normalized.includes("makan")) {
+    return "Makanan";
+  }
+
+  if (normalized.includes("tea") || normalized.includes("teh")) {
+    return "Teh";
+  }
+
+  if (normalized.includes("coffee milk") || normalized.includes("kopi susu")) {
+    return "Kopi Susu";
+  }
+
+  if (normalized.includes("milk") || normalized.includes("susu")) {
+    return "Susu";
+  }
+
+  if (normalized.includes("coffee") || normalized.includes("kopi")) {
+    return "Kopi";
+  }
+
+  return name || "Tanpa Kategori";
+};
+
+const mapCategoryFromApi = (category) => ({
+  id: category.id ?? category.id_kategori,
+  name: translateCategoryName(category.nama_kategori || "Kategori"),
+});
+
+const mapStaticMenuItem = (item, index = 0) => ({
+  rawId: null,
+  categoryId: null,
+  description: `${item.name} tersedia di Kedai Sigma.`,
+  priceValue: parsePrice(item.price),
+  temperatureOption: inferTemperatureOption(item.name, item.price),
+  temperatureLabel: getTemperatureLabel(inferTemperatureOption(item.name, item.price)),
+  ...item,
+  sku: item.sku || `SKU-FE-${String(index + 1).padStart(3, "0")}`,
+});
+
+const mapMenuFromApi = (item, index = 0) => {
+  const name = item.nama_produk || "Menu";
+  const normalizedName = normalizeName(name);
+  const categoryName = item.kategori?.nama_kategori || "Tanpa Kategori";
+  const categoryId = item.kategori?.id ?? item.kategori?.id_kategori ?? item.id_kategori;
+  const rawId = item.id ?? item.id_produk;
+  const temperatureOption = normalizeTemperatureOption(
+    item.opsi_suhu || inferTemperatureOption(name),
+  );
+
+  return {
+    rawId,
+    categoryId,
+    name,
+    sku: `SKU-${String(categoryName).slice(0, 2).toUpperCase()}-${String(
+      rawId || index + 1,
+    ).padStart(3, "0")}`,
+    category: translateCategoryName(categoryName),
+    description: item.deskripsi_produk || `${name} tersedia di Kedai Sigma.`,
+    price: formatRupiah(item.harga_produk),
+    priceValue: Number(item.harga_produk) || 0,
+    temperatureOption,
+    temperatureLabel: getTemperatureLabel(temperatureOption),
+    status:
+      item.ketersediaan_produk === "tersedia" ? "ACTIVE" : "OUT OF STOCK",
+    image: resolveAssetUrl(item.foto_produk) || getLocalImage(normalizedName),
+    thumbnail:
+      getLocalThumbnail(normalizedName) ||
+      "from-blue-100 via-sky-200 to-cyan-300",
+  };
+};
+
+const withSequentialMenuIds = (items) =>
+  items.map((item, index) => ({
+    ...item,
+    sku: `MENU-${String(index + 1).padStart(3, "0")}`,
+  }));
+
 const chunkItems = (items, size) =>
   Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
     items.slice(index * size, index * size + size)
   );
-
-const menuPages = chunkItems(menuItems, 8);
 
 function PlusIcon() {
   return (
@@ -181,7 +385,36 @@ function SelectChevronIcon() {
   );
 }
 
-function AddMenuModal({ onClose, onSave }) {
+function AddMenuModal({ categories, onClose, onSave }) {
+  const [previewImage, setPreviewImage] = useState("");
+  const [previewObjectUrl, setPreviewObjectUrl] = useState("");
+
+  useEffect(
+    () => () => {
+      if (previewObjectUrl) {
+        URL.revokeObjectURL(previewObjectUrl);
+      }
+    },
+    [previewObjectUrl],
+  );
+
+  const handlePhotoChange = (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (previewObjectUrl) {
+      URL.revokeObjectURL(previewObjectUrl);
+    }
+
+    const nextUrl = URL.createObjectURL(file);
+
+    setPreviewObjectUrl(nextUrl);
+    setPreviewImage(nextUrl);
+  };
+
   const handleSubmit = (event) => {
     event.preventDefault();
 
@@ -190,22 +423,29 @@ function AddMenuModal({ onClose, onSave }) {
     const selectedCategory = formData.get("category");
     const price = Number(formData.get("price")) || 0;
     const status = formData.get("status");
-    const category =
-      selectedCategory === "Pilih Kategori" ? "Coffee Milk" : selectedCategory;
+    const photo = formData.get("foto_produk");
+    const payload = new FormData();
 
-    onSave({
-      name,
-      sku: `SKU-${Date.now()}`,
-      category,
-      price: `Rp ${price.toLocaleString("id-ID")}`,
-      status,
-      thumbnail: "from-blue-100 via-sky-200 to-cyan-300",
-    });
+    payload.append("nama_produk", name);
+    payload.append("kategori_id", selectedCategory || categories[0]?.id || "");
+    payload.append("harga_produk", String(price));
+    payload.append("deskripsi_produk", formData.get("description")?.trim() || "");
+    payload.append("opsi_suhu", formData.get("opsi_suhu") || "none");
+    payload.append(
+      "ketersediaan_produk",
+      status === "OUT OF STOCK" ? "tidak_tersedia" : "tersedia",
+    );
+
+    if (photo?.size) {
+      payload.append("foto_produk", photo);
+    }
+
+    onSave(payload);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/40 p-6 backdrop-blur-sm">
-      <div className="relative flex h-[715px] w-full max-w-[672px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start overflow-hidden rounded-3xl bg-white pb-4 shadow-2xl shadow-black/25">
+      <div className="relative flex max-h-[calc(100vh-48px)] w-full max-w-[672px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start overflow-hidden rounded-3xl bg-white shadow-2xl shadow-black/25">
         <header className="flex h-[81px] w-full shrink-0 items-center justify-between border-b border-[#C3C6D7]/10 px-8 py-6">
           <h3 className="flex h-8 items-center text-2xl font-extrabold leading-8 text-[#191C1E]">
             Tambah Menu
@@ -220,7 +460,7 @@ function AddMenuModal({ onClose, onSave }) {
           </button>
         </header>
 
-        <form onSubmit={handleSubmit} className="flex w-full flex-1 flex-col gap-10 p-8">
+        <form onSubmit={handleSubmit} className="flex min-h-0 w-full flex-1 flex-col gap-8 overflow-y-auto p-8">
           <div className="grid w-full grid-cols-2 gap-x-8 gap-y-6">
             <label className="col-span-2 flex flex-col gap-1">
               <span className="text-xs font-bold leading-4 text-[#434655]">
@@ -243,9 +483,11 @@ function AddMenuModal({ onClose, onSave }) {
                   name="category"
                   className="h-[38px] w-full appearance-none border-0 border-b-2 border-[#C3C6D7] bg-transparent px-3 pr-10 text-sm font-medium leading-5 text-[#191C1E] outline-none focus:border-[#2563EB]"
                 >
-                  <option>Pilih Kategori</option>
-                  {categoryOptions.map((category) => (
-                    <option key={category}>{category}</option>
+                  <option value="">Pilih Kategori</option>
+                  {categories.map((category) => (
+                    <option key={category.id || category.name} value={category.id}>
+                      {category.name}
+                    </option>
                   ))}
                 </select>
                 <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-500">
@@ -275,15 +517,38 @@ function AddMenuModal({ onClose, onSave }) {
 
             <label className="flex flex-col gap-1">
               <span className="text-xs font-bold leading-4 text-[#434655]">
-                Harga (IDR)
+                Opsi Suhu
+              </span>
+              <div className="relative">
+                <select
+                  name="opsi_suhu"
+                  defaultValue="none"
+                  className="h-[38px] w-full appearance-none border-0 border-b-2 border-[#C3C6D7] bg-transparent px-3 pr-10 text-sm font-medium leading-5 text-[#191C1E] outline-none focus:border-[#2563EB]"
+                >
+                  {temperatureOptionChoices.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-500">
+                  <SelectChevronIcon />
+                </span>
+              </div>
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-bold leading-4 text-[#434655]">
+                Harga (Rp)
               </span>
               <div className="relative h-[38px] border-b-2 border-[#C3C6D7] focus-within:border-[#2563EB]">
                 <span className="absolute bottom-2 left-0 text-sm font-medium leading-5 text-[#434655]">
-                  IDR
+                  Rp
                 </span>
                 <input
                   name="price"
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   placeholder="0"
                   className="h-full w-full border-0 bg-transparent pl-7 pr-3 text-sm font-medium leading-[17px] text-[#191C1E] outline-none placeholder:text-[#434655]/40"
                 />
@@ -295,6 +560,7 @@ function AddMenuModal({ onClose, onSave }) {
                 Deskripsi
               </span>
               <textarea
+                name="description"
                 placeholder="deskripsi dari menu..."
                 className="h-[78px] w-full resize-none border-0 border-b-2 border-[#C3C6D7] bg-transparent px-3 pb-12 pt-2 text-sm font-medium leading-5 text-[#191C1E] outline-none placeholder:text-[#434655]/40 focus:border-[#2563EB]"
               />
@@ -304,17 +570,38 @@ function AddMenuModal({ onClose, onSave }) {
               <span className="text-xs font-bold leading-4 text-[#434655]">
                 Foto Menu
               </span>
-              <div className="flex h-[146px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#C3C6D7]/50 bg-[#F2F4F6]/50 p-8 text-center transition hover:border-[#2563EB]/50">
-                <input type="file" accept="image/*" className="sr-only" />
-                <div className="pb-2 text-[#434655]/40">
-                  <UploadIcon />
-                </div>
-                <p className="text-sm font-semibold leading-5 text-[#434655]">
-                  Klik untuk upload foto
-                </p>
-                <p className="pt-1 text-xs leading-4 text-[#434655]/60">
-                  PNG, JPG maksimal 2MB
-                </p>
+              <div className="relative flex h-[156px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-[#C3C6D7]/50 bg-[#F2F4F6]/50 p-8 text-center transition hover:border-[#2563EB]/50">
+                <input
+                  type="file"
+                  name="foto_produk"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  className="sr-only"
+                />
+                {previewImage ? (
+                  <>
+                    <img
+                      src={previewImage}
+                      alt="Preview menu"
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                    <span className="relative rounded-lg bg-black/60 px-4 py-2 text-xs font-bold uppercase tracking-[0.08em] text-white">
+                      Ganti Foto
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <div className="pb-2 text-[#434655]/40">
+                      <UploadIcon />
+                    </div>
+                    <p className="text-sm font-semibold leading-5 text-[#434655]">
+                      Klik untuk upload foto
+                    </p>
+                    <p className="pt-1 text-xs leading-4 text-[#434655]/60">
+                      PNG, JPG maksimal 2MB
+                    </p>
+                  </>
+                )}
               </div>
             </label>
           </div>
@@ -340,30 +627,81 @@ function AddMenuModal({ onClose, onSave }) {
   );
 }
 
-function EditMenuModal({ item, onClose, onSave }) {
+function EditMenuModal({ categories, item, onClose, onSave }) {
+  const [previewImage, setPreviewImage] = useState(item?.image || "");
+  const [previewObjectUrl, setPreviewObjectUrl] = useState("");
+
+  useEffect(() => {
+    setPreviewImage(item?.image || "");
+    setPreviewObjectUrl((currentUrl) => {
+      if (currentUrl) {
+        URL.revokeObjectURL(currentUrl);
+      }
+
+      return "";
+    });
+  }, [item?.image, item?.rawId]);
+
+  useEffect(
+    () => () => {
+      if (previewObjectUrl) {
+        URL.revokeObjectURL(previewObjectUrl);
+      }
+    },
+    [previewObjectUrl],
+  );
+
   if (!item) {
     return null;
   }
+
+  const handlePhotoChange = (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (previewObjectUrl) {
+      URL.revokeObjectURL(previewObjectUrl);
+    }
+
+    const nextUrl = URL.createObjectURL(file);
+
+    setPreviewObjectUrl(nextUrl);
+    setPreviewImage(nextUrl);
+  };
 
   const handleSubmit = (event) => {
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
     const price = Number(formData.get("price")) || 0;
+    const photo = formData.get("foto_produk");
+    const payload = new FormData();
 
-    onSave({
-      ...item,
-      name: formData.get("name").trim() || item.name,
-      category: formData.get("category"),
-      description: formData.get("description").trim(),
-      price: `Rp ${price.toLocaleString("id-ID")}`,
-      status: formData.get("status"),
-    });
+    payload.append("nama_produk", formData.get("name").trim() || item.name);
+    payload.append("kategori_id", formData.get("category") || item.categoryId || "");
+    payload.append("harga_produk", String(price));
+    payload.append("deskripsi_produk", formData.get("description").trim());
+    payload.append("opsi_suhu", formData.get("opsi_suhu") || "none");
+    payload.append(
+      "ketersediaan_produk",
+      formData.get("status") === "OUT OF STOCK"
+        ? "tidak_tersedia"
+        : "tersedia",
+    );
+
+    if (photo?.size) {
+      payload.append("foto_produk", photo);
+    }
+
+    onSave(payload);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/40 p-6 backdrop-blur-sm">
-      <div className="relative flex h-[690px] w-full max-w-[672px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-center gap-6 overflow-hidden rounded-[32px] bg-[#F7F9FB] pt-10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]">
+      <div className="relative flex max-h-[calc(100vh-48px)] w-full max-w-[672px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-center gap-6 overflow-hidden rounded-[32px] bg-[#F7F9FB] pt-10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]">
         <header className="flex h-8 w-[calc(100%-80px)] max-w-[592px] items-center justify-between">
           <h2 className="text-2xl font-extrabold leading-8 tracking-[-0.025em] text-[#191C1E]">
             Edit Menu
@@ -381,7 +719,7 @@ function EditMenuModal({ item, onClose, onSave }) {
         <form
           id={`edit-menu-${item.sku}`}
           onSubmit={handleSubmit}
-          className="flex h-[462px] w-[calc(100%-80px)] max-w-[592px] flex-col gap-6"
+          className="flex min-h-0 w-[calc(100%-80px)] max-w-[592px] flex-1 flex-col gap-6 overflow-y-auto pb-2"
         >
           <label className="flex flex-col gap-3">
             <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
@@ -390,12 +728,18 @@ function EditMenuModal({ item, onClose, onSave }) {
             <div className="flex h-24 items-center gap-6">
               <MenuThumbnail
                 gradient={item.thumbnail}
-                image={item.image}
+                image={previewImage}
                 name={item.name}
                 className="h-20 w-20"
               />
-              <div className="flex h-24 flex-1 items-center justify-center rounded-lg border-2 border-dashed border-[#C3C6D7]/50 transition hover:border-[#004AC6]/50">
-                <input type="file" accept="image/*" className="sr-only" />
+              <div className="flex h-24 flex-1 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-[#C3C6D7]/50 transition hover:border-[#004AC6]/50">
+                <input
+                  type="file"
+                  name="foto_produk"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  className="sr-only"
+                />
                 <div className="flex flex-col items-center justify-center gap-1 text-center">
                   <div className="text-[#004AC6]">
                     <UploadIcon />
@@ -408,7 +752,7 @@ function EditMenuModal({ item, onClose, onSave }) {
             </div>
           </label>
 
-          <div className="grid grid-cols-[1fr_140px] gap-x-8 gap-y-6">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-6">
             <label className="flex flex-col gap-1">
               <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
                 Edit Nama
@@ -427,11 +771,13 @@ function EditMenuModal({ item, onClose, onSave }) {
               <div className="relative">
                 <select
                   name="category"
-                  defaultValue={item.category}
+                  defaultValue={item.categoryId || ""}
                   className="h-[42px] w-full appearance-none border-0 border-b-2 border-[#C3C6D7] bg-transparent pr-8 text-base font-medium leading-6 text-[#191C1E] outline-none focus:border-[#2563EB]"
                 >
-                  {categoryOptions.map((category) => (
-                    <option key={category}>{category}</option>
+                  {categories.map((category) => (
+                    <option key={category.id || category.name} value={category.id}>
+                      {category.name}
+                    </option>
                   ))}
                 </select>
                 <span className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-gray-500">
@@ -457,12 +803,13 @@ function EditMenuModal({ item, onClose, onSave }) {
               </span>
               <div className="relative h-[42px] border-b-2 border-[#C3C6D7] focus-within:border-[#2563EB]">
                 <span className="absolute left-0 top-2 text-sm font-medium leading-5 text-[#434655]">
-                  IDR
+                  Rp
                 </span>
                 <input
                   name="price"
-                  type="number"
-                  defaultValue={parsePrice(item.price)}
+                  type="text"
+                  inputMode="numeric"
+                  defaultValue={item.priceValue ?? parsePrice(item.price)}
                   className="h-full w-full border-0 bg-transparent pl-12 text-base font-medium leading-6 text-[#191C1E] outline-none"
                 />
               </div>
@@ -470,7 +817,29 @@ function EditMenuModal({ item, onClose, onSave }) {
 
             <label className="flex flex-col gap-1">
               <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
-                Info Stock
+                Opsi Suhu
+              </span>
+              <div className="relative">
+                <select
+                  name="opsi_suhu"
+                  defaultValue={item.temperatureOption || "none"}
+                  className="h-[42px] w-full appearance-none border-0 border-b-2 border-[#C3C6D7] bg-transparent pr-8 text-base font-medium leading-6 text-[#191C1E] outline-none focus:border-[#2563EB]"
+                >
+                  {temperatureOptionChoices.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-gray-500">
+                  <SelectChevronIcon />
+                </span>
+              </div>
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
+                Info Stok
               </span>
               <div className="relative">
                 <select
@@ -533,14 +902,14 @@ function DeleteConfirmModal({ itemName, onCancel, onConfirm }) {
               onClick={onCancel}
               className="absolute left-0 top-[21.2px] flex h-11 w-[153.75px] items-center justify-center rounded-lg bg-[#E6E8EA] text-sm font-bold leading-5 tracking-[0.35px] text-[#191C1E] transition hover:brightness-95"
             >
-              No
+              Batal
             </button>
             <button
               type="button"
               onClick={onConfirm}
               className="absolute left-[165px] top-[21.2px] flex h-11 w-[162.34px] items-center justify-center rounded-lg bg-[#BA1A1A] text-sm font-bold leading-5 tracking-[0.35px] text-white shadow-[0_10px_15px_-3px_rgba(186,26,26,0.2),0_4px_6px_-4px_rgba(186,26,26,0.2)] transition hover:brightness-105"
             >
-              Yes
+              Hapus
             </button>
           </div>
         </div>
@@ -582,7 +951,7 @@ function StatusBadge({ status }) {
           isOutOfStock ? "bg-[#BA1A1A]" : "bg-[#006C49]"
         }`}
       />
-      {status}
+      {isOutOfStock ? "Stok Habis" : "Tersedia"}
     </span>
   );
 }
@@ -619,7 +988,9 @@ function MenuRow({ item, index, onDeleteClick, onEditClick }) {
             <p className="truncate text-base font-bold leading-5 text-[#191C1E]">
               {item.name}
             </p>
-            <p className="truncate text-xs leading-4 text-[#434655]">{item.sku}</p>
+            <p className="truncate text-xs leading-4 text-[#434655]">
+              {item.sku} - {item.temperatureLabel || "Tanpa Opsi"}
+            </p>
           </div>
         </div>
       </td>
@@ -658,16 +1029,18 @@ function MenuRow({ item, index, onDeleteClick, onEditClick }) {
 
 export default function MenuAdmin() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [menuPageItems, setMenuPageItems] = useState(menuPages);
+  const [flatMenuItems, setFlatMenuItems] = useState(() =>
+    withSequentialMenuIds(menuItems.map(mapStaticMenuItem)),
+  );
+  const [categories, setCategories] = useState([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
-  const items = menuPageItems[currentPage];
-  const totalMenuItems = menuPageItems.reduce(
-    (total, pageItems) => total + pageItems.length,
-    0
-  );
-  const flatMenuItems = menuPageItems.flat();
+  const menuPageItems = useMemo(() => chunkItems(flatMenuItems, 8), [flatMenuItems]);
+  const maxPageIndex = Math.max(menuPageItems.length - 1, 0);
+  const visiblePage = Math.min(currentPage, maxPageIndex);
+  const items = menuPageItems[visiblePage] || [];
+  const totalMenuItems = flatMenuItems.length;
   const activeCategories = new Set(flatMenuItems.map((item) => item.category)).size;
   const outOfStockCount = flatMenuItems.filter(
     (item) => item.status === "OUT OF STOCK"
@@ -676,45 +1049,106 @@ export default function MenuAdmin() {
     flatMenuItems.reduce((total, item) => total + parsePrice(item.price), 0) /
     Math.max(flatMenuItems.length, 1);
   const dashboardStats = [
-    { label: "Total Items", value: String(totalMenuItems).padStart(2, "0") },
-    { label: "Active Categories", value: String(activeCategories) },
+    { label: "Total Menu", value: String(totalMenuItems).padStart(2, "0") },
+    { label: "Kategori Aktif", value: String(activeCategories) },
     {
-      label: "Out of Stock",
+      label: "Stok Habis",
       value: String(outOfStockCount).padStart(2, "0"),
       danger: true,
     },
-    { label: "Avg Price", value: formatShortPrice(averagePrice) },
+    { label: "Harga Rata-rata", value: formatShortPrice(averagePrice) },
   ];
 
-  const handleAddMenu = (newItem) => {
-    setMenuPageItems((currentPages) =>
-      currentPages.map((pageItems, pageIndex) =>
-        pageIndex === currentPage ? [newItem, ...pageItems] : pageItems
-      )
-    );
-    setIsAddModalOpen(false);
+  const categoryOptions =
+    categories.length > 0
+      ? categories
+      : fallbackCategoryOptions.map((name) => ({ id: "", name }));
+
+  useEffect(() => {
+    let isMounted = true;
+
+    Promise.all([getAdminMenu(), getAdminMenuCategories()])
+      .then(([menuResponse, categoryResponse]) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setFlatMenuItems(withSequentialMenuIds((menuResponse.data || []).map(mapMenuFromApi)));
+        setCategories((categoryResponse.data || []).map(mapCategoryFromApi));
+      })
+      .catch((error) => {
+        console.error("Gagal mengambil data menu admin:", error);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleAddMenu = async (payload) => {
+    try {
+      const response = await createAdminMenuItem(payload);
+      const createdItem = mapMenuFromApi(response.data);
+
+      setFlatMenuItems((currentItems) =>
+        withSequentialMenuIds([createdItem, ...currentItems]),
+      );
+      setCurrentPage(0);
+      setIsAddModalOpen(false);
+    } catch (error) {
+      console.error("Gagal menambah menu:", error);
+    }
   };
 
-  const handleConfirmDelete = () => {
-    setMenuPageItems((currentPages) =>
-      currentPages.map((pageItems, pageIndex) =>
-        pageIndex === currentPage
-          ? pageItems.filter((item) => item.sku !== deleteTarget.sku)
-          : pageItems
-      )
-    );
-    setDeleteTarget(null);
+  const handleConfirmDelete = async () => {
+    const target = deleteTarget;
+
+    if (!target) {
+      return;
+    }
+
+    try {
+      if (target.rawId) {
+        await deleteAdminMenuItem(target.rawId);
+      }
+
+      setFlatMenuItems((currentItems) =>
+        withSequentialMenuIds(
+          currentItems.filter((item) =>
+            target.rawId ? item.rawId !== target.rawId : item.sku !== target.sku,
+          ),
+        ),
+      );
+      setDeleteTarget(null);
+    } catch (error) {
+      console.error("Gagal menghapus menu:", error);
+    }
   };
 
-  const handleSaveEdit = (updatedItem) => {
-    setMenuPageItems((currentPages) =>
-      currentPages.map((pageItems) =>
-        pageItems.map((item) =>
-          item.sku === updatedItem.sku ? updatedItem : item
-        )
-      )
-    );
-    setEditTarget(null);
+  const handleSaveEdit = async (payload) => {
+    if (!editTarget) {
+      return;
+    }
+
+    try {
+      if (!editTarget.rawId) {
+        return;
+      }
+
+      const response = await updateAdminMenuItem(editTarget.rawId, payload);
+      const updatedItem = mapMenuFromApi(response.data);
+
+      setFlatMenuItems((currentItems) =>
+        withSequentialMenuIds(
+          currentItems.map((item) =>
+            item.rawId === updatedItem.rawId ? updatedItem : item,
+          ),
+        ),
+      );
+      setEditTarget(null);
+    } catch (error) {
+      console.error("Gagal menyimpan menu:", error);
+    }
   };
 
   return (
@@ -759,37 +1193,48 @@ export default function MenuAdmin() {
 
               <thead>
                 <tr className="h-12 bg-[#F2F4F6]/30 text-left text-xs font-bold uppercase tracking-[1.2px] text-[#434655]">
-                  <th className="px-6">Menu Item</th>
-                  <th className="px-6">Category</th>
-                  <th className="px-6">Price</th>
+                  <th className="px-6">Menu</th>
+                  <th className="px-6">Kategori</th>
+                  <th className="px-6">Harga</th>
                   <th className="px-6">Status</th>
-                  <th className="px-6 text-right">Actions</th>
+                  <th className="px-6 text-right">Aksi</th>
                 </tr>
               </thead>
 
               <tbody>
-                {items.map((item, index) => (
-                  <MenuRow
-                    key={item.sku}
-                    item={item}
-                    index={index}
-                    onDeleteClick={setDeleteTarget}
-                    onEditClick={setEditTarget}
-                  />
-                ))}
+                {items.length > 0 ? (
+                  items.map((item, index) => (
+                    <MenuRow
+                      key={item.rawId || item.sku}
+                      item={item}
+                      index={index}
+                      onDeleteClick={setDeleteTarget}
+                      onEditClick={setEditTarget}
+                    />
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="h-28 px-6 text-center text-sm font-semibold text-[#434655]"
+                    >
+                      Belum ada menu di backend.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
 
           <footer className="flex h-[61px] items-center justify-between border-t border-[#E6E8EA] bg-[#F2F4F6]/10 px-6">
             <p className="text-xs leading-4 text-[#434655]">
-              Showing {items.length} of {totalMenuItems} menu items
+              Menampilkan {items.length} dari {totalMenuItems} menu
             </p>
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                disabled={currentPage === 0}
-                onClick={() => setCurrentPage((page) => Math.max(page - 1, 0))}
+                disabled={visiblePage === 0}
+                onClick={() => setCurrentPage(Math.max(visiblePage - 1, 0))}
                 className="flex h-7 w-6 items-center justify-center rounded text-[#434655] transition hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent"
               >
                 <ChevronLeftIcon />
@@ -800,7 +1245,7 @@ export default function MenuAdmin() {
                   type="button"
                   onClick={() => setCurrentPage(pageIndex)}
                   className={`flex h-7 min-w-7 items-center justify-center rounded px-3 text-xs font-bold leading-4 transition ${
-                    currentPage === pageIndex
+                    visiblePage === pageIndex
                       ? "bg-[#2563EB] text-white"
                       : "text-[#191C1E] hover:bg-slate-100"
                   }`}
@@ -810,12 +1255,11 @@ export default function MenuAdmin() {
               ))}
               <button
                 type="button"
-                disabled={currentPage === menuPageItems.length - 1}
-                onClick={() =>
-                  setCurrentPage((page) =>
-                    Math.min(page + 1, menuPageItems.length - 1)
-                  )
+                disabled={
+                  menuPageItems.length === 0 ||
+                  visiblePage === maxPageIndex
                 }
+                onClick={() => setCurrentPage(Math.min(visiblePage + 1, maxPageIndex))}
                 className="flex h-7 w-6 items-center justify-center rounded text-[#434655] transition hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent"
               >
                 <ChevronRightIcon />
@@ -827,6 +1271,7 @@ export default function MenuAdmin() {
 
       {isAddModalOpen && (
         <AddMenuModal
+          categories={categoryOptions}
           onClose={() => setIsAddModalOpen(false)}
           onSave={handleAddMenu}
         />
@@ -842,6 +1287,7 @@ export default function MenuAdmin() {
 
       {editTarget && (
         <EditMenuModal
+          categories={categoryOptions}
           item={editTarget}
           onClose={() => setEditTarget(null)}
           onSave={handleSaveEdit}

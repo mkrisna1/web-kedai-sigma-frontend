@@ -58,10 +58,10 @@ function AppRoutes() {
           <Route path="pesanan" element={<Pesanan />} />
 
           {/*Menu*/}
-          <Route path="Menu" element={<MenuAdmin />} />
+          <Route path="menu" element={<MenuAdmin />} />
 
           {/*Meja*/}
-          <Route path="Meja" element={<MejaAdmin />} />
+          <Route path="meja" element={<MejaAdmin />} />
 
           {/*Reservasi*/}
           <Route path="reservasi" element={<ReservasiAdmin />} />

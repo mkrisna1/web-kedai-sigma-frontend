@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useOutletContext, useSearchParams } from "react-router-dom";
+import { checkoutQrOrder } from "../../../services/api";
 
 const formatRupiah = (value) => `Rp ${value.toLocaleString("id-ID")}`;
 
@@ -40,7 +41,7 @@ function ArrowLeftIcon() {
 
 function CartItemCard({ item, onQuantityChange, onRemove }) {
   return (
-    <article className="overflow-hidden bg-[#16202E] border-b-8 border-[#DC2626]">
+    <article className="overflow-hidden border border-[#DC2626]/70 bg-[#16202E] shadow-[0_0_0_3px_rgba(220,38,38,0.10)]">
       <div className="flex gap-3 p-3">
         <img
           src={item.image}
@@ -119,7 +120,7 @@ function OrderSubmittedModal({ onClose }) {
       <section className="relative h-[295px] w-[min(549px,calc(100vw-32px))] animate-[qr-modal-panel_260ms_cubic-bezier(0.16,1,0.3,1)]">
         <div className="absolute left-0 top-2 h-[287px] w-full overflow-hidden rounded-xl bg-[#091421] shadow-[0_1px_2px_rgba(0,0,0,0.05),0_24px_70px_rgba(0,0,0,0.32)]">
           <p className="absolute left-1/2 top-[11px] flex h-[14px] w-[197px] -translate-x-1/2 items-center justify-center font-['Be_Vietnam_Pro',Arial,sans-serif] text-xl font-normal leading-5 text-white">
-            System
+            Sistem
           </p>
 
           <div className="absolute left-0 top-[36.65px] h-px w-full bg-white/40" />
@@ -150,6 +151,56 @@ function OrderSubmittedModal({ onClose }) {
   );
 }
 
+function OrderTypeModal({ isSubmitting, onClose, onConfirm }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex animate-[qr-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/70 px-4 py-8 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="order-type-title"
+    >
+      <section className="w-[min(360px,calc(100vw-32px))] animate-[qr-modal-panel_260ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-xl border border-[#DC2626]/70 bg-[#091421] shadow-[0_24px_70px_rgba(0,0,0,0.32)]">
+        <header className="border-b border-white/20 px-5 py-4 text-center">
+          <p className="text-sm font-normal leading-5 text-white/70">Sistem</p>
+          <h2
+            id="order-type-title"
+            className="mt-2 font-['Space_Grotesk',Arial,sans-serif] text-2xl font-bold uppercase leading-7 text-white"
+          >
+            Pilih tipe pesanan
+          </h2>
+        </header>
+
+        <div className="grid gap-3 p-5">
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={() => onConfirm("dine_in")}
+            className="flex h-14 items-center justify-center bg-[#EEC200] font-['Space_Grotesk',Arial,sans-serif] text-sm font-black uppercase tracking-[1.6px] text-[#3C2F00] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Makan di Sini
+          </button>
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={() => onConfirm("takeaway")}
+            className="flex h-14 items-center justify-center bg-[#DC2626] font-['Space_Grotesk',Arial,sans-serif] text-sm font-black uppercase tracking-[1.6px] text-white transition hover:bg-[#B91C1C] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Bawa Pulang
+          </button>
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={onClose}
+            className="h-10 text-xs font-bold uppercase tracking-[1.2px] text-[#E6BDB8] transition hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Batal
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export default function Keranjang() {
   const {
     cartItems,
@@ -157,19 +208,60 @@ export default function Keranjang() {
     clearCart,
     removeFromCart,
     updateCartQuantity,
+    qrTable,
   } = useOutletContext();
   const [isOrderSubmitted, setIsOrderSubmitted] = useState(false);
+  const [isOrderTypeModalOpen, setIsOrderTypeModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchParams] = useSearchParams();
   const queryString = searchParams.toString();
   const menuPath = queryString ? `/qr/menu?${queryString}` : "/qr/menu";
+  const mejaId = searchParams.get("meja_id") || qrTable?.id;
 
-  const handleConfirm = () => {
+  const openOrderTypeModal = () => {
     if (!cartItems.length) {
       return;
     }
 
-    setIsOrderSubmitted(true);
-    clearCart();
+    setIsOrderTypeModalOpen(true);
+  };
+
+  const handleConfirm = async (orderType) => {
+    if (!cartItems.length) {
+      return;
+    }
+
+    if (!mejaId) {
+      window.alert("QR belum terhubung ke meja. Buka ulang menu dari QR meja admin.");
+      return;
+    }
+
+    if (cartItems.some((item) => !item.productId)) {
+      window.alert("Menu belum terhubung ke backend. Pastikan backend Laravel aktif lalu buka ulang QR.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await checkoutQrOrder({
+        meja_id: Number(mejaId),
+        tipe_pesanan: orderType,
+        items: cartItems.map((item) => ({
+          produk_id: item.productId,
+          jumlah_item: item.quantity,
+          opsi_varian: [item.variantLabel, item.note].filter(Boolean).join(", ") || null,
+        })),
+      });
+      setIsOrderSubmitted(true);
+      setIsOrderTypeModalOpen(false);
+      clearCart();
+    } catch (error) {
+      console.error("Gagal mengirim pesanan:", error);
+      window.alert(error.message || "Pesanan belum bisa dikirim.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -225,10 +317,11 @@ export default function Keranjang() {
 
             <button
               type="button"
-              onClick={handleConfirm}
-              className="mt-5 flex h-[60px] w-full items-center justify-center bg-[#EEC200] px-4 font-['Space_Grotesk',Arial,sans-serif] text-sm font-black uppercase leading-5 tracking-[2px] text-[#3C2F00] shadow-[8px_8px_0_#3C2F00] transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[6px_6px_0_#3C2F00]"
+              onClick={openOrderTypeModal}
+              disabled={isSubmitting}
+              className="mt-5 flex h-[60px] w-full items-center justify-center bg-[#EEC200] px-4 font-['Space_Grotesk',Arial,sans-serif] text-sm font-black uppercase leading-5 tracking-[2px] text-[#3C2F00] shadow-[8px_8px_0_#3C2F00] transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[6px_6px_0_#3C2F00] disabled:cursor-not-allowed disabled:opacity-70"
             >
-              Kirim Pesanan
+              {isSubmitting ? "Mengirim..." : "Kirim Pesanan"}
             </button>
           </section>
         </>
@@ -236,6 +329,13 @@ export default function Keranjang() {
 
       {isOrderSubmitted && (
         <OrderSubmittedModal onClose={() => setIsOrderSubmitted(false)} />
+      )}
+      {isOrderTypeModalOpen && (
+        <OrderTypeModal
+          isSubmitting={isSubmitting}
+          onClose={() => setIsOrderTypeModalOpen(false)}
+          onConfirm={handleConfirm}
+        />
       )}
     </main>
   );

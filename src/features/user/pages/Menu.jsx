@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { getPublicMenu } from "../../../services/api";
 import coklatClassicImage from "../../../assets/Coklat Clasic.jpg";
 import coklatClassicRotiImage from "../../../assets/Coklat Clasic Roti.jpg";
 import coffeeBearImage from "../../../assets/Coffee Bear.jpg";
@@ -36,12 +37,12 @@ const INITIAL_VISIBLE_COUNT = 9;
 const LOAD_MORE_COUNT = 6;
 
 const filters = [
-  { label: "All Menu", value: "all" },
-  { label: "Food", value: "food" },
-  { label: "Coffee Based", value: "coffee-based" },
-  { label: "Coffee Milk", value: "coffee-milk" },
-  { label: "Tea Series", value: "tea-series" },
-  { label: "Milk Series", value: "milk-series" },
+  { label: "Semua Menu", value: "all" },
+  { label: "Makanan", value: "food" },
+  { label: "Kopi", value: "coffee-based" },
+  { label: "Kopi Susu", value: "coffee-milk" },
+  { label: "Teh", value: "tea-series" },
+  { label: "Susu", value: "milk-series" },
 ];
 
 const categoryOrder = filters.filter((item) => item.value !== "all");
@@ -305,6 +306,177 @@ const menuItems = [
   },
 ];
 
+const isLocalHost = (hostname) =>
+  ["localhost", "127.0.0.1", "::1"].includes(hostname);
+
+const resolveAssetUrl = (value) => {
+  if (!value) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(value)) {
+    return value;
+  }
+
+  const hostname =
+    typeof window !== "undefined" && window.location?.hostname
+      ? window.location.hostname
+      : "";
+  const apiOrigin = hostname
+    ? `${window.location.protocol}//${hostname}:8000`
+    : "http://127.0.0.1:8000";
+  const fallbackOrigin = isLocalHost(hostname)
+    ? "http://127.0.0.1:8000"
+    : apiOrigin;
+
+  return `${fallbackOrigin}${value.startsWith("/") ? value : `/${value}`}`;
+};
+
+const slugify = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+const staticMenuBySlug = new Map(menuItems.map((item) => [slugify(item.name), item]));
+
+const staticMenuAliasBySlug = {
+  americano: "Hot/Ice Americano",
+  "coffee-latte": "Hot/Ice Coffe Latte",
+  "coffe-latte": "Hot/Ice Coffe Latte",
+  "cofee-latte": "Hot/Ice Coffe Latte",
+  "coffee-milk-chocolate": "Coffee Milk Chocholate",
+  "coffe-milk-chocolate": "Coffee Milk Chocholate",
+  "cofee-milk-chocolate": "Coffee Milk Chocholate",
+  "coffee-milk-cholate": "Coffee Milk Chocholate",
+  "coffe-milk-cholate": "Coffee Milk Chocholate",
+  "cofee-milk-cholate": "Coffee Milk Chocholate",
+  "coffee-milk-chocholate": "Coffee Milk Chocholate",
+  "coffe-milk-chocholate": "Coffee Milk Chocholate",
+  "cofee-milk-chocholate": "Coffee Milk Chocholate",
+  "coffee-milk-v2": "Coffe Milk V2",
+  "coffe-milk-v2": "Coffe Milk V2",
+  "cofee-milk-v2": "Coffe Milk V2",
+  "teh-tarik": "Tarik Tea",
+  "tarik-tea": "Tarik Tea",
+  "coklat-classic": "Hot/Ice Coklat Classic",
+  "coklat-clasic": "Hot/Ice Coklat Classic",
+  "coklat-classic-roti": "Hot/Ice Coklat Classic Roti",
+  "coklat-clasic-roti": "Hot/Ice Coklat Classic Roti",
+};
+
+const localImageBySlug = {
+  americano: americanoImage,
+  "hot-ice-americano": americanoImage,
+  "coffee-latte": coffeLatteImage,
+  "coffe-latte": coffeLatteImage,
+  "cofee-latte": coffeLatteImage,
+  "hot-ice-coffe-latte": coffeLatteImage,
+  "coffee-milk-chocolate": coffeMilkChocholateImage,
+  "coffe-milk-chocolate": coffeMilkChocholateImage,
+  "cofee-milk-chocolate": coffeMilkChocholateImage,
+  "coffee-milk-cholate": coffeMilkChocholateImage,
+  "coffe-milk-cholate": coffeMilkChocholateImage,
+  "cofee-milk-cholate": coffeMilkChocholateImage,
+  "coffee-milk-chocholate": coffeMilkChocholateImage,
+  "coffe-milk-chocholate": coffeMilkChocholateImage,
+  "cofee-milk-chocholate": coffeMilkChocholateImage,
+  "coffee-milk-v2": coffeMilkV2Image,
+  "coffe-milk-v2": coffeMilkV2Image,
+  "cofee-milk-v2": coffeMilkV2Image,
+  "teh-tarik": tehTarikImage,
+  "tarik-tea": tehTarikImage,
+  "coklat-classic": coklatClassicImage,
+  "coklat-clasic": coklatClassicImage,
+  "hot-ice-coklat-classic": coklatClassicImage,
+  "hot-ice-coklat-clasic": coklatClassicImage,
+  "coklat-classic-roti": coklatClassicRotiImage,
+  "coklat-clasic-roti": coklatClassicRotiImage,
+  "hot-ice-coklat-classic-roti": coklatClassicRotiImage,
+  "hot-ice-coklat-clasic-roti": coklatClassicRotiImage,
+};
+
+const getStaticMenuItem = (name) => {
+  const itemSlug = slugify(name);
+  const aliasName = staticMenuAliasBySlug[itemSlug];
+
+  return staticMenuBySlug.get(itemSlug) || staticMenuBySlug.get(slugify(aliasName));
+};
+
+const getMergeSlug = (name) => {
+  const itemSlug = slugify(name);
+  const aliasName = staticMenuAliasBySlug[itemSlug];
+
+  return aliasName ? slugify(aliasName) : itemSlug;
+};
+
+const inferCategoryValue = (categoryName) => {
+  const normalized = String(categoryName || "").toLowerCase();
+
+  if (normalized.includes("makan") || normalized.includes("food")) {
+    return "food";
+  }
+
+  if (normalized.includes("tea") || normalized.includes("teh")) {
+    return "tea-series";
+  }
+
+  if (normalized.includes("milk") || normalized.includes("susu")) {
+    return normalized.includes("coffee") || normalized.includes("kopi")
+      ? "coffee-milk"
+      : "milk-series";
+  }
+
+  if (normalized.includes("coffee") || normalized.includes("kopi")) {
+    return "coffee-based";
+  }
+
+  return "food";
+};
+
+const getCategoryLabel = (categoryValue, categoryName) =>
+  filters.find((item) => item.value === categoryValue)?.label ||
+  categoryName ||
+  "Menu";
+
+const mapMenuFromApi = (item) => {
+  const name = item.nama_produk || "Menu";
+  const baseItem = getStaticMenuItem(name);
+  const categoryValue = baseItem?.category || inferCategoryValue(item.kategori?.nama_kategori);
+  const price = Number(item.harga_produk) || 0;
+  const imageUrl = resolveAssetUrl(item.foto_produk);
+  const localImage = baseItem?.image || localImageBySlug[slugify(name)];
+
+  return {
+    ...(baseItem || {}),
+    id: item.id ?? item.id_produk,
+    name,
+    description: item.deskripsi_produk || baseItem?.description || `${name} tersedia di Kedai Sigma.`,
+    price: `Rp ${price.toLocaleString("id-ID")}`,
+    category: categoryValue,
+    categoryLabel: baseItem?.categoryLabel || getCategoryLabel(categoryValue, item.kategori?.nama_kategori),
+    image: imageUrl || localImage,
+    isAvailable: item.ketersediaan_produk !== "tidak_tersedia",
+  };
+};
+
+const mergeMenuItems = (apiItems) => {
+  if (!Array.isArray(apiItems) || apiItems.length === 0) {
+    return menuItems;
+  }
+
+  const mergedBySlug = new Map(
+    menuItems.map((item) => [slugify(item.name), item]),
+  );
+
+  apiItems.forEach((item) => {
+    mergedBySlug.set(getMergeSlug(item.name), item);
+  });
+
+  return Array.from(mergedBySlug.values());
+};
+
 function interleaveItemsByCategory(items) {
   const groupedItems = categoryOrder.map((category) =>
     items.filter((item) => item.category === category.value)
@@ -375,6 +547,8 @@ function FilterButton({ item, active, onClick }) {
 }
 
 function MenuCard({ item, index }) {
+  const isOutOfStock = item.isAvailable === false;
+
   return (
     <article
       className="group flex min-h-[540px] flex-col bg-[#121C2A] p-6 opacity-0 shadow-[0_0_40px_rgba(220,38,38,0.1)] transition-[transform,background-color,box-shadow] duration-500 ease-out hover:-translate-y-1.5 hover:bg-[#16202E] hover:shadow-[0_18px_48px_rgba(220,38,38,0.16)]"
@@ -389,9 +563,18 @@ function MenuCard({ item, index }) {
             <img
               src={item.image}
               alt={item.name}
-              className="h-full w-full object-cover transition duration-700 ease-out group-hover:scale-105"
+              className={`h-full w-full object-cover transition duration-700 ease-out group-hover:scale-105 ${
+                isOutOfStock ? "grayscale opacity-45" : ""
+              }`}
             />
             <div className="absolute inset-0 bg-black/10 transition duration-500 group-hover:bg-black/0" />
+            {isOutOfStock && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/35">
+                <span className="border border-[#DC2626] bg-[#091421]/90 px-5 py-3 font-['Space_Grotesk',sans-serif] text-lg font-black uppercase tracking-normal text-[#FF4D4D]">
+                  Stok Habis
+                </span>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -418,11 +601,34 @@ export default function Menu() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
+  const [apiMenuItems, setApiMenuItems] = useState(null);
+  const activeMenuItems = useMemo(() => mergeMenuItems(apiMenuItems), [apiMenuItems]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getPublicMenu()
+      .then((response) => {
+        if (isMounted) {
+          setApiMenuItems((response.data || []).map(mapMenuFromApi));
+        }
+      })
+      .catch((error) => {
+        console.error("Gagal mengambil menu publik:", error);
+        if (isMounted) {
+          setApiMenuItems(null);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredItems = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
-    const matchingItems = menuItems.filter((item) => {
+    const matchingItems = activeMenuItems.filter((item) => {
       const matchesFilter = activeFilter === "all" || item.category === activeFilter;
       const matchesSearch =
         keyword.length === 0 ||
@@ -435,7 +641,7 @@ export default function Menu() {
     return activeFilter === "all"
       ? interleaveItemsByCategory(matchingItems)
       : matchingItems;
-  }, [activeFilter, search]);
+  }, [activeFilter, activeMenuItems, search]);
 
   const visibleItems = useMemo(() => {
     return filteredItems.slice(0, visibleCount);
@@ -445,7 +651,7 @@ export default function Menu() {
     if (activeFilter === "all") {
       return [
         {
-          label: "All Menu",
+          label: "Semua Menu",
           value: "all",
           items: visibleItems,
         },
@@ -484,7 +690,7 @@ export default function Menu() {
               type="search"
               value={search}
               onChange={handleSearchChange}
-              placeholder="FIND YOUR MENU"
+              placeholder="CARI MENU"
               className="h-[55px] w-full bg-[#121C2A] py-[17px] pl-12 pr-3 font-['Space_Grotesk',sans-serif] text-base font-bold leading-5 tracking-[-0.025em] text-[#D9E3F6] outline-none placeholder:text-[#5C403C] focus:ring-2 focus:ring-[#EEC200]"
             />
           </label>
@@ -494,7 +700,7 @@ export default function Menu() {
               Kedai Sigma Menu
             </p>
             <h1 className="mt-2 font-['Space_Grotesk',sans-serif] text-4xl font-black uppercase leading-none tracking-[-0.05em] text-[#D9E3F6] sm:text-5xl">
-              Find your menu
+              Temukan menu favoritmu
             </h1>
           </div>
         </section>

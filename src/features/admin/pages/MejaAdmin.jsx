@@ -1,22 +1,38 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  createAdminTable,
+  deleteAdminTable,
+  generateAdminTableQr,
+  getAdminTables,
+  updateAdminTable,
+} from "../../../services/api";
 
 const QR_GENERATOR_URL = "https://id.qr-code-generator.com/";
 const QR_GENERATOR_API_TOKEN = import.meta.env.VITE_QR_CODE_GENERATOR_TOKEN;
-const TABLE_STORAGE_KEY = "kedai-sigma-admin-tables";
+const PUBLIC_FRONTEND_URL = import.meta.env.VITE_FRONTEND_PUBLIC_URL;
+const TABLE_STORAGE_KEY = "kedai-sigma-admin-tables-v2";
 
 const defaultTables = [
   { id: "T-01", name: "Meja 01", capacity: 6, used: 0, status: "Aktif" },
-  { id: "T-02", name: "Meja 02", capacity: 4, used: 2, status: "Aktif" },
+  { id: "T-02", name: "Meja 02", capacity: 4, used: 0, status: "Aktif" },
   { id: "T-03", name: "Meja 03", capacity: 6, used: 0, status: "Maintenance" },
-  { id: "T-04", name: "Meja 04", capacity: 4, used: 4, status: "Aktif" },
+  { id: "T-04", name: "Meja 04", capacity: 4, used: 0, status: "Aktif" },
   { id: "T-05", name: "Meja 05", capacity: 4, used: 0, status: "Aktif" },
-  { id: "T-06", name: "Meja 06", capacity: 4, used: 1, status: "Aktif" },
+  { id: "T-06", name: "Meja 06", capacity: 4, used: 0, status: "Aktif" },
   { id: "T-07", name: "Meja 07", capacity: 4, used: 0, status: "Aktif" },
   { id: "T-08", name: "Meja 08", capacity: 4, used: 0, status: "Aktif" },
 ];
 
 const inputClass =
   "h-10 w-full rounded-lg border border-[#C3C6D7] bg-white px-3 text-sm font-semibold text-[#191C1E] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15";
+
+const isLocalHost = (hostname) =>
+  ["localhost", "127.0.0.1", "::1"].includes(hostname);
+
+const isPrivateNetworkHost = (hostname) =>
+  /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
+  /^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
+  /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname);
 
 const parseSeatCount = (value, fallback = 0) => {
   const parsed = Number(value);
@@ -28,6 +44,23 @@ const parseSeatCount = (value, fallback = 0) => {
   return Math.max(Math.round(parsed), 0);
 };
 
+const getTableNumber = (value, fallback = "") => {
+  const number = String(value || "").match(/\d+/)?.[0];
+
+  if (!number) {
+    return fallback;
+  }
+
+  return String(Number(number)).padStart(2, "0");
+};
+
+const getTableDisplayId = (name, id, fallbackNumber) => {
+  const tableNumber =
+    getTableNumber(name) || getTableNumber(id) || fallbackNumber;
+
+  return `T-${tableNumber}`;
+};
+
 const normalizeTable = (table, index = 0) => {
   const fallbackNumber = String(index + 1).padStart(2, "0");
   const capacity = Math.max(parseSeatCount(table.capacity, 4), 1);
@@ -37,10 +70,42 @@ const normalizeTable = (table, index = 0) => {
       ? 0
       : Math.min(parseSeatCount(table.used, 0), capacity);
   const name = String(table.name || "").trim() || `Meja ${fallbackNumber}`;
-  const id = String(table.id || "").trim() || `T-${fallbackNumber}`;
+  const id = getTableDisplayId(name, table.id, fallbackNumber);
 
-  return { id, name, capacity, used, status };
+  return {
+    backendId: table.backendId,
+    id,
+    name,
+    capacity,
+    used,
+    status,
+    qrCode: table.qrCode,
+  };
 };
+
+const mapTableFromApi = (table, index = 0) => {
+  const fallbackNumber = String(index + 1).padStart(2, "0");
+  const tableNumber = String(table.nomor_meja || fallbackNumber);
+  const displayNumber = getTableNumber(tableNumber, fallbackNumber);
+
+  return normalizeTable(
+    {
+      backendId: table.id ?? table.id_meja,
+      id: `T-${displayNumber}`,
+      name: tableNumber.toLowerCase().includes("meja")
+        ? tableNumber
+        : `Meja ${tableNumber}`,
+      capacity: table.capacity ?? 4,
+      used: table.used_seats ?? 0,
+      status: table.status_meja === "maintenance" ? "Maintenance" : "Aktif",
+      qrCode: table.qr_code,
+    },
+    index,
+  );
+};
+
+const withTableDisplayIds = (tables) =>
+  tables.map((table, index) => normalizeTable(table, index));
 
 const loadStoredTables = () => {
   if (typeof window === "undefined") {
@@ -53,7 +118,7 @@ const loadStoredTables = () => {
     );
 
     if (Array.isArray(storedTables) && storedTables.length) {
-      return storedTables.map(normalizeTable);
+      return withTableDisplayIds(storedTables);
     }
   } catch (error) {
     console.warn("Gagal membaca data meja:", error);
@@ -62,10 +127,15 @@ const loadStoredTables = () => {
   return defaultTables;
 };
 
-const getAvailableSeats = (table) =>
-  table.status === "Maintenance"
-    ? 0
-    : Math.max(table.capacity - table.used, 0);
+const getTableMode = (table) => {
+  if (table.status === "Maintenance") {
+    return "Maintenance";
+  }
+
+  return table.used > 0 ? "Terpakai" : "Tersedia";
+};
+
+const getUsedMarker = (mode) => (mode === "Terpakai" ? 1 : 0);
 
 const getTableState = (table) => {
   if (table.status === "Maintenance") {
@@ -75,16 +145,6 @@ const getTableState = (table) => {
       dotClass: "bg-[#BA1A1A]",
       cardClass: "border border-[#FFDAD6] bg-[#F2F4F6]",
       iconClass: "bg-[#FFDAD6]/60 text-[#BA1A1A]",
-    };
-  }
-
-  if (getAvailableSeats(table) === 0) {
-    return {
-      label: "Penuh",
-      badgeClass: "bg-[#FFE6A7] text-[#765800]",
-      dotClass: "bg-[#B88A00]",
-      cardClass: "bg-white shadow-sm",
-      iconClass: "bg-[#FFF4CE] text-[#8A6A00]",
     };
   }
 
@@ -116,12 +176,35 @@ const getNextTableId = (tables) => {
   return `T-${String(highestNumber + 1).padStart(2, "0")}`;
 };
 
-const getQrMenuUrl = (table) => {
-  const baseUrl =
-    typeof window !== "undefined" ? window.location.origin : "http://localhost:5173";
-  const url = new URL("/qr/menu", baseUrl);
+const getFrontendOrigin = () => {
+  if (typeof window !== "undefined" && window.location?.hostname) {
+    const { hostname, origin } = window.location;
 
-  url.searchParams.set("table", table.id);
+    if (!isLocalHost(hostname) && isPrivateNetworkHost(hostname)) {
+      return origin;
+    }
+  }
+
+  const configuredUrl = String(PUBLIC_FRONTEND_URL || "").trim();
+
+  if (configuredUrl) {
+    return configuredUrl.replace(/\/+$/, "");
+  }
+
+  return typeof window !== "undefined"
+    ? window.location.origin
+    : "http://localhost:5173";
+};
+
+const getQrMenuUrl = (table) => {
+  const url = new URL("/qr/menu", getFrontendOrigin());
+
+  if (table.backendId) {
+    url.searchParams.set("meja_id", table.backendId);
+  } else {
+    url.searchParams.set("table", table.id);
+  }
+
   url.searchParams.set("name", table.name);
 
   return url.toString();
@@ -243,32 +326,20 @@ function AddTableModal({ suggestedId, onClose, onSave }) {
   const tableNumber = suggestedId.replace("T-", "");
   const [form, setForm] = useState({
     name: `Meja ${tableNumber}`,
-    capacity: 4,
-    used: 0,
-    status: "Aktif",
+    capacity: "4",
+    status: "Tersedia",
   });
-  const capacity = Math.max(parseSeatCount(form.capacity, 4), 1);
-  const used =
-    form.status === "Maintenance"
-      ? 0
-      : Math.min(parseSeatCount(form.used, 0), capacity);
-  const available = form.status === "Maintenance" ? 0 : capacity - used;
+  const rawCapacity = parseSeatCount(form.capacity, 0);
+  const capacity = Math.max(rawCapacity, 1);
 
   const handleChange = (field, value) => {
     setForm((current) => {
       if (field === "capacity") {
-        const nextCapacity = Math.max(parseSeatCount(value, current.capacity), 1);
-        return {
-          ...current,
-          capacity: nextCapacity,
-          used: Math.min(parseSeatCount(current.used, 0), nextCapacity),
-        };
-      }
+        const nextValue = value.replace(/\D/g, "");
 
-      if (field === "used") {
         return {
           ...current,
-          used: Math.min(parseSeatCount(value, 0), capacity),
+          capacity: nextValue,
         };
       }
 
@@ -276,7 +347,6 @@ function AddTableModal({ suggestedId, onClose, onSave }) {
         return {
           ...current,
           status: value,
-          used: value === "Maintenance" ? 0 : current.used,
         };
       }
 
@@ -291,8 +361,8 @@ function AddTableModal({ suggestedId, onClose, onSave }) {
       id: suggestedId,
       name: form.name.trim() || `Meja ${tableNumber}`,
       capacity,
-      used,
-      status: form.status,
+      used: getUsedMarker(form.status),
+      status: form.status === "Maintenance" ? "Maintenance" : "Aktif",
     });
   };
 
@@ -336,8 +406,9 @@ function AddTableModal({ suggestedId, onClose, onSave }) {
               Kapasitas
             </span>
             <input
-              type="number"
-              min="1"
+              type="text"
+              inputMode="numeric"
+              min="0"
               value={form.capacity}
               onChange={(event) => handleChange("capacity", event.target.value)}
               className={`mt-2 ${inputClass}`}
@@ -346,39 +417,18 @@ function AddTableModal({ suggestedId, onClose, onSave }) {
 
           <label>
             <span className="text-xs font-bold uppercase text-[#434655]">
-              Terpakai
-            </span>
-            <input
-              type="number"
-              min="0"
-              max={capacity}
-              value={used}
-              disabled={form.status === "Maintenance"}
-              onChange={(event) => handleChange("used", event.target.value)}
-              className={`mt-2 ${inputClass} disabled:bg-[#F2F4F6] disabled:text-[#434655]`}
-            />
-          </label>
-
-          <label>
-            <span className="text-xs font-bold uppercase text-[#434655]">
-              Status Operasional
+              Status Meja
             </span>
             <select
               value={form.status}
               onChange={(event) => handleChange("status", event.target.value)}
               className={`mt-2 ${inputClass}`}
             >
-              <option value="Aktif">Aktif</option>
+              <option value="Tersedia">Tersedia</option>
+              <option value="Terpakai">Terpakai</option>
               <option value="Maintenance">Maintenance</option>
             </select>
           </label>
-
-          <div className="rounded-lg bg-[#F2F4F6] p-4">
-            <p className="text-xs font-bold uppercase text-[#434655]">Tersedia</p>
-            <p className="mt-1 text-3xl font-black text-[#006C49]">
-              {available}
-            </p>
-          </div>
         </div>
 
         <footer className="flex justify-end gap-3 bg-[#F2F4F6] px-6 py-5">
@@ -484,12 +534,12 @@ function QrPreviewModal({ table, onClose }) {
           </button>
         </header>
 
-        <div className="grid gap-6 p-6 sm:grid-cols-[220px_1fr]">
+        <div className="grid gap-6 p-6 sm:grid-cols-[224px_1fr]">
           <div className="flex flex-col items-center rounded-xl border border-[#E6E8EA] bg-[#F7F9FB] p-4">
             <img
               src={qrImageUrl}
               alt={`QR untuk ${table.name}`}
-              className="h-[190px] w-[190px] rounded-lg bg-white object-contain p-2"
+              className="h-[188px] w-[188px] rounded-lg bg-white object-contain p-2"
             />
             <span className="mt-3 rounded-full bg-[#EFF6FF] px-3 py-1 text-[10px] font-bold uppercase text-[#004AC6]">
               {table.id}
@@ -542,29 +592,52 @@ function QrPreviewModal({ table, onClose }) {
 }
 
 function TableCard({ table, onDelete, onGenerateQr, onUpdate }) {
-  const available = getAvailableSeats(table);
+  const [capacityInput, setCapacityInput] = useState(String(table.capacity));
   const tableState = getTableState(table);
+  const tableMode = getTableMode(table);
   const isMaintenance = table.status === "Maintenance";
+  const statusTextClass = isMaintenance
+    ? "text-[#BA1A1A]"
+    : table.used > 0
+      ? "text-[#004AC6]"
+      : "text-[#006C49]";
 
   const handleCapacityChange = (event) => {
-    const capacity = Math.max(parseSeatCount(event.target.value, table.capacity), 1);
+    const nextValue = event.target.value.replace(/\D/g, "");
+    setCapacityInput(nextValue);
+
+    if (!nextValue) {
+      return;
+    }
+
+    const capacity = parseSeatCount(nextValue, table.capacity);
+
+    if (capacity < 1) {
+      return;
+    }
+
     onUpdate(table.id, {
       capacity,
-      used: Math.min(table.used, capacity),
+      used: table.used > 0 ? 1 : 0,
     });
   };
 
-  const handleUsedChange = (event) => {
+  const handleCapacityBlur = () => {
+    const capacity = Math.max(parseSeatCount(capacityInput, table.capacity), 1);
+
+    setCapacityInput(String(capacity));
     onUpdate(table.id, {
-      used: Math.min(parseSeatCount(event.target.value, table.used), table.capacity),
+      capacity,
+      used: table.used > 0 ? 1 : 0,
     });
   };
 
   const handleStatusChange = (event) => {
-    const status = event.target.value;
+    const mode = event.target.value;
+
     onUpdate(table.id, {
-      status,
-      used: status === "Maintenance" ? 0 : Math.min(table.used, table.capacity),
+      status: mode === "Maintenance" ? "Maintenance" : "Aktif",
+      used: getUsedMarker(mode),
     });
   };
 
@@ -606,15 +679,17 @@ function TableCard({ table, onDelete, onGenerateQr, onUpdate }) {
       <div className="mt-5 grid grid-cols-2 gap-3">
         <div className="rounded-lg bg-[#F2F4F6] p-3">
           <p className="text-[10px] font-bold uppercase text-[#434655]">
-            Tersedia
+            Kapasitas
           </p>
-          <p className="mt-1 text-2xl font-black text-[#006C49]">{available}</p>
+          <p className="mt-1 text-2xl font-black text-[#191C1E]">{table.capacity}</p>
         </div>
         <div className="rounded-lg bg-[#F2F4F6] p-3">
           <p className="text-[10px] font-bold uppercase text-[#434655]">
-            Terpakai
+            Status
           </p>
-          <p className="mt-1 text-2xl font-black text-[#004AC6]">{table.used}</p>
+          <p className={`mt-1 text-lg font-black ${statusTextClass}`}>
+            {tableState.label}
+          </p>
         </div>
       </div>
 
@@ -624,39 +699,27 @@ function TableCard({ table, onDelete, onGenerateQr, onUpdate }) {
             Ubah Kapasitas
           </span>
           <input
-            type="number"
-            min="1"
-            value={table.capacity}
+            type="text"
+            inputMode="numeric"
+            min="0"
+            value={capacityInput}
             onChange={handleCapacityChange}
+            onBlur={handleCapacityBlur}
             className={`mt-1 ${inputClass}`}
           />
         </label>
 
         <label>
           <span className="text-[10px] font-bold uppercase text-[#434655]">
-            Kursi Terpakai
-          </span>
-          <input
-            type="number"
-            min="0"
-            max={table.capacity}
-            value={table.used}
-            disabled={isMaintenance}
-            onChange={handleUsedChange}
-            className={`mt-1 ${inputClass} disabled:bg-[#F2F4F6] disabled:text-[#434655]`}
-          />
-        </label>
-
-        <label>
-          <span className="text-[10px] font-bold uppercase text-[#434655]">
-            Operasional
+            Status Meja
           </span>
           <select
-            value={table.status}
+            value={tableMode}
             onChange={handleStatusChange}
             className={`mt-1 ${inputClass}`}
           >
-            <option value="Aktif">Aktif</option>
+            <option value="Tersedia">Tersedia</option>
+            <option value="Terpakai">Terpakai</option>
             <option value="Maintenance">Maintenance</option>
           </select>
         </label>
@@ -697,6 +760,33 @@ export default function MejaAdmin() {
   const suggestedTableId = useMemo(() => getNextTableId(tables), [tables]);
 
   useEffect(() => {
+    let isMounted = true;
+
+    getAdminTables()
+      .then((response) => {
+        if (isMounted) {
+          const apiTables = withTableDisplayIds(
+            (response.data || []).map(mapTableFromApi),
+          );
+          setTables(apiTables.length ? apiTables : defaultTables);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setTables((currentTables) =>
+            currentTables.map((table, index) =>
+              normalizeTable({ ...table, used: 0 }, index),
+            ),
+          );
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     window.localStorage.setItem(TABLE_STORAGE_KEY, JSON.stringify(tables));
   }, [tables]);
 
@@ -706,11 +796,8 @@ export default function MejaAdmin() {
       (total, table) => total + table.capacity,
       0
     );
-    const usedSeats = activeTables.reduce((total, table) => total + table.used, 0);
-    const availableSeats = activeTables.reduce(
-      (total, table) => total + getAvailableSeats(table),
-      0
-    );
+    const occupiedTables = activeTables.filter((table) => table.used > 0).length;
+    const availableTables = Math.max(activeTables.length - occupiedTables, 0);
     const maintenanceTables = tables.length - activeTables.length;
 
     return [
@@ -727,43 +814,132 @@ export default function MejaAdmin() {
         valueClass: "text-[#191C1E]",
       },
       {
-        label: "Tersedia",
-        value: availableSeats,
-        description: "Kursi kosong saat ini",
+        label: "Meja Tersedia",
+        value: availableTables,
+        description: "Meja yang bisa ditempati",
         valueClass: "text-[#006C49]",
         borderClass: "border-l-4 border-[#006C49]",
       },
       {
-        label: "Terpakai",
-        value: usedSeats,
-        description: "Kursi sedang digunakan",
+        label: "Meja Terpakai",
+        value: occupiedTables,
+        description: "Meja yang sedang dipakai",
         valueClass: "text-[#BA1A1A]",
         borderClass: "border-l-4 border-[#BA1A1A]",
       },
     ];
   }, [tables]);
 
-  const handleAddTable = (newTable) => {
-    setTables((currentTables) => [
-      normalizeTable(newTable, currentTables.length),
-      ...currentTables,
-    ]);
+  const handleAddTable = async (newTable) => {
+    const normalizedTable = normalizeTable(newTable, tables.length);
+
+    setTables((currentTables) =>
+      withTableDisplayIds([...currentTables, normalizedTable]),
+    );
     setIsAddModalOpen(false);
+
+    try {
+      const response = await createAdminTable({
+        nomor_meja: normalizedTable.name,
+        capacity: normalizedTable.capacity,
+        used_seats: normalizedTable.used,
+        status_meja:
+          normalizedTable.status === "Maintenance" ? "maintenance" : "active",
+      });
+      const createdTable = mapTableFromApi(response.data);
+
+      setTables((currentTables) =>
+        withTableDisplayIds(
+          currentTables.map((table) =>
+            table.id === normalizedTable.id ? createdTable : table,
+          ),
+        ),
+      );
+    } catch (error) {
+      console.error("Gagal menambah meja:", error);
+    }
   };
 
   const handleUpdateTable = (tableId, updates) => {
+    const targetTable = tables.find((table) => table.id === tableId);
+
     setTables((currentTables) =>
       currentTables.map((table, index) =>
         table.id === tableId ? normalizeTable({ ...table, ...updates }, index) : table
       )
     );
+
+    if (!targetTable?.backendId) {
+      return;
+    }
+
+    const payload = {};
+
+    if (updates.status) {
+      payload.status_meja = updates.status === "Maintenance" ? "maintenance" : "active";
+    }
+
+    if (updates.name) {
+      payload.nomor_meja = updates.name;
+    }
+
+    if (updates.capacity !== undefined) {
+      payload.capacity = updates.capacity;
+    }
+
+    if (updates.used !== undefined) {
+      payload.used_seats = updates.used;
+    }
+
+    if (Object.keys(payload).length) {
+      updateAdminTable(targetTable.backendId, payload).catch((error) => {
+        console.error("Gagal memperbarui meja:", error);
+      });
+    }
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
+    const target = deleteTarget;
+
     setTables((currentTables) =>
-      currentTables.filter((table) => table.id !== deleteTarget.id)
+      withTableDisplayIds(currentTables.filter((table) => table.id !== target.id))
     );
     setDeleteTarget(null);
+
+    if (target?.backendId) {
+      try {
+        await deleteAdminTable(target.backendId);
+      } catch (error) {
+        console.error("Gagal menghapus meja:", error);
+      }
+    }
+  };
+
+  const handleGenerateQr = async (table) => {
+    if (!table.backendId) {
+      setQrTarget(table);
+      return;
+    }
+
+    try {
+      const response = await generateAdminTableQr(table.backendId);
+      const updatedTable = {
+        ...mapTableFromApi(response.data),
+        id: table.id,
+      };
+
+      setTables((currentTables) =>
+        withTableDisplayIds(
+          currentTables.map((item) =>
+            item.backendId === updatedTable.backendId ? updatedTable : item,
+          ),
+        ),
+      );
+      setQrTarget(updatedTable);
+    } catch (error) {
+      console.error("Gagal generate QR:", error);
+      setQrTarget(table);
+    }
   };
 
   return (
@@ -775,7 +951,7 @@ export default function MejaAdmin() {
               Kelola Meja & QR
             </h1>
             <p className="mt-2 text-sm font-medium leading-5 text-[#434655]">
-              Atur status meja, kapasitas, kursi terpakai, dan kode QR pelanggan.
+              Atur status meja, kapasitas, dan kode QR pelanggan.
             </p>
           </div>
 
@@ -813,7 +989,7 @@ export default function MejaAdmin() {
                   key={table.id}
                   table={table}
                   onDelete={setDeleteTarget}
-                  onGenerateQr={setQrTarget}
+                  onGenerateQr={handleGenerateQr}
                   onUpdate={handleUpdateTable}
                 />
               ))}

@@ -1,6 +1,7 @@
 import { Link, useOutletContext, useSearchParams } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import QRMenuCard from "../../../components/qr/QRMenuCard";
+import { getQrMenu } from "../../../services/api";
 import americanoImage from "../../../assets/Americano.jpg";
 import ayamPopcornImage from "../../../assets/Ayam Popcorn.jpg";
 import coklatClassicImage from "../../../assets/Coklat Clasic.jpg";
@@ -344,11 +345,170 @@ const menuItems = [
 ];
 
 const categoryTabs = [
-  { label: "all menu", value: "all" },
-  { label: "coffee", value: "coffee" },
-  { label: "non-coffee", value: "non-coffee" },
-  { label: "food", value: "food" },
+  { label: "semua menu", value: "all" },
+  { label: "makanan", value: "food" },
+  { label: "kopi", value: "coffee-based" },
+  { label: "kopi susu", value: "coffee-milk" },
+  { label: "teh", value: "tea-series" },
+  { label: "susu", value: "milk-series" },
 ];
+
+const imageByName = {
+  americano: americanoImage,
+  "ayam popcorn": ayamPopcornImage,
+  "coklat classic": coklatClassicImage,
+  "coklat classic roti": coklatClassicRotiImage,
+  "coffee bear": coffeeBearImage,
+  "coffee latte": coffeeLatteImage,
+  "caffe latte": coffeeLatteImage,
+  "coffee milk": coffeeMilkImage,
+  "coffee milk chocolate": coffeeMilkChocolateImage,
+  "coffee milk chocholate": coffeeMilkChocolateImage,
+  "coffee milk v2": coffeeMilkV2Image,
+  espresso: espressoImage,
+  "indomie nyemek halu": indomieNyemekHaluImage,
+  "indomie nyemek vinsen": indomieNyemekVinsenImage,
+  joshua: joshuaImage,
+  kentang: kentangImage,
+  "kentang goreng": kentangImage,
+  "kopi tubruk": kopiTubrukImage,
+  "kopi tubruk susu": kopiTubrukSusuImage,
+  "lemon tea": lemonTeaImage,
+  "lychee tea": lycheeTeaImage,
+  matcha: matchaImage,
+  milo: miloImage,
+  "mix platter": mixPlatterImage,
+  nugget: nuggetImage,
+  piscok: piscokImage,
+  redvelvet: redvelvetImage,
+  "risol mayo": risolMayoImage,
+  "siomay ayam": siomayAyamImage,
+  "sosis solo": sosisSoloImage,
+  "strawberry milk": strawberryMilkImage,
+  "tahu bakso goreng": tahuBaksoGorengImage,
+  "teh tarik": tehTarikImage,
+  "tarik tea": tehTarikImage,
+  "v6 drip": v6DripImage,
+  "v6 drip susu": v6DripSusuImage,
+};
+
+const slugify = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+const staticMenuBySlug = new Map(menuItems.map((item) => [slugify(item.name), item]));
+
+const inferCategory = (categoryName) => {
+  const normalized = String(categoryName || "").toLowerCase();
+
+  if (normalized.includes("makan") || normalized.includes("food")) {
+    return "food";
+  }
+
+  if (normalized.includes("tea") || normalized.includes("teh")) {
+    return "tea-series";
+  }
+
+  if (normalized.includes("coffee milk") || normalized.includes("kopi susu")) {
+    return "coffee-milk";
+  }
+
+  if (normalized.includes("milk") || normalized.includes("susu")) {
+    return "milk-series";
+  }
+
+  if (
+    normalized.includes("kopi") ||
+    normalized.includes("coffee") ||
+    normalized.includes("espresso")
+  ) {
+    return "coffee-based";
+  }
+
+  return "milk-series";
+};
+
+const inferCategoryFromMenuItem = (item) => {
+  const normalizedName = String(item.name || "").toLowerCase();
+
+  if (item.category === "food") {
+    return "food";
+  }
+
+  if (normalizedName.includes("tea") || normalizedName.includes("teh")) {
+    return "tea-series";
+  }
+
+  if (
+    normalizedName.includes("coffee milk") ||
+    normalizedName.includes("latte") ||
+    normalizedName.includes("kopi tubruk susu") ||
+    normalizedName.includes("v6 drip susu")
+  ) {
+    return "coffee-milk";
+  }
+
+  if (
+    normalizedName.includes("milo") ||
+    normalizedName.includes("joshua") ||
+    normalizedName.includes("matcha") ||
+    normalizedName.includes("redvelvet") ||
+    normalizedName.includes("coklat") ||
+    normalizedName.includes("strawberry milk")
+  ) {
+    return "milk-series";
+  }
+
+  return item.category === "coffee" ? "coffee-based" : item.category;
+};
+
+const getTemperatureOptionsFromType = (optionType, baseItem, price) => {
+  if (baseItem?.temperatureOptions?.length) {
+    return baseItem.temperatureOptions;
+  }
+
+  if (optionType === "hot") {
+    return [{ id: "hot", label: "Hot", price }];
+  }
+
+  if (optionType === "ice") {
+    return [{ id: "ice", label: "Ice", price }];
+  }
+
+  if (optionType === "hot_ice") {
+    return [
+      { id: "hot", label: "Hot", price },
+      { id: "ice", label: "Ice", price },
+    ];
+  }
+
+  return [];
+};
+
+const mapMenuFromApi = (item) => {
+  const name = item.nama_produk || "Menu";
+  const imageKey = name.toLowerCase();
+  const baseItem = staticMenuBySlug.get(slugify(name));
+  const price = Number(item.harga_produk) || baseItem?.price || 0;
+  const rawId = item.id ?? item.id_produk;
+
+  return {
+    ...(baseItem || {}),
+    id: baseItem?.id || slugify(`${rawId}-${name}`),
+    productId: rawId,
+    name,
+    category: inferCategory(item.kategori?.nama_kategori || baseItem?.category),
+    price,
+    priceLabel: baseItem?.priceLabel || `${Math.round(price / 1000)}K`,
+    image: baseItem?.image || imageByName[imageKey] || coffeeMilkImage,
+    description: item.deskripsi_produk || baseItem?.description || "Menu Kedai Sigma.",
+    temperatureOptions: getTemperatureOptionsFromType(item.opsi_suhu, baseItem, price),
+    isAvailable: item.ketersediaan_produk !== "tidak_tersedia",
+  };
+};
 
 function SearchIcon() {
   return (
@@ -478,7 +638,7 @@ function AddMenuModal({ item, onClose, onConfirm }) {
                   <button
                     type="button"
                     onClick={() => setQuantity((current) => Math.max(current - 1, 1))}
-                    className="flex h-[11px] w-[10px] items-center justify-center rounded-full bg-[#BA1A1A] text-white"
+                    className="flex h-5 w-5 items-center justify-center rounded-full bg-[#BA1A1A] text-white"
                     aria-label="Kurangi jumlah menu"
                   >
                     <MinusIcon className="h-2.5 w-2.5" />
@@ -489,7 +649,7 @@ function AddMenuModal({ item, onClose, onConfirm }) {
                   <button
                     type="button"
                     onClick={() => setQuantity((current) => current + 1)}
-                    className="flex h-[11px] w-[10px] items-center justify-center rounded-full bg-white text-[#BA1A1A]"
+                    className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[#BA1A1A]"
                     aria-label="Tambah jumlah menu"
                   >
                     <PlusIcon className="h-2.5 w-2.5" />
@@ -509,7 +669,7 @@ function AddMenuModal({ item, onClose, onConfirm }) {
                       className="flex h-[21px] w-full items-center justify-between border-b border-white/15 text-left font-['Source_Sans_3',Arial,sans-serif] text-[10px] font-bold uppercase leading-[10px] tracking-[-1.2px] text-white"
                     >
                       <span>
-                        {option.label} idr {Math.round(option.price / 1000)}k
+                        {option.label} Rp {Math.round(option.price / 1000)}k
                       </span>
                       <span
                         className={`flex h-4 w-[15px] items-center justify-center rounded-full ${
@@ -533,8 +693,8 @@ function AddMenuModal({ item, onClose, onConfirm }) {
           <textarea
             value={note}
             onChange={(event) => setNote(event.target.value)}
-            placeholder="Misal: less sugar & less ice kak"
-            className="mt-1 h-[156px] w-full resize-none border-2 border-[#5C403C] bg-transparent px-1 py-1 font-['Space_Grotesk',Arial,sans-serif] text-[10px] font-normal leading-[10px] tracking-[-0.45px] text-white outline-none placeholder:text-white"
+            placeholder="Misal: gula sedikit dan es sedikit"
+            className="mt-1 h-[156px] w-full resize-none border border-white/15 bg-white/5 px-2 py-2 font-['Space_Grotesk',Arial,sans-serif] text-[10px] font-normal leading-[12px] tracking-normal text-white/80 outline-none placeholder:text-white/25 focus:border-[#EEC200]/60"
           />
         </div>
 
@@ -555,7 +715,7 @@ function CartSuccessModal({ onClose }) {
     <div className="fixed inset-0 z-50 flex animate-[qr-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
       <section className="relative h-[338px] w-[min(348px,calc(100vw-32px))] animate-[qr-modal-panel_260ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-xl bg-[#091421] shadow-[0_1px_2px_rgba(0,0,0,0.05),0_24px_70px_rgba(0,0,0,0.32)]">
         <header className="flex h-[44px] items-start justify-center border-b border-white/50 pt-3">
-          <h2 className="text-xl font-normal leading-5 text-white">System</h2>
+          <h2 className="text-xl font-normal leading-5 text-white">Sistem</h2>
         </header>
 
         <div className="flex h-[248px] items-center justify-center px-10">
@@ -577,24 +737,61 @@ function CartSuccessModal({ onClose }) {
 }
 
 export default function QRMenu() {
-  const { addToCart, cartCount } = useOutletContext();
+  const { addToCart, cartCount, setQrTable } = useOutletContext();
   const [searchParams] = useSearchParams();
   const [activeCategory, setActiveCategory] = useState("all");
   const [query, setQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(4);
   const [configItem, setConfigItem] = useState(null);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [apiMenuItems, setApiMenuItems] = useState(null);
+  const [apiTableName, setApiTableName] = useState("");
+  const mejaId = searchParams.get("meja_id");
+  const tableQuery = searchParams.get("table");
+  const nameQuery = searchParams.get("name");
   const tableLabel =
-    searchParams.get("name") || searchParams.get("table") || "Meja 04";
+    apiTableName || nameQuery || tableQuery || "Meja 04";
   const queryString = searchParams.toString();
   const cartPath = queryString ? `/qr/keranjang?${queryString}` : "/qr/keranjang";
+  const activeMenuItems = apiMenuItems ?? menuItems;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getQrMenu({
+      meja_id: mejaId,
+      table: tableQuery,
+      name: nameQuery,
+    })
+      .then((response) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setApiMenuItems((response.data?.menu || []).map(mapMenuFromApi));
+        setApiTableName(response.data?.meja?.nomor_meja || "");
+        setQrTable?.(response.data?.meja || null);
+      })
+      .catch(() => {
+        if (isMounted) {
+          setApiMenuItems(null);
+          setApiTableName("");
+          setQrTable?.(null);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [mejaId, nameQuery, setQrTable, tableQuery]);
 
   const filteredItems = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
-    return menuItems.filter((item) => {
+    return activeMenuItems.filter((item) => {
+      const itemCategory = inferCategoryFromMenuItem(item);
       const matchesCategory =
-        activeCategory === "all" || item.category === activeCategory;
+        activeCategory === "all" || itemCategory === activeCategory;
       const matchesQuery =
         !normalizedQuery ||
         item.name.toLowerCase().includes(normalizedQuery) ||
@@ -602,12 +799,16 @@ export default function QRMenu() {
 
       return matchesCategory && matchesQuery;
     });
-  }, [activeCategory, query]);
+  }, [activeCategory, activeMenuItems, query]);
 
   const visibleItems = filteredItems.slice(0, visibleCount);
   const hasMore = filteredItems.length > visibleCount;
 
   const handleAddRequest = (item) => {
+    if (item.isAvailable === false) {
+      return;
+    }
+
     if (item.temperatureOptions?.length) {
       setConfigItem(item);
       return;

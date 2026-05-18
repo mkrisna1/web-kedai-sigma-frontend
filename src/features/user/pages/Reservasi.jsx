@@ -2,6 +2,7 @@ import { useState } from "react";
 import fotoKedai1 from "../../../assets/Foto Kedai 1.png";
 import fotoKedai2 from "../../../assets/Foto Kedai 2.PNG";
 import logoSigma from "../../../assets/Logo Sigma.png";
+import { createPublicReservation } from "../../../services/api";
 
 const inputClass =
   "h-[62px] w-full border-0 border-b-2 border-[#5C403C] bg-transparent px-1 py-4 font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-7 text-[#D9E3F6] outline-none transition placeholder:text-[#94A3B8]/75 focus:border-[#EEC200]";
@@ -81,6 +82,7 @@ function CheckBadgeIcon({ className = "h-8 w-8" }) {
 }
 
 const days = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+const INDONESIA_TIME_ZONE = "Asia/Jakarta";
 const monthNames = [
   "Januari",
   "Februari",
@@ -118,18 +120,39 @@ function formatDateValue(year, month, date) {
   return `${String(month + 1).padStart(2, "0")}/${String(date).padStart(2, "0")}/${year}`;
 }
 
+function getIndonesiaToday() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: INDONESIA_TIME_ZONE,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  }).formatToParts(new Date());
+  const getPart = (type) => Number(parts.find((part) => part.type === type)?.value);
+
+  return new Date(getPart("year"), getPart("month") - 1, getPart("day"));
+}
+
 function getDateFromValue(value) {
   if (!value) {
-    return new Date();
+    return getIndonesiaToday();
   }
 
   const [month, date, year] = value.split("/").map(Number);
 
   if (!month || !date || !year) {
-    return new Date();
+    return getIndonesiaToday();
   }
 
   return new Date(year, month - 1, date);
+}
+
+function toApiDate(value) {
+  const date = getDateFromValue(value);
+
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+    2,
+    "0",
+  )}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function isSameDate(firstDate, secondDate) {
@@ -141,7 +164,7 @@ function isSameDate(firstDate, secondDate) {
 }
 
 function CalendarPopup({ selectedDate, onClose, onSelect }) {
-  const today = new Date();
+  const today = getIndonesiaToday();
   const selectedDateObject = getDateFromValue(selectedDate);
   const [visibleMonth, setVisibleMonth] = useState(selectedDateObject.getMonth());
   const [visibleYear, setVisibleYear] = useState(selectedDateObject.getFullYear());
@@ -374,7 +397,7 @@ function ReservationSuccessPopup({ onClose }) {
         <div className="relative flex min-h-[330px] flex-col border-b border-white/40 px-6 py-8 sm:min-h-[359px] sm:px-10 md:px-16">
           <div className="flex items-center justify-center border-b border-white/40 pb-8 sm:justify-start">
             <p className="font-['Be_Vietnam_Pro',sans-serif] text-xl leading-5 text-white">
-              System
+              Sistem
             </p>
           </div>
 
@@ -417,7 +440,7 @@ function ReservationSuccessPopup({ onClose }) {
   );
 }
 
-function ReservationWarningPopup({ onClose }) {
+function ReservationWarningPopup({ message, onClose }) {
   return (
     <div
       className="fixed inset-0 z-50 flex animate-[popup-backdrop_180ms_ease-out] items-center justify-center bg-black/60 px-4 py-8 backdrop-blur-sm"
@@ -428,7 +451,7 @@ function ReservationWarningPopup({ onClose }) {
       <div className="w-full max-w-[520px] animate-[popup-panel_220ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-xl border border-[#EEC200]/30 bg-[#091421] shadow-[0_24px_70px_rgba(0,0,0,0.55)]">
         <div className="border-b border-white/25 px-6 py-5 sm:px-8">
           <p className="font-['Be_Vietnam_Pro',sans-serif] text-xl leading-5 text-white">
-            System
+            Sistem
           </p>
         </div>
 
@@ -443,7 +466,7 @@ function ReservationWarningPopup({ onClose }) {
             Mohon isi yang lengkap
           </h2>
           <p className="mx-auto mt-3 max-w-[360px] font-['Be_Vietnam_Pro',sans-serif] text-sm leading-6 text-white/70">
-            Lengkapi nama, nomor telepon, tanggal, waktu, jumlah orang, dan catatan sebelum mengirim reservasi.
+            {message}
           </p>
         </div>
 
@@ -471,6 +494,10 @@ export default function Reservasi() {
   const [openPicker, setOpenPicker] = useState(null);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [showWarningPopup, setShowWarningPopup] = useState(false);
+  const [warningMessage, setWarningMessage] = useState(
+    "Lengkapi nama, nomor telepon, tanggal, waktu, dan jumlah orang sebelum mengirim reservasi.",
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -482,7 +509,7 @@ export default function Reservasi() {
     }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setOpenPicker(null);
 
@@ -491,15 +518,43 @@ export default function Reservasi() {
       formData.phone.trim() &&
       selectedDate &&
       selectedTime &&
-      formData.people &&
-      formData.note.trim();
+      formData.people;
 
     if (!isFormComplete) {
+      setWarningMessage(
+        "Lengkapi nama, nomor telepon, tanggal, waktu, dan jumlah orang sebelum mengirim reservasi.",
+      );
       setShowWarningPopup(true);
       return;
     }
 
-    setShowSuccessPopup(true);
+    setIsSubmitting(true);
+
+    try {
+      await createPublicReservation({
+        nama_reservasi: formData.name.trim(),
+        no_hp: formData.phone.trim(),
+        tgl_reservasi: toApiDate(selectedDate),
+        jam_reservasi: selectedTime,
+        jml_orang: Number.parseInt(formData.people, 10) || 1,
+        catatan_reservasi: formData.note.trim(),
+      });
+      setShowSuccessPopup(true);
+      setFormData({
+        name: "",
+        phone: "",
+        people: "",
+        note: "",
+      });
+      setSelectedDate("");
+      setSelectedTime("");
+    } catch (error) {
+      console.error("Gagal membuat reservasi:", error);
+      setWarningMessage(error.message || "Reservasi belum bisa dikirim. Coba lagi sebentar ya.");
+      setShowWarningPopup(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -519,15 +574,15 @@ export default function Reservasi() {
         <div className="mx-auto flex w-full max-w-[1024px] flex-col items-center gap-16">
           <header className="flex flex-col items-center gap-5 text-center">
             <div className="flex flex-col items-center gap-4 sm:flex-row">
-              <SkewBadge>Reserve Now</SkewBadge>
+              <SkewBadge>Reservasi</SkewBadge>
               <p className="font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#EEC200]">
                 Reservasi sekarang biar sigma
               </p>
             </div>
 
             <h1 className="font-['Space_Grotesk',sans-serif] text-6xl font-black uppercase leading-[0.98] tracking-[-0.05em] md:text-[92px]">
-              <span className="block text-[#D9E3F6]">Reserve</span>
-              <span className="block text-[#DC2626]">Your Spot</span>
+              <span className="block text-[#D9E3F6]">Pesan</span>
+              <span className="block text-[#DC2626]">Tempatmu</span>
             </h1>
           </header>
 
@@ -551,7 +606,7 @@ export default function Reservasi() {
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
-                    placeholder="Who are you?"
+                    placeholder="Nama kamu"
                   />
                 </Field>
 
@@ -581,7 +636,7 @@ export default function Reservasi() {
                         className={`${inputClass} flex items-center text-left`}
                       >
                         {selectedDate || (
-                          <span className="text-[#94A3B8]/75">MM/DD/YYYY</span>
+                          <span className="text-[#94A3B8]/75">Pilih tanggal</span>
                         )}
                       </button>
                       {openPicker === "date" && (
@@ -609,7 +664,7 @@ export default function Reservasi() {
                         className={`${inputClass} flex items-center text-left`}
                       >
                         {selectedTime || (
-                          <span className="text-[#94A3B8]/75">--:-- --</span>
+                          <span className="text-[#94A3B8]/75">Pilih waktu</span>
                         )}
                       </button>
                       {openPicker === "time" && (
@@ -666,9 +721,10 @@ export default function Reservasi() {
 
                 <button
                   type="submit"
-                  className="flex h-20 w-full items-center justify-center bg-[#DC2626] px-4 py-6 text-center font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-8 tracking-[0.28em] text-[#FFF6F5] shadow-[0_10px_30px_rgba(220,38,38,0.3)] transition hover:bg-red-700 md:text-2xl"
+                  disabled={isSubmitting}
+                  className="flex h-20 w-full items-center justify-center bg-[#DC2626] px-4 py-6 text-center font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-8 tracking-[0.28em] text-[#FFF6F5] shadow-[0_10px_30px_rgba(220,38,38,0.3)] transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70 md:text-2xl"
                 >
-                  Confirm Reservation
+                  {isSubmitting ? "Mengirim..." : "Konfirmasi Reservasi"}
                 </button>
               </div>
             </form>
@@ -738,7 +794,10 @@ export default function Reservasi() {
         <ReservationSuccessPopup onClose={() => setShowSuccessPopup(false)} />
       )}
       {showWarningPopup && (
-        <ReservationWarningPopup onClose={() => setShowWarningPopup(false)} />
+        <ReservationWarningPopup
+          message={warningMessage}
+          onClose={() => setShowWarningPopup(false)}
+        />
       )}
     </div>
   );
