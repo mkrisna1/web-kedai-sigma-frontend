@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  deleteAdminReviewPhoto,
   deleteAdminReview,
   getAdminReviews,
   replyAdminReview,
@@ -47,9 +48,9 @@ const mapReviewFromApi = (review) => {
     rating: Number(review.rating) || 0,
     comment: review.komentar || "",
     reply: review.balasan_admin || "",
-    verified: Boolean(review.balasan_admin),
     initials: getInitials(review.nama_pelanggan),
     photos: photos.map((src, index) => ({
+      index,
       src,
       alt: `Foto review ${review.nama_pelanggan || "pelanggan"} ${index + 1}`,
     })),
@@ -132,7 +133,7 @@ function Stars({ size = "h-5 w-5", rating = 5 }) {
   );
 }
 
-function ReviewCard({ review, onDelete, onReply }) {
+function ReviewCard({ review, onDelete, onPhotoClick, onReply }) {
   return (
     <article className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
       <div className="flex gap-6">
@@ -169,18 +170,29 @@ function ReviewCard({ review, onDelete, onReply }) {
           {review.photos?.length > 0 ? (
             <div className="mt-3 flex flex-wrap gap-2">
               {review.photos.map((photo) => (
-                <img
+                <figure
                   key={photo.src}
-                  src={photo.src}
-                  alt={photo.alt}
-                  className="h-16 w-16 rounded-lg border border-slate-200 object-cover"
-                />
+                  className="group relative h-20 w-20 overflow-hidden rounded-lg border border-slate-200 bg-slate-100"
+                >
+                  <button
+                    type="button"
+                    onClick={() => onPhotoClick(review, photo)}
+                    className="h-full w-full focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                    aria-label={`Perbesar ${photo.alt}`}
+                  >
+                    <img
+                      src={photo.src}
+                      alt={photo.alt}
+                      className="h-full w-full object-cover transition group-hover:scale-105"
+                    />
+                  </button>
+                </figure>
               ))}
             </div>
           ) : (
-            <div className="mt-3 flex items-center gap-1 text-[10px] font-bold text-[#006C49]">
+            <div className="mt-3 flex items-center gap-1 text-[10px] font-bold text-[#434655]">
               <CheckIcon />
-              <span>Review terverifikasi</span>
+              <span>Tidak ada foto review</span>
             </div>
           )}
 
@@ -190,7 +202,7 @@ function ReviewCard({ review, onDelete, onReply }) {
               onClick={() => onReply(review)}
               className="rounded bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-600 transition hover:bg-blue-100"
             >
-              Balas
+              Balas opsional
             </button>
             <button
               type="button"
@@ -203,6 +215,58 @@ function ReviewCard({ review, onDelete, onReply }) {
         </div>
       </div>
     </article>
+  );
+}
+
+function PhotoPreviewModal({ target, onClose, onDelete }) {
+  if (!target) {
+    return null;
+  }
+
+  const { photo } = target;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/80 p-6 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Preview foto review"
+      onMouseDown={onClose}
+    >
+      <section
+        className="relative flex max-h-[92vh] w-fit max-w-[92vw] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl shadow-black/40"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <header className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <h2 className="text-sm font-black uppercase tracking-[0.12em] text-[#434655]">
+            Foto Review
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg bg-[#E6E8EA] px-4 py-2 text-xs font-black uppercase text-[#191C1E] transition hover:bg-[#DDE1E6]"
+          >
+            Tutup
+          </button>
+        </header>
+        <div className="flex min-h-0 flex-1 items-center justify-center bg-white p-4">
+          <img
+            src={photo.src}
+            alt={photo.alt}
+            className="block max-h-[74vh] max-w-[86vw] object-contain"
+          />
+        </div>
+        <footer className="flex justify-end border-t border-slate-200 bg-white px-5 py-4">
+          <button
+            type="button"
+            onClick={() => onDelete(target)}
+            className="rounded-lg bg-[#BA1A1A] px-5 py-2 text-xs font-black uppercase text-white transition hover:brightness-105"
+          >
+            Hapus Foto
+          </button>
+        </footer>
+      </section>
+    </div>
   );
 }
 
@@ -235,7 +299,7 @@ function ReplyModal({ review, onClose, onSave }) {
       >
         <header className="border-b border-[#E6E8EA] px-6 py-5">
           <h2 className="text-xl font-extrabold text-[#191C1E]">
-            Balas Review
+            Balas Review Opsional
           </h2>
           <p className="mt-1 text-xs font-semibold text-[#434655]">
             {review.name}
@@ -261,7 +325,7 @@ function ReplyModal({ review, onClose, onSave }) {
             type="submit"
             className="h-11 rounded-lg bg-gradient-to-br from-[#004AC6] to-[#2563EB] px-6 text-sm font-bold text-white shadow-lg shadow-blue-700/20 transition hover:brightness-105"
           >
-            Simpan Balasan
+            Simpan Balasan Opsional
           </button>
         </footer>
       </form>
@@ -304,12 +368,54 @@ function DeleteReviewModal({ review, onClose, onConfirm }) {
   );
 }
 
+function DeletePhotoModal({ target, onClose, onConfirm }) {
+  if (!target) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/40 p-6 backdrop-blur-sm">
+      <section className="w-full max-w-sm animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] rounded-2xl bg-white p-8 shadow-2xl shadow-black/25">
+        <h2 className="text-xl font-bold text-[#191C1E]">
+          Hapus foto review?
+        </h2>
+        <p className="mt-3 text-sm leading-6 text-[#434655]">
+          Foto dari review {target.review.name} akan hilang dari halaman admin dan halaman review pelanggan.
+        </p>
+        <img
+          src={target.photo.src}
+          alt={target.photo.alt}
+          className="mt-5 h-36 w-full rounded-lg border border-slate-200 object-cover"
+        />
+        <div className="mt-8 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-11 rounded-lg bg-[#E6E8EA] text-sm font-bold text-[#191C1E] transition hover:brightness-95"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirm(target)}
+            className="h-11 rounded-lg bg-[#BA1A1A] text-sm font-bold text-white transition hover:brightness-105"
+          >
+            Hapus Foto
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export default function ReviewAdmin() {
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(2);
   const [reviews, setReviews] = useState([]);
   const [replyTarget, setReplyTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deletePhotoTarget, setDeletePhotoTarget] = useState(null);
+  const [previewPhotoTarget, setPreviewPhotoTarget] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -346,7 +452,7 @@ export default function ReviewAdmin() {
         review.comment,
         review.reply,
         review.photos?.length ? "foto review" : "",
-        review.verified ? "review terverifikasi" : "",
+        "balas opsional",
       ]
         .filter(Boolean)
         .join(" ")
@@ -405,6 +511,22 @@ export default function ReviewAdmin() {
       setDeleteTarget(null);
     } catch (error) {
       console.error("Gagal menghapus review:", error);
+    }
+  };
+
+  const handleDeletePhoto = async ({ review, photo }) => {
+    try {
+      const response = await deleteAdminReviewPhoto(review.rawId, photo.index);
+      const updatedReview = mapReviewFromApi(response.data);
+
+      setReviews((currentReviews) =>
+        currentReviews.map((item) =>
+          item.rawId === updatedReview.rawId ? updatedReview : item,
+        ),
+      );
+      setDeletePhotoTarget(null);
+    } catch (error) {
+      console.error("Gagal menghapus foto review:", error);
     }
   };
 
@@ -487,6 +609,9 @@ export default function ReviewAdmin() {
                 key={review.rawId}
                 review={review}
                 onDelete={setDeleteTarget}
+                onPhotoClick={(targetReview, photo) =>
+                  setPreviewPhotoTarget({ review: targetReview, photo })
+                }
                 onReply={setReplyTarget}
               />
             ))
@@ -520,10 +645,23 @@ export default function ReviewAdmin() {
         onClose={() => setReplyTarget(null)}
         onSave={handleReply}
       />
+      <PhotoPreviewModal
+        target={previewPhotoTarget}
+        onClose={() => setPreviewPhotoTarget(null)}
+        onDelete={(target) => {
+          setPreviewPhotoTarget(null);
+          setDeletePhotoTarget(target);
+        }}
+      />
       <DeleteReviewModal
         review={deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
+      />
+      <DeletePhotoModal
+        target={deletePhotoTarget}
+        onClose={() => setDeletePhotoTarget(null)}
+        onConfirm={handleDeletePhoto}
       />
     </section>
   );

@@ -259,6 +259,12 @@ export const deleteAdminReview = (reviewId) =>
     auth: true,
   });
 
+export const deleteAdminReviewPhoto = (reviewId, photoIndex) =>
+  request(`/admin/review/${reviewId}/photos/${photoIndex}`, {
+    method: "DELETE",
+    auth: true,
+  });
+
 export const getAdminReport = (params) =>
   request("/admin/laporan", { auth: true, params });
 

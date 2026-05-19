@@ -7,6 +7,10 @@ import {
 } from "../../../services/api";
 
 const LIKE_STORAGE_KEY = "kedai-sigma-liked-reviews";
+const REVIEW_PHOTO_MAX_COUNT = 5;
+const REVIEW_PHOTO_MAX_DIMENSION = 1600;
+const REVIEW_PHOTO_TARGET_BYTES = 1200 * 1024;
+const REVIEW_PHOTO_MIN_QUALITY = 0.62;
 
 const advantages = [
   {
@@ -79,6 +83,78 @@ const saveLikedReviews = (reviewIds) => {
   }
 
   window.localStorage.setItem(LIKE_STORAGE_KEY, JSON.stringify(reviewIds));
+};
+
+const loadPhotoImage = (file) =>
+  new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Foto tidak bisa dibaca."));
+    };
+
+    image.src = url;
+  });
+
+const canvasToBlob = (canvas, type, quality) =>
+  new Promise((resolve) => {
+    canvas.toBlob(resolve, type, quality);
+  });
+
+const compressReviewPhoto = async (file) => {
+  if (!file.type.startsWith("image/")) {
+    return file;
+  }
+
+  try {
+    const image = await loadPhotoImage(file);
+    const originalWidth = image.naturalWidth || image.width;
+    const originalHeight = image.naturalHeight || image.height;
+    const scale = Math.min(
+      1,
+      REVIEW_PHOTO_MAX_DIMENSION / Math.max(originalWidth, originalHeight),
+    );
+    const width = Math.max(1, Math.round(originalWidth * scale));
+    const height = Math.max(1, Math.round(originalHeight * scale));
+    const canvas = document.createElement("canvas");
+
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext("2d")?.drawImage(image, 0, 0, width, height);
+
+    let quality = 0.84;
+    let blob = await canvasToBlob(canvas, "image/jpeg", quality);
+
+    while (
+      blob &&
+      blob.size > REVIEW_PHOTO_TARGET_BYTES &&
+      quality > REVIEW_PHOTO_MIN_QUALITY
+    ) {
+      quality = Math.max(REVIEW_PHOTO_MIN_QUALITY, quality - 0.08);
+      blob = await canvasToBlob(canvas, "image/jpeg", quality);
+    }
+
+    if (!blob) {
+      throw new Error("Foto tidak bisa diproses.");
+    }
+
+    const nameWithoutExtension = file.name.replace(/\.[^.]+$/, "") || "review-photo";
+
+    return new File([blob], `${nameWithoutExtension}.jpg`, {
+      type: "image/jpeg",
+      lastModified: file.lastModified,
+    });
+  } catch (error) {
+    console.warn("Gagal mengoptimalkan foto review:", error);
+    throw error;
+  }
 };
 
 const mapReviewFromApi = (review) => {
@@ -310,7 +386,7 @@ function RatingSummary({ reviews }) {
   );
 }
 
-function ReviewCard({ review, isLiked, onLike }) {
+function ReviewCard({ review, isLiked, onLike, onPhotoClick }) {
   const [isReplyOpen, setIsReplyOpen] = useState(false);
 
   return (
@@ -346,12 +422,22 @@ function ReviewCard({ review, isLiked, onLike }) {
         {review.photos?.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">
             {review.photos.map((photo) => (
-              <img
+              <button
                 key={photo.alt}
-                src={photo.src}
-                alt={photo.alt}
-                className="h-24 w-24 border-2 border-[#212B39] object-cover saturate-50 transition hover:saturate-100"
-              />
+                type="button"
+                onClick={() => onPhotoClick(photo)}
+                className="group relative h-24 w-24 overflow-hidden border-2 border-[#212B39] bg-[#091421] focus:outline-none focus:ring-2 focus:ring-[#EEC200]"
+                aria-label={`Perbesar ${photo.alt}`}
+              >
+                <img
+                  src={photo.src}
+                  alt={photo.alt}
+                  className="h-full w-full object-cover saturate-50 transition group-hover:scale-105 group-hover:saturate-100"
+                />
+                <span className="absolute inset-x-1 bottom-1 bg-black/70 px-2 py-1 font-['Space_Grotesk',sans-serif] text-[10px] font-black uppercase text-white opacity-0 transition group-hover:opacity-100 group-focus:opacity-100">
+                  Lihat
+                </span>
+              </button>
             ))}
           </div>
         )}
@@ -392,6 +478,47 @@ function ReviewCard({ review, isLiked, onLike }) {
         )}
       </div>
     </article>
+  );
+}
+
+function PhotoPreviewModal({ photo, onClose }) {
+  if (!photo) {
+    return null;
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 [animation:review-backdrop-in_220ms_ease-out]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Preview foto review"
+      onMouseDown={onClose}
+    >
+      <section
+        className="relative flex max-h-[92vh] w-fit max-w-[92vw] flex-col overflow-hidden bg-[#091421] shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-white/15 px-4 py-3">
+          <p className="font-['Space_Grotesk',sans-serif] text-xs font-black uppercase tracking-[0.18em] text-[#EEC200]">
+            Foto Review
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="bg-[#DC2626] px-4 py-2 font-['Space_Grotesk',sans-serif] text-xs font-black uppercase text-white transition hover:bg-red-700"
+          >
+            Tutup
+          </button>
+        </div>
+        <div className="flex min-h-0 flex-1 items-center justify-center bg-[#091421] p-4">
+          <img
+            src={photo.src}
+            alt={photo.alt}
+            className="block max-h-[78vh] max-w-[86vw] object-contain"
+          />
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -452,6 +579,8 @@ function ReviewForm({ onReviewCreated }) {
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [submitWarning, setSubmitWarning] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPreparingPhotos, setIsPreparingPhotos] = useState(false);
+  const [photoFiles, setPhotoFiles] = useState([]);
   const [photoPreviews, setPhotoPreviews] = useState([]);
 
   useEffect(() => {
@@ -466,18 +595,31 @@ function ReviewForm({ onReviewCreated }) {
     }
   }
 
-  function handlePhotoChange(event) {
+  async function handlePhotoChange(event) {
     clearSubmitWarning();
 
-    const files = Array.from(event.target.files || []).slice(0, 5);
-    const previews = files.map((file) => ({
-      id: `${file.name}-${file.lastModified}`,
-      name: file.name,
-      url: URL.createObjectURL(file),
-    }));
+    const files = Array.from(event.target.files || []).slice(0, REVIEW_PHOTO_MAX_COUNT);
 
-    photoPreviews.forEach((photo) => URL.revokeObjectURL(photo.url));
-    setPhotoPreviews(previews);
+    setIsPreparingPhotos(true);
+
+    try {
+      const preparedFiles = await Promise.all(files.map(compressReviewPhoto));
+      const previews = preparedFiles.map((file) => ({
+        id: `${file.name}-${file.lastModified}-${file.size}`,
+        name: file.name,
+        url: URL.createObjectURL(file),
+      }));
+
+      photoPreviews.forEach((photo) => URL.revokeObjectURL(photo.url));
+      setPhotoFiles(preparedFiles);
+      setPhotoPreviews(previews);
+    } catch (error) {
+      console.error("Gagal memproses foto review:", error);
+      setPhotoFiles([]);
+      setSubmitWarning("Foto belum bisa diproses. Coba pilih ulang fotonya ya.");
+    } finally {
+      setIsPreparingPhotos(false);
+    }
   }
 
   async function handleSubmit(event) {
@@ -493,6 +635,11 @@ function ReviewForm({ onReviewCreated }) {
       return;
     }
 
+    if (isPreparingPhotos) {
+      setSubmitWarning("Foto masih diproses. Tunggu sebentar lalu kirim lagi ya.");
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitWarning("");
 
@@ -502,8 +649,8 @@ function ReviewForm({ onReviewCreated }) {
       reviewPayload.append("rating", String(rating));
       reviewPayload.append("komentar", comment);
 
-      Array.from(form.elements.photos?.files || [])
-        .slice(0, 5)
+      photoFiles
+        .slice(0, REVIEW_PHOTO_MAX_COUNT)
         .forEach((file) => reviewPayload.append("photos[]", file));
 
       const response = await createPublicReview(reviewPayload);
@@ -511,12 +658,13 @@ function ReviewForm({ onReviewCreated }) {
       onReviewCreated?.(mapReviewFromApi(response.data));
       form.reset();
       photoPreviews.forEach((photo) => URL.revokeObjectURL(photo.url));
+      setPhotoFiles([]);
       setPhotoPreviews([]);
       setRating(0);
       setShowSuccessPopup(true);
     } catch (error) {
       console.error("Gagal mengirim review:", error);
-      setSubmitWarning("Review belum bisa dikirim. Coba lagi sebentar ya.");
+      setSubmitWarning(error.message || "Review belum bisa dikirim. Coba lagi sebentar ya.");
     } finally {
       setIsSubmitting(false);
     }
@@ -606,23 +754,23 @@ function ReviewForm({ onReviewCreated }) {
                     type="file"
                     name="photos"
                     multiple
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp"
                     onChange={handlePhotoChange}
                     className="sr-only"
                   />
                 </label>
                 <p className="max-w-[150px] font-['Be_Vietnam_Pro',sans-serif] text-[10px] font-bold uppercase leading-3 text-[#64748B]">
-                  Maksimal 5 file, 5MB/foto.
+                  Maksimal 5 foto.
                 </p>
               </div>
 
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isPreparingPhotos}
                 className="-skew-x-12 bg-[#DC2626] px-10 py-5 font-['Space_Grotesk',sans-serif] text-2xl font-black uppercase leading-8 text-[#FFF6F5] shadow-[8px_8px_0_#EEC200] transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-[#EEC200] focus:ring-offset-2 focus:ring-offset-[#16202E] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <span className="block skew-x-12">
-                  {isSubmitting ? "Kirim..." : "Kirim"}
+                  {isPreparingPhotos ? "Proses Foto..." : isSubmitting ? "Kirim..." : "Kirim"}
                 </span>
               </button>
             </div>
@@ -655,6 +803,7 @@ function ReviewForm({ onReviewCreated }) {
 export default function Review() {
   const [reviews, setReviews] = useState([]);
   const [likedReviews, setLikedReviews] = useState(readLikedReviews);
+  const [previewPhoto, setPreviewPhoto] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -738,6 +887,7 @@ export default function Review() {
                 review={review}
                 isLiked={likedReviews.includes(String(review.id))}
                 onLike={handleLikeReview}
+                onPhotoClick={setPreviewPhoto}
               />
             ))}
             {sortedReviews.length === 0 && (
@@ -753,6 +903,10 @@ export default function Review() {
           </div>
         </div>
       </section>
+      <PhotoPreviewModal
+        photo={previewPhoto}
+        onClose={() => setPreviewPhoto(null)}
+      />
     </div>
   );
 }
