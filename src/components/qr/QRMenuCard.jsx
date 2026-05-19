@@ -31,8 +31,8 @@ export default function QRMenuCard({ item, onAdd }) {
       </div>
 
       <div className="flex flex-1 flex-col gap-2 px-[14px] pt-[15px] pb-1.5">
-        <div className="flex min-h-[25px] items-start justify-between gap-1">
-          <h3 className="min-w-0 flex-1 break-words font-['Space_Grotesk',Arial,sans-serif] text-[10px] font-bold uppercase leading-5 tracking-[0.8px] text-[#D9E3F6]">
+        <div className="flex min-h-[23px] items-start justify-between gap-1">
+          <h3 className="min-w-0 flex-1 break-words font-['Space_Grotesk',Arial,sans-serif] text-[10px] font-bold uppercase leading-[11px] tracking-[0.8px] text-[#D9E3F6]">
             {item.name}
           </h3>
 

@@ -450,7 +450,10 @@ const getCategoryLabel = (categoryValue, categoryName) =>
   "Menu";
 
 const formatRupiah = (value) =>
-  `Rp ${Number(value || 0).toLocaleString("id-ID")}`;
+  `Rp${Number(value || 0).toLocaleString("id-ID")}`;
+
+const formatPriceNumber = (value) =>
+  Number(value || 0).toLocaleString("id-ID");
 
 const toNullableNumber = (value) => {
   if (value === null || value === undefined || value === "") {
@@ -471,23 +474,23 @@ const formatVariantPriceLabel = (item, baseItem, basePrice) => {
 
   if (option === "hot_ice") {
     if (hotPrice === null && icePrice === null && baseItem?.price) {
-      return String(baseItem.price).replace(/^IDR/i, "Rp");
+      return String(baseItem.price).replace(/^IDR\s*/i, "Rp");
     }
 
     const hot = hotPrice ?? basePrice;
     const ice = icePrice ?? basePrice;
 
     return hot === ice
-      ? `${formatRupiah(hot)} Hot/Ice`
-      : `Hot ${formatRupiah(hot)} / Ice ${formatRupiah(ice)}`;
+      ? formatRupiah(hot)
+      : `${formatRupiah(hot)}/${formatPriceNumber(ice)}`;
   }
 
   if (option === "hot") {
-    return `Hot ${formatRupiah(hotPrice ?? basePrice)}`;
+    return formatRupiah(hotPrice ?? basePrice);
   }
 
   if (option === "ice") {
-    return `Ice ${formatRupiah(icePrice ?? basePrice)}`;
+    return formatRupiah(icePrice ?? basePrice);
   }
 
   return formatRupiah(basePrice);
