@@ -24,22 +24,31 @@ const resolveApiBaseUrl = () => {
 
 const API_BASE_URL = resolveApiBaseUrl();
 const ADMIN_TOKEN_KEY = "admin_token";
+const ADMIN_DATA_KEY = "admin_data";
 
-const getAdminToken = () => {
+const clearLegacyAdminSession = () => {
+  window.localStorage.removeItem(ADMIN_TOKEN_KEY);
+  window.localStorage.removeItem(ADMIN_DATA_KEY);
+};
+
+export const getAdminToken = () => {
   if (typeof window === "undefined") {
     return "";
   }
 
-  return window.localStorage.getItem(ADMIN_TOKEN_KEY) || "";
+  clearLegacyAdminSession();
+
+  return window.sessionStorage.getItem(ADMIN_TOKEN_KEY) || "";
 };
 
-const clearAdminSession = () => {
+export const clearAdminSession = () => {
   if (typeof window === "undefined") {
     return;
   }
 
-  window.localStorage.removeItem(ADMIN_TOKEN_KEY);
-  window.localStorage.removeItem("admin_data");
+  window.sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+  window.sessionStorage.removeItem(ADMIN_DATA_KEY);
+  clearLegacyAdminSession();
 };
 
 const redirectAdminToLogin = () => {
@@ -127,7 +136,8 @@ export const loginAdmin = async (username, password) => {
   });
 
   if (data?.data?.token) {
-    window.localStorage.setItem(ADMIN_TOKEN_KEY, data.data.token);
+    clearLegacyAdminSession();
+    window.sessionStorage.setItem(ADMIN_TOKEN_KEY, data.data.token);
   }
 
   return data;

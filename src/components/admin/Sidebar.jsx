@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { logoutAdmin } from "../../services/api";
+import { clearAdminSession, logoutAdmin } from "../../services/api";
 const navItems = [
   {
     label: "Dashboard",
@@ -85,8 +85,7 @@ export default function Sidebar() {
     } catch (error) {
         console.error("Logout error:", error);
     } finally {
-        localStorage.removeItem("admin_token");
-        localStorage.removeItem("admin_data");
+        clearAdminSession();
         navigate("/login");
     }
 };

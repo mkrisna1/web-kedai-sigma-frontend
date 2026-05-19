@@ -22,13 +22,11 @@ import MejaAdmin from "../features/admin/pages/MejaAdmin";
 import ReservasiAdmin from "../features/admin/pages/ReservasiAdmin";
 import ReviewAdmin from "../features/admin/pages/ReviewAdmin";
 import Laporan from "../features/admin/pages/Laporan";
+import { getAdminToken } from "../services/api";
 
 function RequireAdminAuth({ children }) {
   const location = useLocation();
-  const token =
-    typeof window !== "undefined"
-      ? window.localStorage.getItem("admin_token")
-      : "";
+  const token = getAdminToken();
 
   if (!token) {
     return <Navigate to="/login" replace state={{ from: location }} />;
@@ -38,10 +36,7 @@ function RequireAdminAuth({ children }) {
 }
 
 function DashboardShortcut() {
-  const token =
-    typeof window !== "undefined"
-      ? window.localStorage.getItem("admin_token")
-      : "";
+  const token = getAdminToken();
 
   return <Navigate to={token ? "/admin/dashboard" : "/login"} replace />;
 }

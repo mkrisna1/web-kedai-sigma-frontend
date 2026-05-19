@@ -27,7 +27,8 @@ export default function Login() {
       const result = await loginAdmin(cleanUsername, password);
 
       if (result.success === true) {
-        window.localStorage.setItem("admin_data", JSON.stringify(result.data.admin));
+        window.localStorage.removeItem("admin_data");
+        window.sessionStorage.setItem("admin_data", JSON.stringify(result.data.admin));
         navigate("/admin/dashboard");
       }
     } catch (error) {
