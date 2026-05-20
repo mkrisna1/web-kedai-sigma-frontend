@@ -313,7 +313,7 @@ function StatCard({ stat }) {
   const isDown = stat.change.startsWith("-");
 
   return (
-    <article className="rounded-lg bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+    <article className="rounded-lg bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
       <div className="flex items-center justify-between">
         <div className={`rounded p-2 ${toneClasses[stat.tone]}`}>
           <MetricIcon type={stat.icon} />
@@ -604,7 +604,7 @@ export default function Laporan() {
   };
 
   return (
-    <section className="flex w-full flex-col gap-8 bg-[#F7F9FB] font-['Inter',Arial,sans-serif] text-[#191C1E]">
+    <section className="flex w-full flex-col gap-6 bg-[#F7F9FB] font-['Inter',Arial,sans-serif] text-[#191C1E]">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="text-3xl font-extrabold tracking-[-0.025em]">
@@ -616,14 +616,14 @@ export default function Laporan() {
         </div>
       </header>
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {stats.map((stat) => (
           <StatCard key={stat.label} stat={stat} />
         ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_304px]">
-        <article className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+      <div className="grid gap-4 xl:grid-cols-[1fr_288px]">
+        <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-bold text-slate-900">Top 5 Best Seller</h3>
           <div className="mt-6 flex flex-col gap-4">
             {bestSellers.map((item, index) => (
@@ -653,7 +653,7 @@ export default function Laporan() {
           </div>
         </article>
 
-        <article className="rounded-lg bg-white p-8 shadow-sm">
+        <article className="rounded-lg bg-white p-6 shadow-sm">
           <h3 className="text-lg font-bold">Kategori Menu Populer</h3>
           <div className="mt-6 flex flex-col gap-6">
             {categories.map((item) => (
@@ -702,7 +702,7 @@ export default function Laporan() {
         </article>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[222px_1fr]">
+      <div className="grid gap-4 xl:grid-cols-[208px_1fr]">
         <article className="rounded-lg bg-white p-6 shadow-sm">
           <h3 className="text-lg font-bold">Jam Sibuk</h3>
           <p className="mt-4 text-xs leading-5 text-[#434655]">

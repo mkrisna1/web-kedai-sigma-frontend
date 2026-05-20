@@ -466,6 +466,24 @@ function AddMenuModal({ categories, onClose, onSave }) {
   const [previewImage, setPreviewImage] = useState("");
   const [previewObjectUrl, setPreviewObjectUrl] = useState("");
   const [temperatureOption, setTemperatureOption] = useState("none");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const selectedCategory = categories.find(
+    (category) => String(category.id) === String(selectedCategoryId),
+  );
+  const isFoodCategory = selectedCategory?.name === "Makanan";
+  const effectiveTemperatureOption = isFoodCategory ? "none" : temperatureOption;
+
+  useEffect(() => {
+    if (!selectedCategoryId && categories[0]?.id) {
+      setSelectedCategoryId(categories[0].id);
+    }
+  }, [categories, selectedCategoryId]);
+
+  useEffect(() => {
+    if (isFoodCategory && temperatureOption !== "none") {
+      setTemperatureOption("none");
+    }
+  }, [isFoodCategory, temperatureOption]);
 
   useEffect(
     () => () => {
@@ -498,18 +516,23 @@ function AddMenuModal({ categories, onClose, onSave }) {
 
     const formData = new FormData(event.currentTarget);
     const name = formData.get("name").trim() || "Menu Baru";
-    const selectedCategory = formData.get("category");
     const price = parseMoneyInput(formData.get("price"));
+    const hotPrice = parseMoneyInput(formData.get("hot_price"));
+    const icePrice = parseMoneyInput(formData.get("ice_price"));
+    const basePrice =
+      effectiveTemperatureOption === "hot_ice"
+        ? hotPrice || icePrice || price
+        : price;
     const status = formData.get("status");
     const photo = formData.get("foto_produk");
     const payload = new FormData();
 
     payload.append("nama_produk", name);
-    payload.append("kategori_id", selectedCategory || categories[0]?.id || "");
-    payload.append("harga_produk", String(price));
+    payload.append("kategori_id", selectedCategoryId || categories[0]?.id || "");
+    payload.append("harga_produk", String(basePrice));
     payload.append("deskripsi_produk", formData.get("description")?.trim() || "");
-    payload.append("opsi_suhu", temperatureOption);
-    appendTemperaturePrices(payload, temperatureOption, price, formData);
+    payload.append("opsi_suhu", effectiveTemperatureOption);
+    appendTemperaturePrices(payload, effectiveTemperatureOption, basePrice, formData);
     payload.append(
       "ketersediaan_produk",
       status === "OUT OF STOCK" ? "tidak_tersedia" : "tersedia",
@@ -560,6 +583,8 @@ function AddMenuModal({ categories, onClose, onSave }) {
               <div className="relative">
                 <select
                   name="category"
+                  value={selectedCategoryId}
+                  onChange={(event) => setSelectedCategoryId(event.target.value)}
                   className="h-[38px] w-full appearance-none border-0 border-b-2 border-[#C3C6D7] bg-transparent px-3 pr-10 text-sm font-medium leading-5 text-[#191C1E] outline-none focus:border-[#2563EB]"
                 >
                   <option value="">Pilih Kategori</option>
@@ -594,48 +619,52 @@ function AddMenuModal({ categories, onClose, onSave }) {
               </div>
             </label>
 
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-bold leading-4 text-[#434655]">
-                Opsi Suhu
-              </span>
-              <div className="relative">
-                <select
-                  name="opsi_suhu"
-                  value={temperatureOption}
-                  onChange={(event) => setTemperatureOption(event.target.value)}
-                  className="h-[38px] w-full appearance-none border-0 border-b-2 border-[#C3C6D7] bg-transparent px-3 pr-10 text-sm font-medium leading-5 text-[#191C1E] outline-none focus:border-[#2563EB]"
-                >
-                  {temperatureOptionChoices.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-500">
-                  <SelectChevronIcon />
+            {!isFoodCategory && (
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-bold leading-4 text-[#434655]">
+                  Opsi Suhu
                 </span>
-              </div>
-            </label>
+                <div className="relative">
+                  <select
+                    name="opsi_suhu"
+                    value={temperatureOption}
+                    onChange={(event) => setTemperatureOption(event.target.value)}
+                    className="h-[38px] w-full appearance-none border-0 border-b-2 border-[#C3C6D7] bg-transparent px-3 pr-10 text-sm font-medium leading-5 text-[#191C1E] outline-none focus:border-[#2563EB]"
+                  >
+                    {temperatureOptionChoices.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-500">
+                    <SelectChevronIcon />
+                  </span>
+                </div>
+              </label>
+            )}
 
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-bold leading-4 text-[#434655]">
-                Harga (Rp)
-              </span>
-              <div className="relative h-[38px] border-b-2 border-[#C3C6D7] focus-within:border-[#2563EB]">
-                <span className="absolute bottom-2 left-0 text-sm font-medium leading-5 text-[#434655]">
-                  Rp
+            {effectiveTemperatureOption !== "hot_ice" && (
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-bold leading-4 text-[#434655]">
+                  Harga (Rp)
                 </span>
-                <input
-                  name="price"
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="0"
-                  className="h-full w-full border-0 bg-transparent pl-7 pr-3 text-sm font-medium leading-[17px] text-[#191C1E] outline-none placeholder:text-[#434655]/40"
-                />
-              </div>
-            </label>
+                <div className="relative h-[38px] border-b-2 border-[#C3C6D7] focus-within:border-[#2563EB]">
+                  <span className="absolute bottom-2 left-0 text-sm font-medium leading-5 text-[#434655]">
+                    Rp
+                  </span>
+                  <input
+                    name="price"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0"
+                    className="h-full w-full border-0 bg-transparent pl-7 pr-3 text-sm font-medium leading-[17px] text-[#191C1E] outline-none placeholder:text-[#434655]/40"
+                  />
+                </div>
+              </label>
+            )}
 
-            {(temperatureOption === "hot" || temperatureOption === "hot_ice") && (
+            {(effectiveTemperatureOption === "hot" || effectiveTemperatureOption === "hot_ice") && (
               <label className="flex flex-col gap-1">
                 <span className="text-xs font-bold leading-4 text-[#434655]">
                   Harga Hot (Rp)
@@ -655,7 +684,7 @@ function AddMenuModal({ categories, onClose, onSave }) {
               </label>
             )}
 
-            {(temperatureOption === "ice" || temperatureOption === "hot_ice") && (
+            {(effectiveTemperatureOption === "ice" || effectiveTemperatureOption === "hot_ice") && (
               <label className="flex flex-col gap-1">
                 <span className="text-xs font-bold leading-4 text-[#434655]">
                   Harga Ice (Rp)
@@ -753,6 +782,12 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
   const [temperatureOption, setTemperatureOption] = useState(
     item?.temperatureOption || "none",
   );
+  const [selectedCategoryId, setSelectedCategoryId] = useState(item?.categoryId || "");
+  const selectedCategory = categories.find(
+    (category) => String(category.id) === String(selectedCategoryId),
+  );
+  const isFoodCategory = selectedCategory?.name === "Makanan";
+  const effectiveTemperatureOption = isFoodCategory ? "none" : temperatureOption;
 
   useEffect(() => {
     setPreviewImage(item?.image || "");
@@ -776,7 +811,14 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
 
   useEffect(() => {
     setTemperatureOption(item?.temperatureOption || "none");
-  }, [item?.rawId, item?.temperatureOption]);
+    setSelectedCategoryId(item?.categoryId || "");
+  }, [item?.categoryId, item?.rawId, item?.temperatureOption]);
+
+  useEffect(() => {
+    if (isFoodCategory && temperatureOption !== "none") {
+      setTemperatureOption("none");
+    }
+  }, [isFoodCategory, temperatureOption]);
 
   if (!item) {
     return null;
@@ -808,15 +850,21 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
 
     const formData = new FormData(event.currentTarget);
     const price = parseMoneyInput(formData.get("price"));
+    const hotPrice = parseMoneyInput(formData.get("hot_price"));
+    const icePrice = parseMoneyInput(formData.get("ice_price"));
+    const basePrice =
+      effectiveTemperatureOption === "hot_ice"
+        ? hotPrice || icePrice || price
+        : price;
     const photo = formData.get("foto_produk");
     const payload = new FormData();
 
     payload.append("nama_produk", formData.get("name").trim() || item.name);
-    payload.append("kategori_id", formData.get("category") || item.categoryId || "");
-    payload.append("harga_produk", String(price));
+    payload.append("kategori_id", selectedCategoryId || item.categoryId || "");
+    payload.append("harga_produk", String(basePrice));
     payload.append("deskripsi_produk", formData.get("description").trim());
-    payload.append("opsi_suhu", temperatureOption);
-    appendTemperaturePrices(payload, temperatureOption, price, formData);
+    payload.append("opsi_suhu", effectiveTemperatureOption);
+    appendTemperaturePrices(payload, effectiveTemperatureOption, basePrice, formData);
     payload.append(
       "ketersediaan_produk",
       formData.get("status") === "OUT OF STOCK"
@@ -903,7 +951,8 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
               <div className="relative">
                 <select
                   name="category"
-                  defaultValue={item.categoryId || ""}
+                  value={selectedCategoryId}
+                  onChange={(event) => setSelectedCategoryId(event.target.value)}
                   className="h-[42px] w-full appearance-none border-0 border-b-2 border-[#C3C6D7] bg-transparent pr-8 text-base font-medium leading-6 text-[#191C1E] outline-none focus:border-[#2563EB]"
                 >
                   {categories.map((category) => (
@@ -929,48 +978,52 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
               />
             </label>
 
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
-                Edit Harga
-              </span>
-              <div className="relative h-[42px] border-b-2 border-[#C3C6D7] focus-within:border-[#2563EB]">
-                <span className="absolute left-0 top-2 text-sm font-medium leading-5 text-[#434655]">
-                  Rp
+            {effectiveTemperatureOption !== "hot_ice" && (
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
+                  Edit Harga
                 </span>
-                <input
-                  name="price"
-                  type="text"
-                  inputMode="numeric"
-                  defaultValue={basePriceValue}
-                  className="h-full w-full border-0 bg-transparent pl-12 text-base font-medium leading-6 text-[#191C1E] outline-none"
-                />
-              </div>
-            </label>
+                <div className="relative h-[42px] border-b-2 border-[#C3C6D7] focus-within:border-[#2563EB]">
+                  <span className="absolute left-0 top-2 text-sm font-medium leading-5 text-[#434655]">
+                    Rp
+                  </span>
+                  <input
+                    name="price"
+                    type="text"
+                    inputMode="numeric"
+                    defaultValue={basePriceValue}
+                    className="h-full w-full border-0 bg-transparent pl-12 text-base font-medium leading-6 text-[#191C1E] outline-none"
+                  />
+                </div>
+              </label>
+            )}
 
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
-                Opsi Suhu
-              </span>
-              <div className="relative">
-                <select
-                  name="opsi_suhu"
-                  value={temperatureOption}
-                  onChange={(event) => setTemperatureOption(event.target.value)}
-                  className="h-[42px] w-full appearance-none border-0 border-b-2 border-[#C3C6D7] bg-transparent pr-8 text-base font-medium leading-6 text-[#191C1E] outline-none focus:border-[#2563EB]"
-                >
-                  {temperatureOptionChoices.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <span className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-gray-500">
-                  <SelectChevronIcon />
+            {!isFoodCategory && (
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
+                  Opsi Suhu
                 </span>
-              </div>
-            </label>
+                <div className="relative">
+                  <select
+                    name="opsi_suhu"
+                    value={temperatureOption}
+                    onChange={(event) => setTemperatureOption(event.target.value)}
+                    className="h-[42px] w-full appearance-none border-0 border-b-2 border-[#C3C6D7] bg-transparent pr-8 text-base font-medium leading-6 text-[#191C1E] outline-none focus:border-[#2563EB]"
+                  >
+                    {temperatureOptionChoices.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-gray-500">
+                    <SelectChevronIcon />
+                  </span>
+                </div>
+              </label>
+            )}
 
-            {(temperatureOption === "hot" || temperatureOption === "hot_ice") && (
+            {(effectiveTemperatureOption === "hot" || effectiveTemperatureOption === "hot_ice") && (
               <label className="flex flex-col gap-1">
                 <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
                   Harga Hot
@@ -990,7 +1043,7 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
               </label>
             )}
 
-            {(temperatureOption === "ice" || temperatureOption === "hot_ice") && (
+            {(effectiveTemperatureOption === "ice" || effectiveTemperatureOption === "hot_ice") && (
               <label className="flex flex-col gap-1">
                 <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
                   Harga Ice
@@ -1093,12 +1146,12 @@ function DeleteConfirmModal({ itemName, onCancel, onConfirm }) {
 
 function StatCard({ label, value, danger }) {
   return (
-    <div className="h-[108px] rounded-lg bg-white p-6 shadow-[0_0_0_1px_rgba(0,0,0,0.05)]">
+    <div className="h-[96px] rounded-lg bg-white p-5 shadow-[0_0_0_1px_rgba(0,0,0,0.05)]">
       <p className="text-xs font-bold uppercase leading-4 tracking-[0.6px] text-[#434655]">
         {label}
       </p>
       <p
-        className={`mt-2 text-3xl font-bold leading-9 ${
+        className={`mt-2 text-2xl font-bold leading-8 ${
           danger ? "text-[#BA1A1A]" : "text-[#191C1E]"
         }`}
       >
@@ -1209,6 +1262,7 @@ export default function MenuAdmin() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [sortOption, setSortOption] = useState("name-asc");
   const [currentPage, setCurrentPage] = useState(0);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
@@ -1220,7 +1274,7 @@ export default function MenuAdmin() {
   const filteredMenuItems = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
-    return flatMenuItems.filter((item) => {
+    const filteredItems = flatMenuItems.filter((item) => {
       const matchesSearch =
         !normalizedQuery ||
         item.name.toLowerCase().includes(normalizedQuery) ||
@@ -1233,7 +1287,28 @@ export default function MenuAdmin() {
 
       return matchesSearch && matchesCategory && matchesStatus;
     });
-  }, [categoryFilter, flatMenuItems, searchQuery, statusFilter]);
+
+    return [...filteredItems].sort((first, second) => {
+      if (sortOption === "name-desc") {
+        return second.name.localeCompare(first.name, "id", { sensitivity: "base" });
+      }
+
+      if (sortOption === "category") {
+        return first.category.localeCompare(second.category, "id", { sensitivity: "base" })
+          || first.name.localeCompare(second.name, "id", { sensitivity: "base" });
+      }
+
+      if (sortOption === "price-asc") {
+        return parsePrice(first.price) - parsePrice(second.price);
+      }
+
+      if (sortOption === "price-desc") {
+        return parsePrice(second.price) - parsePrice(first.price);
+      }
+
+      return first.name.localeCompare(second.name, "id", { sensitivity: "base" });
+    });
+  }, [categoryFilter, flatMenuItems, searchQuery, sortOption, statusFilter]);
   const menuPageItems = useMemo(
     () => chunkItems(filteredMenuItems, 8),
     [filteredMenuItems],
@@ -1286,7 +1361,7 @@ export default function MenuAdmin() {
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [categoryFilter, searchQuery, statusFilter]);
+  }, [categoryFilter, searchQuery, sortOption, statusFilter]);
 
   const handleAddMenu = async (payload) => {
     try {
@@ -1355,11 +1430,11 @@ export default function MenuAdmin() {
   };
 
   return (
-    <div className="min-h-full bg-[#F7F9FB] p-8">
-      <div className="mx-auto max-w-[960px] space-y-8">
-        <section className="flex items-end justify-between gap-6">
+    <div className="min-h-full bg-[#F7F9FB]">
+      <div className="mx-auto max-w-[960px] space-y-6">
+        <section className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
           <div>
-            <h1 className="text-3xl font-extrabold leading-9 text-[#191C1E]">
+            <h1 className="text-2xl font-extrabold leading-8 text-[#191C1E]">
               Kelola Menu
             </h1>
             <p className="mt-1 text-sm leading-5 text-[#434655]">
@@ -1370,20 +1445,20 @@ export default function MenuAdmin() {
           <button
             type="button"
             onClick={() => setIsAddModalOpen(true)}
-            className="flex h-11 items-center gap-2 rounded-lg bg-gradient-to-br from-[#004AC6] to-[#2563EB] px-6 text-base font-semibold text-white shadow-lg shadow-blue-700/20 transition hover:brightness-105"
+            className="flex h-10 items-center gap-2 rounded-lg bg-gradient-to-br from-[#004AC6] to-[#2563EB] px-5 text-sm font-semibold text-white shadow-lg shadow-blue-700/20 transition hover:brightness-105"
           >
             <PlusIcon />
             Tambah Menu
           </button>
         </section>
 
-        <section className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           {dashboardStats.map((stat) => (
             <StatCard key={stat.label} {...stat} />
           ))}
         </section>
 
-        <section className="grid gap-4 rounded-lg bg-white p-5 shadow-sm md:grid-cols-[1fr_180px_180px_auto] md:items-end">
+        <section className="grid gap-4 rounded-lg bg-white p-5 shadow-sm md:grid-cols-[1fr_170px_150px_170px_auto] md:items-end">
           <label className="flex flex-col gap-2">
             <span className="text-xs font-bold uppercase tracking-[0.08em] text-[#434655]">
               Cari Menu
@@ -1430,12 +1505,30 @@ export default function MenuAdmin() {
             </select>
           </label>
 
+          <label className="flex flex-col gap-2">
+            <span className="text-xs font-bold uppercase tracking-[0.08em] text-[#434655]">
+              Urutkan
+            </span>
+            <select
+              value={sortOption}
+              onChange={(event) => setSortOption(event.target.value)}
+              className="h-11 rounded-lg border border-[#C3C6D7] bg-white px-3 text-sm font-semibold text-[#191C1E] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            >
+              <option value="name-asc">Nama A-Z</option>
+              <option value="name-desc">Nama Z-A</option>
+              <option value="category">Kategori</option>
+              <option value="price-asc">Harga Termurah</option>
+              <option value="price-desc">Harga Termahal</option>
+            </select>
+          </label>
+
           <button
             type="button"
             onClick={() => {
               setSearchQuery("");
               setCategoryFilter("all");
               setStatusFilter("all");
+              setSortOption("name-asc");
             }}
             className="h-11 rounded-lg px-5 text-sm font-bold text-[#434655] transition hover:bg-[#F2F4F6]"
           >

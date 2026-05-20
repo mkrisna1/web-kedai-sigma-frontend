@@ -310,16 +310,16 @@ const Dashboard = () => {
   }));
 
   return (
-    <div className="min-h-screen bg-[#F7F9FB] p-10 font-['Inter',Arial,sans-serif]">
-      <div className="mx-auto max-w-[1280px] space-y-10">
-        <div className="grid grid-cols-3 gap-8">
-          <div className="rounded-2xl bg-white p-8 shadow-sm">
+    <div className="bg-[#F7F9FB] font-['Inter',Arial,sans-serif]">
+      <div className="mx-auto max-w-[1120px] space-y-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="rounded-xl bg-white p-6 shadow-sm">
             <div className="flex items-start justify-between">
-              <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-[#EFF6FF]">
-                <i className="fa-solid fa-wallet text-4xl text-[#2563EB]" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#EFF6FF]">
+                <i className="fa-solid fa-wallet text-2xl text-[#2563EB]" />
               </div>
               <div
-                className={`flex items-center gap-2 text-lg font-semibold ${
+                className={`flex items-center gap-2 text-sm font-semibold ${
                   incomePercent < 0 ? "text-[#BA1A1A]" : "text-[#006C49]"
                 }`}
               >
@@ -331,10 +331,10 @@ const Dashboard = () => {
                 <span>{formatPercentChange(incomePercent)}</span>
               </div>
             </div>
-            <p className="mt-12 text-sm font-semibold uppercase tracking-normal text-[#434655]">
+            <p className="mt-8 text-xs font-semibold uppercase tracking-normal text-[#434655]">
               Pendapatan Kedai
             </p>
-            <p className="mt-2 text-5xl font-bold leading-tight text-[#191C1E]">
+            <p className="mt-2 text-3xl font-bold leading-tight text-[#191C1E]">
               {formatRupiah(incomeValue)}
             </p>
             <div className="mt-6 grid grid-cols-[1fr_auto] gap-3">
@@ -362,54 +362,51 @@ const Dashboard = () => {
             </p>
           </div>
 
-          <div className="rounded-2xl bg-white p-8 shadow-sm">
+          <div className="rounded-xl bg-white p-6 shadow-sm">
             <div className="flex justify-between">
-              <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-[#F0FDF4]">
-                <i className="fa-solid fa-chair text-4xl text-[#16A34A]" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F0FDF4]">
+                <i className="fa-solid fa-chair text-2xl text-[#16A34A]" />
               </div>
             </div>
-            <p className="mt-12 text-sm font-semibold uppercase tracking-normal text-[#434655]">
-              Terisi / Sisa Meja
+            <p className="mt-8 text-xs font-semibold uppercase tracking-normal text-[#434655]">
+              Meja yang Terisi
             </p>
             <div className="mt-3 flex items-end gap-2">
-              <span className="text-6xl font-bold leading-none text-[#191C1E]">
+              <span className="text-4xl font-bold leading-none text-[#191C1E]">
                 {occupiedTables}
-              </span>
-              <span className="text-3xl text-gray-500">
-                /{remainingTables}
               </span>
             </div>
             <p className="mt-3 text-xs font-semibold text-[#434655]">
-              Total aktif {totalTables} meja
+              Sisa {remainingTables} dari {totalTables} meja aktif
             </p>
           </div>
 
-          <div className="rounded-2xl bg-white p-8 shadow-sm">
+          <div className="rounded-xl bg-white p-6 shadow-sm">
             <div className="flex items-start justify-between">
-              <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-[#F0FFAD]">
-                <i className="fa-solid fa-clock text-3xl text-gray-700" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F0FFAD]">
+                <i className="fa-solid fa-clock text-2xl text-gray-700" />
               </div>
-              <div className="rounded-full bg-[#BA1A1A] px-4 py-1.5 text-base font-bold text-white">
+              <div className="rounded-full bg-[#BA1A1A] px-3 py-1 text-sm font-bold text-white">
                 {dashboard.reservasi_belum_diproses || 0}
               </div>
             </div>
-            <p className="mt-12 text-sm font-semibold uppercase tracking-normal text-[#434655]">
+            <p className="mt-8 text-xs font-semibold uppercase tracking-normal text-[#434655]">
               Reservasi Belum Diproses
             </p>
-            <p className="mt-2 text-6xl font-bold leading-none text-[#BA1A1A]">
+            <p className="mt-2 text-4xl font-bold leading-none text-[#BA1A1A]">
               {dashboard.reservasi_belum_diproses || 0}
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-7 gap-8">
-          <div className="col-span-5 rounded-2xl bg-white p-10 shadow-sm">
-            <div className="mb-8 flex items-center justify-between">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-7">
+          <div className="rounded-xl bg-white p-6 shadow-sm xl:col-span-5">
+            <div className="mb-6 flex items-center justify-between">
               <div>
-                <h3 className="text-3xl font-bold text-[#191C1E]">
+                <h3 className="text-xl font-bold text-[#191C1E]">
                   Transaksi Terakhir
                 </h3>
-                <p className="mt-1 text-lg text-[#434655]">
+                <p className="mt-1 text-sm text-[#434655]">
                   Transaksi periode {incomePeriodLabel.toLowerCase()}
                 </p>
               </div>
@@ -417,7 +414,7 @@ const Dashboard = () => {
                 type="button"
                 onClick={() => setShowAllTransactions((current) => !current)}
                 disabled={allTransactions.length <= transactions.length}
-                className="group flex items-center gap-3 rounded-xl bg-[#2563EB] px-8 py-3 text-lg font-semibold text-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+                className="group flex items-center gap-2 rounded-lg bg-[#2563EB] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
                 aria-expanded={showAllTransactions}
               >
                 <span>{showAllTransactions ? "Sembunyikan" : "Lihat Semua"}</span>
@@ -434,16 +431,16 @@ const Dashboard = () => {
 
             <div
               className={`overflow-hidden transition-[max-height] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                showAllTransactions ? "max-h-[680px]" : "max-h-[372px]"
+                showAllTransactions ? "max-h-[560px]" : "max-h-[312px]"
               }`}
             >
-              <table className="w-full text-lg">
+              <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-sm uppercase tracking-normal text-[#434655]">
-                    <th className="pb-5 text-left">ID Pesanan</th>
-                    <th className="pb-5 text-left">Meja</th>
-                    <th className="pb-5 text-left">Waktu</th>
-                    <th className="pb-5 text-right">Total</th>
+                  <tr className="border-b text-xs uppercase tracking-normal text-[#434655]">
+                    <th className="pb-4 text-left">ID Pesanan</th>
+                    <th className="pb-4 text-left">Meja</th>
+                    <th className="pb-4 text-left">Waktu</th>
+                    <th className="pb-4 text-right">Total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -462,12 +459,12 @@ const Dashboard = () => {
                             : "0ms",
                       }}
                     >
-                      <td className="py-6 font-medium text-[#2563EB]">
+                      <td className="py-4 font-medium text-[#2563EB]">
                         {item.id}
                       </td>
-                      <td className="py-6 text-[#191C1E]">{item.table}</td>
-                      <td className="py-6 text-gray-600">{item.time}</td>
-                      <td className="py-6 text-right font-bold text-[#191C1E]">
+                      <td className="py-4 text-[#191C1E]">{item.table}</td>
+                      <td className="py-4 text-gray-600">{item.time}</td>
+                      <td className="py-4 text-right font-bold text-[#191C1E]">
                         {item.total}
                       </td>
                     </tr>
@@ -487,13 +484,13 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="col-span-2 flex self-start flex-col rounded-2xl bg-white p-10 shadow-sm">
+          <div className="flex self-start flex-col rounded-xl bg-white p-6 shadow-sm xl:col-span-2">
             <div className="flex flex-col gap-4">
               <div>
-                <h3 className="text-2xl font-bold text-[#191C1E]">
+                <h3 className="text-lg font-bold text-[#191C1E]">
                   Trafik Puncak Bulanan
                 </h3>
-                <p className="mt-1 text-base text-gray-500">
+                <p className="mt-1 text-sm text-gray-500">
                   Total pesanan per hari dalam satu bulan
                 </p>
               </div>
@@ -523,7 +520,7 @@ const Dashboard = () => {
               </div>
             </div>
 
-            <div className="relative mt-10 flex h-72 shrink-0 items-end gap-1 overflow-hidden border-b border-l border-gray-200 px-1">
+            <div className="relative mt-8 flex h-56 shrink-0 items-end gap-1 overflow-hidden border-b border-l border-gray-200 px-1">
               {trafficBars.map((item, index) => (
                 <div
                   key={item.tanggal || index}
@@ -542,7 +539,7 @@ const Dashboard = () => {
                 ))}
             </div>
 
-            <div className="mt-8 space-y-4 text-base">
+            <div className="mt-6 space-y-3 text-sm">
               <div className="flex justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="h-4 w-4 rounded-full bg-[#2563EB]" />

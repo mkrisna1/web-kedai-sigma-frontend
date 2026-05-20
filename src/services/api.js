@@ -301,6 +301,9 @@ export const getPublicReviews = () => request("/public/review");
 export const getPublicMenu = (params) =>
   request("/public/menu", { params });
 
+export const getPublicBestSellers = (params) =>
+  request("/public/best-seller", { params });
+
 export const getPublicMenuCategories = () => request("/public/kategori");
 
 export const getPublicReservationTables = (params) =>
@@ -338,3 +341,9 @@ export const checkoutQrOrder = (payload) =>
     method: "POST",
     body: payload,
   });
+
+export const getQrPaymentConfig = () =>
+  request("/qr/payment/config");
+
+export const getQrPaymentStatus = (orderId) =>
+  request(`/qr/payment/${orderId}/status`);

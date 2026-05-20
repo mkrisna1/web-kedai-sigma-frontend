@@ -173,6 +173,8 @@ const mapOrderFromApi = (order) => ({
   dateValue: getDateValueFromApi(order.tgl_pesanan || order.created_at),
   status: uiStatusByApiStatus[order.status_pesanan] || "pending",
   paymentStatus: order.status_pembayaran,
+  paymentMethod: order.metode_pembayaran || "cash",
+  gatewayStatus: order.payment_status,
   items: (order.detail_pesanans || []).map((detail) => {
     const quantity = Number(detail.jumlah_item) || 1;
     const productName = detail.produk?.nama_produk || "Menu";
@@ -231,13 +233,35 @@ const ShieldIcon = () => (
   </svg>
 );
 
-function StatCard({ label, value, icon, accentColor, valueColor }) {
+function StatCard({
+  label,
+  value,
+  icon,
+  accentColor,
+  valueColor,
+  activeColor = "ring-[#004AC6]",
+  activeBg = "bg-[#EFF6FF]",
+  active = false,
+  onClick,
+}) {
+  const Component = onClick ? "button" : "div";
+
   return (
-    <div className={cn("flex flex-col gap-1 p-6 rounded-lg bg-white shadow-sm border-b-4", accentColor)}>
+    <Component
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+      className={cn(
+        "flex flex-col gap-1 rounded-lg p-5 shadow-sm border-b-4 text-left transition",
+        active ? activeBg : "bg-white",
+        onClick && "hover:-translate-y-0.5 hover:shadow-md",
+        active && `ring-2 ${activeColor} ring-offset-2 ring-offset-[#F6F7FB]`,
+        accentColor,
+      )}
+    >
       <div className="flex justify-between items-start">{icon}</div>
       <p className="text-[#434655] text-xs font-bold leading-4 tracking-[0.6px] uppercase mt-3">{label}</p>
-      <p className={cn("text-3xl font-black leading-9", valueColor)}>{value}</p>
-    </div>
+      <p className={cn("text-2xl font-black leading-8", valueColor)}>{value}</p>
+    </Component>
   );
 }
 
@@ -246,6 +270,9 @@ function OrderCard({
   orderId,
   timeLabel,
   status,
+  paymentStatus,
+  paymentMethod,
+  gatewayStatus,
   items,
   onAccept,
   onCancel,
@@ -257,6 +284,15 @@ function OrderCard({
   const isCancelled = status === "cancelled";
   const isDimmed = isCompleted || isCancelled;
   const total = formatRupiah(getOrderTotal(items));
+  const isOnlinePayment = ["qris", "gopay"].includes(paymentMethod);
+  const isPaymentPending = isOnlinePayment && paymentStatus !== "lunas";
+  const paymentLabel = isOnlinePayment
+    ? paymentStatus === "lunas"
+      ? "QRIS Lunas"
+      : gatewayStatus
+        ? `QRIS ${gatewayStatus}`
+        : "QRIS Pending"
+    : "Tunai";
 
   return (
     <div className={cn("flex flex-col rounded-lg bg-white shadow-sm overflow-hidden", isCompleted && "border border-[rgba(0,108,73,0.10)]")}>
@@ -272,9 +308,17 @@ function OrderCard({
           </div>
         </div>
 
-        <span className={cn("px-2 py-1 rounded-sm text-[10px] font-bold leading-[15px] tracking-[0.5px] uppercase", cfg.badge.bg, cfg.badge.text)}>
-          {cfg.badge.label}
-        </span>
+        <div className="flex flex-col items-end gap-1">
+          <span className={cn("px-2 py-1 rounded-sm text-[10px] font-bold leading-[15px] tracking-[0.5px] uppercase", cfg.badge.bg, cfg.badge.text)}>
+            {cfg.badge.label}
+          </span>
+          <span className={cn(
+            "rounded px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.5px]",
+            isPaymentPending ? "bg-[#FFF2CC] text-[#784B00]" : "bg-[#DFF7E8] text-[#006C49]",
+          )}>
+            {paymentLabel}
+          </span>
+        </div>
       </div>
 
       <div className="flex flex-col gap-4 px-5 py-5 flex-1">
@@ -334,16 +378,17 @@ function OrderCard({
             <button
               type="button"
               onClick={onAccept}
-              className="flex-1 py-3 rounded bg-[#004AC6] text-white text-xs font-bold tracking-wide shadow-md hover:bg-blue-800 transition-colors"
+              disabled={isPaymentPending}
+              className="flex-1 py-3 rounded bg-[#004AC6] text-white text-xs font-bold tracking-wide shadow-md transition-colors hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 disabled:shadow-none"
             >
-              Terima Pesanan
+              {isPaymentPending ? "Menunggu Pembayaran" : "Terima Pesanan"}
             </button>
 
             <button
               type="button"
               onClick={onCancel}
               className="flex items-center justify-center w-10 h-10 rounded border border-[rgba(195,198,215,0.20)] bg-white text-[#BA1A1A] hover:bg-red-50 transition-colors flex-shrink-0"
-              aria-label="Batalkan pesanan"
+              aria-label="Tandai stok habis"
             >
               <CancelIcon />
             </button>
@@ -364,7 +409,7 @@ function OrderCard({
               type="button"
               onClick={onCancel}
               className="flex items-center justify-center w-10 h-10 rounded border border-[rgba(195,198,215,0.20)] bg-white hover:bg-red-50 hover:text-[#BA1A1A] transition-colors flex-shrink-0"
-              aria-label="Batalkan pesanan"
+              aria-label="Tandai stok habis"
             >
               <CancelIcon />
             </button>
@@ -700,6 +745,7 @@ export default function Pesanan() {
   const [orders, setOrders] = useState([]);
   const [orderToCancel, setOrderToCancel] = useState(null);
   const [selectedDate, setSelectedDate] = useState(formatDateValue(getIndonesiaToday()));
+  const [activeStatusFilter, setActiveStatusFilter] = useState("all");
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [replacementMenuOptions, setReplacementMenuOptions] = useState(
     fallbackReplacementMenuOptions,
@@ -736,20 +782,27 @@ export default function Pesanan() {
     };
   }, []);
 
-  const visibleOrders = useMemo(
+  const dateOrders = useMemo(
     () => orders.filter((order) => order.dateValue === selectedDate),
     [orders, selectedDate],
   );
+  const visibleOrders = useMemo(
+    () =>
+      activeStatusFilter === "all"
+        ? dateOrders
+        : dateOrders.filter((order) => order.status === activeStatusFilter),
+    [activeStatusFilter, dateOrders],
+  );
   const statusCounts = useMemo(
     () =>
-      visibleOrders.reduce(
+      dateOrders.reduce(
         (counts, order) => ({
           ...counts,
           [order.status]: counts[order.status] + 1,
         }),
         { pending: 0, processing: 0, completed: 0, cancelled: 0 },
       ),
-    [visibleOrders],
+    [dateOrders],
   );
 
   const updateOrderStatus = async (order, nextStatus) => {
@@ -899,10 +952,10 @@ export default function Pesanan() {
   };
 
   return (
-    <main className="min-h-screen bg-[#F6F7FB] p-6 font-['Inter',sans-serif]">
+    <main className="bg-[#F6F7FB] font-['Inter',sans-serif]">
       <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold leading-9 text-[#191C1E]">
+          <h1 className="text-2xl font-extrabold leading-8 text-[#191C1E]">
             Kelola Pesanan
           </h1>
           <p className="mt-1 text-sm font-semibold text-[#434655]">
@@ -912,20 +965,60 @@ export default function Pesanan() {
         <button
           type="button"
           onClick={() => setIsCalendarOpen(true)}
-          className="h-11 rounded-lg bg-white px-5 text-sm font-bold text-[#191C1E] shadow-sm transition hover:bg-[#DBE1FF]"
+          className="h-10 rounded-lg bg-white px-5 text-sm font-bold text-[#191C1E] shadow-sm transition hover:bg-[#DBE1FF]"
         >
           {formatCalendarLabel(selectedDate)}
         </button>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Menunggu" value={statusCounts.pending} accentColor="border-[#004AC6]" valueColor="text-[#004AC6]" icon={<div className="w-10 h-10 rounded bg-[#DBE1FF] text-[#004AC6] flex items-center justify-center"><ClockIcon /></div>} />
-        <StatCard label="Diproses" value={statusCounts.processing} accentColor="border-[#F59E0B]" valueColor="text-[#D97706]" icon={<div className="w-10 h-10 rounded bg-[#FFDDB8] text-[#D97706] flex items-center justify-center"><ProcessingIcon /></div>} />
-        <StatCard label="Selesai" value={statusCounts.completed} accentColor="border-[#006C49]" valueColor="text-[#006C49]" icon={<div className="w-10 h-10 rounded bg-[#6CF8BB] text-[#006C49] flex items-center justify-center"><CheckIcon /></div>} />
-        <StatCard label="Dibatalkan" value={statusCounts.cancelled} accentColor="border-[#BA1A1A]" valueColor="text-[#BA1A1A]" icon={<div className="w-10 h-10 rounded bg-[#FFDAD6] text-[#BA1A1A] flex items-center justify-center"><XIcon /></div>} />
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Menunggu"
+          value={statusCounts.pending}
+          accentColor="border-[#004AC6]"
+          valueColor="text-[#004AC6]"
+          activeColor="ring-[#004AC6]"
+          activeBg="bg-[#EFF6FF]"
+          active={activeStatusFilter === "pending"}
+          onClick={() => setActiveStatusFilter((current) => current === "pending" ? "all" : "pending")}
+          icon={<div className="w-10 h-10 rounded bg-[#DBE1FF] text-[#004AC6] flex items-center justify-center"><ClockIcon /></div>}
+        />
+        <StatCard
+          label="Diproses"
+          value={statusCounts.processing}
+          accentColor="border-[#F59E0B]"
+          valueColor="text-[#D97706]"
+          activeColor="ring-[#F59E0B]"
+          activeBg="bg-[#FFF7ED]"
+          active={activeStatusFilter === "processing"}
+          onClick={() => setActiveStatusFilter((current) => current === "processing" ? "all" : "processing")}
+          icon={<div className="w-10 h-10 rounded bg-[#FFDDB8] text-[#D97706] flex items-center justify-center"><ProcessingIcon /></div>}
+        />
+        <StatCard
+          label="Selesai"
+          value={statusCounts.completed}
+          accentColor="border-[#006C49]"
+          valueColor="text-[#006C49]"
+          activeColor="ring-[#006C49]"
+          activeBg="bg-[#ECFDF5]"
+          active={activeStatusFilter === "completed"}
+          onClick={() => setActiveStatusFilter((current) => current === "completed" ? "all" : "completed")}
+          icon={<div className="w-10 h-10 rounded bg-[#6CF8BB] text-[#006C49] flex items-center justify-center"><CheckIcon /></div>}
+        />
+        <StatCard
+          label="Dibatalkan"
+          value={statusCounts.cancelled}
+          accentColor="border-[#BA1A1A]"
+          valueColor="text-[#BA1A1A]"
+          activeColor="ring-[#BA1A1A]"
+          activeBg="bg-[#FFF1F2]"
+          active={activeStatusFilter === "cancelled"}
+          onClick={() => setActiveStatusFilter((current) => current === "cancelled" ? "all" : "cancelled")}
+          icon={<div className="w-10 h-10 rounded bg-[#FFDAD6] text-[#BA1A1A] flex items-center justify-center"><XIcon /></div>}
+        />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {visibleOrders.map((order) => (
           <OrderCard
             key={order.orderId}
@@ -956,6 +1049,7 @@ export default function Pesanan() {
           onClose={() => setIsCalendarOpen(false)}
           onSelect={(value) => {
             setSelectedDate(value);
+            setActiveStatusFilter("all");
             setIsCalendarOpen(false);
           }}
         />

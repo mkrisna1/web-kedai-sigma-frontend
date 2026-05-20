@@ -398,14 +398,14 @@ function TimePopup({ selectedTime, onClose, onSelect }) {
 
 function TablePopup({ tables, selectedTableId, guestCount, onClose, onSelect }) {
   return (
-    <div className="absolute left-1/2 top-full z-30 mt-4 w-[min(384px,calc(100vw-48px))] -translate-x-1/2 animate-[picker-panel_180ms_ease-out] overflow-hidden rounded-lg border border-[#2B3544] bg-[#212B39] shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
+    <div className="absolute left-1/2 top-full z-30 mt-4 w-[min(420px,calc(100vw-48px))] -translate-x-1/2 animate-[picker-panel_180ms_ease-out] overflow-hidden rounded-xl border border-[#2B3544] bg-[#212B39] shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
       <div className="flex flex-col gap-6 p-6">
         <div>
           <h2 className="font-['Inter',sans-serif] text-lg font-bold leading-7 tracking-[-0.025em] text-[#D9E3F6]">
             Pilih Meja
           </h2>
           <p className="mt-1 font-['Inter',sans-serif] text-sm text-[#94A3B8]">
-            {guestCount ? `${guestCount} orang` : "Pilih jumlah orang dulu"}
+            {guestCount ? `${guestCount} orang, pilih meja yang masih kosong` : "Pilih jumlah orang dulu"}
           </p>
         </div>
 
@@ -419,13 +419,22 @@ function TablePopup({ tables, selectedTableId, guestCount, onClose, onSelect }) 
                   key={table.id}
                   type="button"
                   onClick={() => onSelect(table.id)}
-                  className={`flex min-h-[82px] flex-col items-start justify-between rounded-lg border p-4 text-left font-['Inter',sans-serif] transition ${
+                  className={`group relative flex min-h-[96px] flex-col items-start justify-between overflow-hidden rounded-xl border p-4 text-left font-['Inter',sans-serif] transition duration-300 hover:-translate-y-0.5 ${
                     isSelected
-                      ? "border-[#DC2626] bg-[#DC2626] text-white shadow-[0_8px_18px_rgba(220,38,38,0.35)]"
-                      : "border-[#2B3544] bg-[#121C2A] text-[#D9E3F6] hover:border-[#DC2626]/50 hover:bg-[#2B3544]"
+                      ? "border-[#EEC200] bg-[#DC2626] text-white shadow-[0_8px_18px_rgba(220,38,38,0.35)]"
+                      : "border-[#2B3544] bg-[#121C2A] text-[#D9E3F6] hover:border-[#EEC200]/60 hover:bg-[#2B3544]"
                   }`}
                 >
-                  <span className="text-sm font-bold leading-5">{table.label}</span>
+                  <span
+                    className={`absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-xs font-black ${
+                      isSelected
+                        ? "bg-white text-[#DC2626]"
+                        : "bg-[#2B3544] text-[#EEC200] group-hover:bg-[#EEC200] group-hover:text-[#3C2F00]"
+                    }`}
+                  >
+                    {table.capacity}
+                  </span>
+                  <span className="text-base font-bold leading-5">{table.label}</span>
                   <span
                     className={`text-[10px] font-bold uppercase tracking-[0.12em] ${
                       isSelected ? "text-white/80" : "text-[#EEC200]"
@@ -584,9 +593,14 @@ export default function Reservasi() {
   useEffect(() => {
     let isMounted = true;
     const guestCount = Number.parseInt(formData.people, 10) || undefined;
+    const params = {
+      ...(guestCount ? { jml_orang: guestCount } : {}),
+      ...(selectedDate ? { tgl_reservasi: toApiDate(selectedDate) } : {}),
+      ...(selectedTime ? { jam_reservasi: selectedTime } : {}),
+    };
 
     setIsLoadingTables(true);
-    getPublicReservationTables(guestCount ? { jml_orang: guestCount } : undefined)
+    getPublicReservationTables(Object.keys(params).length ? params : undefined)
       .then((response) => {
         if (!isMounted) {
           return;
@@ -621,7 +635,7 @@ export default function Reservasi() {
     return () => {
       isMounted = false;
     };
-  }, [formData.people]);
+  }, [formData.people, selectedDate, selectedTime]);
 
   const selectedTable = tableOptions.find(
     (table) => String(table.id) === String(selectedTableId),
@@ -938,15 +952,15 @@ export default function Reservasi() {
                 </p>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <article className="h-[105px] border-l-2 border-[#4AE176] bg-[#121C2A] p-6">
-                    <WifiIcon className="h-7 w-7 text-[#4AE176]" />
+                  <article className="group h-[105px] border-l-2 border-[#4AE176] bg-[#121C2A] p-6 transition duration-300 hover:-translate-y-1 hover:bg-[#16202E] hover:shadow-[0_14px_32px_rgba(74,225,118,0.16)]">
+                    <WifiIcon className="h-7 w-7 text-[#4AE176] transition duration-300 group-hover:-translate-y-1 group-hover:scale-110" />
                     <p className="mt-4 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 tracking-[0.1em]">
                       Wifi cepat sangat sigma
                     </p>
                   </article>
 
-                  <article className="h-[105px] border-l-2 border-[#DC2626] bg-[#121C2A] p-6">
-                    <ChargeIcon className="h-7 w-7 text-[#DC2626]" />
+                  <article className="group h-[105px] border-l-2 border-[#DC2626] bg-[#121C2A] p-6 transition duration-300 hover:-translate-y-1 hover:bg-[#16202E] hover:shadow-[0_14px_32px_rgba(220,38,38,0.18)]">
+                    <ChargeIcon className="h-7 w-7 text-[#DC2626] transition duration-300 group-hover:-translate-y-1 group-hover:scale-110" />
                     <p className="mt-4 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 tracking-[0.1em]">
                       Station Charging
                     </p>
@@ -959,12 +973,12 @@ export default function Reservasi() {
               <img
                 src={fotoKedai1}
                 alt="Interior Kedai Sigma"
-                className="absolute left-0 top-0 h-80 w-[216px] border border-[#2B3544]/20 object-cover grayscale"
+                className="absolute left-0 top-0 h-80 w-[216px] border border-[#2B3544]/20 object-cover grayscale opacity-0 transition duration-700 hover:-translate-y-2 hover:grayscale-0 [animation:favorite-card-in_700ms_cubic-bezier(0.16,1,0.3,1)_forwards]"
               />
               <img
                 src={fotoKedai2}
                 alt="Suasana Kedai Sigma"
-                className="absolute left-[232px] top-12 h-80 w-[216px] border border-[#2B3544]/20 object-cover grayscale"
+                className="absolute left-[232px] top-12 h-80 w-[216px] border border-[#2B3544]/20 object-cover grayscale opacity-0 transition duration-700 hover:-translate-y-2 hover:grayscale-0 [animation:favorite-card-in_700ms_140ms_cubic-bezier(0.16,1,0.3,1)_forwards]"
               />
             </div>
           </section>

@@ -460,6 +460,7 @@ export default function ReservasiAdmin() {
       );
     } catch (error) {
       console.error("Gagal memperbarui status reservasi:", error);
+      window.alert(error.message || "Reservasi belum bisa diperbarui.");
       setPages(previousPages);
     }
   };
@@ -536,10 +537,14 @@ export default function ReservasiAdmin() {
 
           <button
             type="button"
-            onClick={() => setCurrentPage(0)}
+            onClick={() => {
+              setSelectedDate("");
+              setSelectedStatus("Semua Status");
+              setCurrentPage(0);
+            }}
             className="h-10 rounded-lg bg-gradient-to-br from-[#004AC6] to-[#2563EB] px-8 text-sm font-semibold text-white shadow-[0_10px_15px_-3px_rgba(59,130,246,0.2)] transition hover:brightness-105"
           >
-            Terapkan
+            Reset
           </button>
         </div>
 
@@ -565,11 +570,9 @@ export default function ReservasiAdmin() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button className="rounded p-2 text-[#434655] transition hover:bg-slate-100">
-              <DotsIcon />
-            </button>
-          </div>
+          <span className="rounded bg-[#F2F4F6] px-3 py-2 text-xs font-bold uppercase tracking-[0.08em] text-[#434655]">
+            {filteredTotal} data
+          </span>
         </div>
 
         <div className="overflow-x-auto">
@@ -646,21 +649,9 @@ export default function ReservasiAdmin() {
                           Batalkan
                         </button>
                       ) : (
-                        <button
-                          type="button"
-                          className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                            item.status === "Dikonfirmasi"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                          disabled
-                        >
-                          {item.status === "Dikonfirmasi" ? (
-                            <CheckIcon className="h-4 w-4" />
-                          ) : (
-                            <XIcon className="h-4 w-4" />
-                          )}
-                        </button>
+                        <span className="rounded bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-500">
+                          Diproses
+                        </span>
                       )}
                       <button
                         type="button"

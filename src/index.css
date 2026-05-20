@@ -69,6 +69,41 @@ body {
   will-change: opacity, translate;
 }
 
+@keyframes scroll-top-lift {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+
+  38% {
+    transform: translateY(-14px) scale(1.08);
+  }
+
+  72% {
+    transform: translateY(4px) scale(0.96);
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes scroll-top-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(42px) scale(0.92);
+  }
+
+  72% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.03);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @keyframes page-route-in {
   from {
     filter: blur(6px);

@@ -75,7 +75,21 @@ const navItems = [
   },
 ];
 
-export default function Sidebar() {
+function CollapseIcon({ isCollapsed }) {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path
+        d={isCollapsed ? "M7 4L13 10L7 16" : "M13 4L7 10L13 16"}
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export default function Sidebar({ isCollapsed = false, onToggleCollapse }) {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -91,13 +105,17 @@ export default function Sidebar() {
 };
 
   return (
-    <aside className="flex flex-col w-64 min-h-screen border-r bg-slate-50">
+    <aside
+      className={`relative flex min-h-screen flex-col border-r bg-slate-50 transition-[width] duration-300 ease-out ${
+        isCollapsed ? "w-20" : "w-64"
+      }`}
+    >
 
-      <div className="px-4 pt-4 pb-8">
-  <div className="flex items-center gap-3">
+      <div className="px-4 pb-8 pt-4">
+  <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
 
     {/* Logo */}
-    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-600 shadow-md flex-shrink-0">
+    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-blue-600 shadow-md">
       <svg width="15" height="20" viewBox="0 0 15 20" fill="none">
         <path
           d="M3 20V10.85C2.15 10.6167 1.4375 10.15 0.8625 9.45C0.2875 8.75 0 7.93333 0 7V0H2V7H3V0H5V7H6V0H8V7C8 7.93333 7.7125 8.75 7.1375 9.45C6.5625 10.15 5.85 10.6167 5 10.85V20H3ZM13 20V12H10V5C10 3.61667 10.4875 2.4375 11.4625 1.4625C12.4375 0.4875 13.6167 0 15 0V20H13Z"
@@ -107,7 +125,8 @@ export default function Sidebar() {
     </div>
 
     {/* Text */}
-    <div className="flex flex-col">
+    {!isCollapsed && (
+    <div className="flex min-w-0 flex-1 flex-col">
       <span className="text-slate-900 font-bold text-base">
         Kedai Sigma
       </span>
@@ -115,11 +134,24 @@ export default function Sidebar() {
         Admin Console
       </span>
     </div>
+    )}
+
+    <button
+      type="button"
+      onClick={onToggleCollapse}
+      aria-label={isCollapsed ? "Lebarkan sidebar" : "Minimize sidebar"}
+      title={isCollapsed ? "Lebarkan sidebar" : "Minimize sidebar"}
+      className={`flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 ${
+        isCollapsed ? "absolute left-[58px] top-4 bg-white shadow-sm" : ""
+      }`}
+    >
+      <CollapseIcon isCollapsed={isCollapsed} />
+    </button>
 
   </div>
 </div>
 
-      <nav className="flex flex-col gap-1 px-4 flex-1">
+      <nav className={`flex flex-1 flex-col gap-1 ${isCollapsed ? "px-3" : "px-4"}`}>
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
 
@@ -127,14 +159,17 @@ export default function Sidebar() {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center gap-3 px-3 py-2 rounded text-sm ${
+              title={item.label}
+              className={`flex items-center rounded py-2 text-sm transition ${
+                isCollapsed ? "justify-center px-0" : "gap-3 px-3"
+              } ${
                 isActive
                   ? "bg-blue-50 text-blue-600"
                   : "text-slate-600 hover:bg-slate-100"
               }`}
             >
-              <span className="w-5 h-5">{item.icon}</span>
-              <span>{item.label}</span>
+              <span className="h-5 w-5 shrink-0">{item.icon}</span>
+              {!isCollapsed && <span>{item.label}</span>}
             </Link>
           );
         })}
@@ -143,7 +178,10 @@ export default function Sidebar() {
       <div className="p-4 border-t">
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2 rounded text-sm text-slate-600 hover:bg-red-100 hover:text-red-600 w-full"
+          title="Logout"
+          className={`flex w-full items-center rounded py-2 text-sm text-slate-600 hover:bg-red-100 hover:text-red-600 ${
+            isCollapsed ? "justify-center px-0" : "gap-3 px-3"
+          }`}
         >
           <svg className="w-5 h-5" viewBox="0 0 18 18" fill="none">
             <path
@@ -151,7 +189,7 @@ export default function Sidebar() {
               fill="currentColor"
             />
           </svg>
-          Logout
+          {!isCollapsed && <span>Logout</span>}
         </button>
       </div>
 

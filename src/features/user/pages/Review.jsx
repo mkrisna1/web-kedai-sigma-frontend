@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import logoSigma from "../../../assets/Logo Sigma.png";
+import ScrollToTopButton from "../../../components/user/ScrollToTopButton";
 import {
   createPublicReview,
   getPublicReviews,
@@ -14,20 +15,28 @@ const REVIEW_PHOTO_MIN_QUALITY = 0.62;
 
 const advantages = [
   {
-    label: "Bersih",
+    label: "Tempat Nyaman",
     className: "border-[#4AE176]/30 bg-[#00B954]/20 text-[#6BFF8F]",
   },
   {
-    label: "Playlist",
+    label: "Pelayanan Ramah",
     className: "border-[#EEC200]/30 bg-[#EEC200]/20 text-[#EEC200]",
   },
   {
-    label: "Affordable",
+    label: "Harga Terjangkau",
     className: "border-[#FFB4AB]/30 bg-[#DC2626]/20 text-[#FFB4AB]",
   },
   {
-    label: "Tempat Teduh",
+    label: "Wi-Fi Cepat",
     className: "border-transparent bg-[#334155] text-[#E2E8F0]",
+  },
+  {
+    label: "Colokan Tersedia",
+    className: "border-[#38BDF8]/30 bg-[#0EA5E9]/20 text-[#BAE6FD]",
+  },
+  {
+    label: "Menu Bervariasi",
+    className: "border-[#C084FC]/30 bg-[#7E22CE]/20 text-[#E9D5FF]",
   },
 ];
 
@@ -309,6 +318,26 @@ function RatingStars({ rating, size = "h-3 w-3", color = "text-[#4AE176]" }) {
   );
 }
 
+const getRatingLabel = (averageRating, totalReviews) => {
+  if (totalReviews === 0) {
+    return "Belum ada nilai";
+  }
+
+  if (averageRating >= 4.5) {
+    return "Nilai sangat baik";
+  }
+
+  if (averageRating >= 3.5) {
+    return "Nilai baik";
+  }
+
+  if (averageRating >= 2.5) {
+    return "Nilai cukup";
+  }
+
+  return "Perlu ditingkatkan";
+};
+
 function RatingSummary({ reviews }) {
   const totalReviews = reviews.length;
   const averageRating =
@@ -343,6 +372,9 @@ function RatingSummary({ reviews }) {
             />
             <p className="mt-1 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#64748B]">
               {totalReviews} total review
+            </p>
+            <p className="mt-1 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#EEC200]">
+              {getRatingLabel(averageRating, totalReviews)}
             </p>
           </div>
         </div>
@@ -390,7 +422,7 @@ function ReviewCard({ review, isLiked, onLike, onPhotoClick }) {
   const [isReplyOpen, setIsReplyOpen] = useState(false);
 
   return (
-    <article className="relative isolate flex flex-col gap-6 bg-[#121C2A] p-6 sm:flex-row sm:p-8">
+    <article className="relative isolate flex flex-col gap-6 bg-[#121C2A] p-6 transition duration-500 ease-out hover:-translate-y-1 hover:bg-[#16202E] hover:shadow-[0_18px_42px_rgba(220,38,38,0.16)] sm:flex-row sm:p-8">
       <div
         className="absolute bottom-0 left-0 top-0 w-1"
         style={{ backgroundColor: review.accent }}
@@ -804,6 +836,8 @@ export default function Review() {
   const [reviews, setReviews] = useState([]);
   const [likedReviews, setLikedReviews] = useState(readLikedReviews);
   const [previewPhoto, setPreviewPhoto] = useState(null);
+  const [ratingSort, setRatingSort] = useState("latest");
+  const [visibleCount, setVisibleCount] = useState(4);
 
   useEffect(() => {
     let isMounted = true;
@@ -861,7 +895,29 @@ export default function Review() {
     }
   };
 
-  const sortedReviews = useMemo(() => reviews, [reviews]);
+  const sortedReviews = useMemo(() => {
+    const nextReviews = [...reviews];
+
+    if (ratingSort === "highest") {
+      return nextReviews.sort((first, second) => second.rating - first.rating);
+    }
+
+    if (ratingSort === "lowest") {
+      return nextReviews.sort((first, second) => first.rating - second.rating);
+    }
+
+    return nextReviews;
+  }, [ratingSort, reviews]);
+  const visibleReviews = sortedReviews.slice(0, visibleCount);
+  const filterOptions = [
+    { value: "latest", label: "Terbaru" },
+    { value: "highest", label: "Rating Tertinggi" },
+    { value: "lowest", label: "Rating Terendah" },
+  ];
+
+  useEffect(() => {
+    setVisibleCount(4);
+  }, [ratingSort]);
 
   return (
     <div className="min-h-screen bg-[#091421] text-[#D9E3F6]">
@@ -870,7 +926,7 @@ export default function Review() {
       <section className="mx-auto flex w-full max-w-[1280px] flex-col gap-12 px-6 py-20 sm:px-8 lg:px-12 lg:py-24 xl:px-12">
         <header className="flex flex-col gap-2">
           <h1 className="font-['Space_Grotesk',sans-serif] text-6xl font-bold uppercase leading-none text-[#D9E3F6] sm:text-8xl">
-            Reviews.
+            Reviews
           </h1>
           <p className="font-['Be_Vietnam_Pro',sans-serif] text-sm font-bold uppercase leading-5 tracking-[0.1em] text-[#EEC200]">
             Kata-kata dari orang sigma
@@ -881,18 +937,59 @@ export default function Review() {
           <RatingSummary reviews={sortedReviews} />
 
           <div className="flex flex-col gap-8">
-            {sortedReviews.map((review) => (
-              <ReviewCard
+            <div className="flex flex-wrap gap-3">
+              {filterOptions.map((option) => {
+                const isActive = ratingSort === option.value;
+
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setRatingSort(option.value)}
+                    className={`border px-4 py-2 font-['Space_Grotesk',sans-serif] text-xs font-black uppercase tracking-[0.12em] transition ${
+                      isActive
+                        ? "border-[#EEC200] bg-[#EEC200] text-[#3C2F00]"
+                        : "border-[#5C403C] bg-[#121C2A] text-[#D9E3F6] hover:border-[#EEC200]"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {visibleReviews.map((review, index) => (
+              <div
                 key={review.id || review.name}
-                review={review}
-                isLiked={likedReviews.includes(String(review.id))}
-                onLike={handleLikeReview}
-                onPhotoClick={setPreviewPhoto}
-              />
+                className="opacity-0 [animation:menu-card-in_420ms_cubic-bezier(0.16,1,0.3,1)_forwards]"
+                style={{ animationDelay: `${Math.min(index, 5) * 55}ms` }}
+              >
+                <ReviewCard
+                  review={review}
+                  isLiked={likedReviews.includes(String(review.id))}
+                  onLike={handleLikeReview}
+                  onPhotoClick={setPreviewPhoto}
+                />
+              </div>
             ))}
             {sortedReviews.length === 0 && (
               <div className="bg-[#121C2A] p-8 font-['Be_Vietnam_Pro',sans-serif] text-sm leading-6 text-[#E6BDB8]">
                 Belum ada review.
+              </div>
+            )}
+            {visibleReviews.length < sortedReviews.length && (
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setVisibleCount((current) =>
+                      Math.min(current + 4, sortedReviews.length),
+                    )
+                  }
+                  className="bg-[#EEC200] px-8 py-4 font-['Space_Grotesk',sans-serif] text-sm font-black uppercase tracking-[0.16em] text-[#3C2F00] shadow-[6px_6px_0_#3C2F00] transition hover:-translate-y-1"
+                >
+                  Tampilkan Lagi
+                </button>
               </div>
             )}
             <ReviewForm
@@ -907,6 +1004,7 @@ export default function Review() {
         photo={previewPhoto}
         onClose={() => setPreviewPhoto(null)}
       />
+      <ScrollToTopButton />
     </div>
   );
 }

@@ -45,6 +45,7 @@ const mapReviewFromApi = (review) => {
     name: review.nama_pelanggan || "-",
     item: "Review Kedai",
     date: formatReviewTime(review.created_at),
+    createdAt: review.created_at || "",
     rating: Number(review.rating) || 0,
     comment: review.komentar || "",
     reply: review.balasan_admin || "",
@@ -55,6 +56,18 @@ const mapReviewFromApi = (review) => {
       alt: `Foto review ${review.nama_pelanggan || "pelanggan"} ${index + 1}`,
     })),
   };
+};
+
+const reviewSortOptions = [
+  { value: "latest", label: "Terbaru" },
+  { value: "highest", label: "Rating Tertinggi" },
+  { value: "lowest", label: "Rating Terendah" },
+];
+
+const getReviewTimeValue = (review) => {
+  const time = new Date(review.createdAt).getTime();
+
+  return Number.isNaN(time) ? 0 : time;
 };
 
 function StarIcon({ className = "h-5 w-5" }) {
@@ -132,6 +145,26 @@ function Stars({ size = "h-5 w-5", rating = 5 }) {
     </div>
   );
 }
+
+const getRatingLabel = (averageRating, totalReviews) => {
+  if (totalReviews === 0) {
+    return "Belum ada nilai";
+  }
+
+  if (averageRating >= 4.5) {
+    return "Nilai sangat baik";
+  }
+
+  if (averageRating >= 3.5) {
+    return "Nilai baik";
+  }
+
+  if (averageRating >= 2.5) {
+    return "Nilai cukup";
+  }
+
+  return "Perlu ditingkatkan";
+};
 
 function ReviewCard({ review, onDelete, onPhotoClick, onReply }) {
   return (
@@ -410,6 +443,7 @@ function DeletePhotoModal({ target, onClose, onConfirm }) {
 
 export default function ReviewAdmin() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortOption, setSortOption] = useState("latest");
   const [visibleCount, setVisibleCount] = useState(2);
   const [reviews, setReviews] = useState([]);
   const [replyTarget, setReplyTarget] = useState(null);
@@ -461,8 +495,30 @@ export default function ReviewAdmin() {
     );
   }, [reviews, searchQuery]);
 
-  const visibleReviews = filteredReviews.slice(0, visibleCount);
-  const canLoadMore = visibleCount < filteredReviews.length;
+  const sortedReviews = useMemo(() => {
+    const nextReviews = [...filteredReviews];
+
+    if (sortOption === "highest") {
+      return nextReviews.sort(
+        (a, b) =>
+          b.rating - a.rating ||
+          getReviewTimeValue(b) - getReviewTimeValue(a),
+      );
+    }
+
+    if (sortOption === "lowest") {
+      return nextReviews.sort(
+        (a, b) =>
+          a.rating - b.rating ||
+          getReviewTimeValue(b) - getReviewTimeValue(a),
+      );
+    }
+
+    return nextReviews.sort((a, b) => getReviewTimeValue(b) - getReviewTimeValue(a));
+  }, [filteredReviews, sortOption]);
+
+  const visibleReviews = sortedReviews.slice(0, visibleCount);
+  const canLoadMore = visibleCount < sortedReviews.length;
   const totalReviews = reviews.length;
   const averageRating =
     totalReviews === 0
@@ -531,36 +587,62 @@ export default function ReviewAdmin() {
   };
 
   return (
-    <section className="flex w-full flex-col gap-8 bg-[#F7F9FB] font-['Inter',Arial,sans-serif] text-[#191C1E]">
-      <div className="relative max-w-md">
-        <SearchIcon className="absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#94A3B8]" />
-        <input
-          type="search"
-          placeholder="Cari review..."
-          value={searchQuery}
-          onChange={(event) => {
-            setSearchQuery(event.target.value);
-            setVisibleCount(2);
-          }}
-          className="h-[38px] w-full border-0 border-b-2 border-[#C3C6D7] bg-white py-2 pl-10 pr-4 text-sm text-[#191C1E] outline-none placeholder:text-[#6B7280] focus:border-[#004AC6]"
-        />
+    <section className="flex w-full flex-col gap-6 bg-[#F7F9FB] font-['Inter',Arial,sans-serif] text-[#191C1E]">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="relative w-full max-w-md">
+          <SearchIcon className="absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#94A3B8]" />
+          <input
+            type="search"
+            placeholder="Cari review..."
+            value={searchQuery}
+            onChange={(event) => {
+              setSearchQuery(event.target.value);
+              setVisibleCount(2);
+            }}
+            className="h-[38px] w-full border-0 border-b-2 border-[#C3C6D7] bg-white py-2 pl-10 pr-4 text-sm text-[#191C1E] outline-none placeholder:text-[#6B7280] focus:border-[#004AC6]"
+          />
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {reviewSortOptions.map((option) => {
+            const isActive = sortOption === option.value;
+
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  setSortOption(option.value);
+                  setVisibleCount(2);
+                }}
+                className={`h-9 rounded-lg px-4 text-xs font-black uppercase tracking-[0.08em] transition ${
+                  isActive
+                    ? "bg-[#004AC6] text-white shadow-sm"
+                    : "bg-white text-[#434655] hover:bg-[#EFF6FF] hover:text-[#004AC6]"
+                }`}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[304px_1fr]">
-        <article className="flex min-h-[237px] flex-col justify-between rounded-xl border border-slate-100 bg-white p-8 shadow-sm">
+      <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+        <article className="flex min-h-[210px] flex-col justify-between rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
           <div>
             <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-[#434655]">
               Rating Keseluruhan
             </h2>
             <div className="mt-4 flex items-baseline gap-2">
-              <span className="text-6xl font-black leading-none tracking-[-0.05em] text-[#191C1E]">
+              <span className="text-5xl font-black leading-none tracking-[-0.05em] text-[#191C1E]">
                 {averageRating.toFixed(1)}
               </span>
               <span className="text-xl text-[#434655]">/ 5</span>
             </div>
             <div className="mt-4 flex items-center gap-2 text-base font-bold text-[#006C49]">
               <TrendIcon />
-              <span>{totalReviews === 0 ? "Belum ada nilai" : "Nilai sangat baik"}</span>
+              <span>{getRatingLabel(averageRating, totalReviews)}</span>
             </div>
           </div>
 
@@ -572,7 +654,7 @@ export default function ReviewAdmin() {
           </div>
         </article>
 
-        <article className="rounded-xl border border-slate-100 bg-white px-8 py-10 shadow-sm">
+        <article className="rounded-xl border border-slate-100 bg-white px-6 py-8 shadow-sm">
           <h2 className="pb-6 text-sm font-bold uppercase tracking-[0.1em] text-[#434655]">
             Rincian Rating
           </h2>
@@ -628,7 +710,7 @@ export default function ReviewAdmin() {
               type="button"
               onClick={() =>
                 setVisibleCount((current) =>
-                  Math.min(current + 2, filteredReviews.length),
+                  Math.min(current + 2, sortedReviews.length),
                 )
               }
               className="flex h-12 items-center gap-2 rounded-xl border-2 border-slate-200 px-8 text-sm font-bold text-[#434655] transition hover:border-slate-300 hover:bg-white"

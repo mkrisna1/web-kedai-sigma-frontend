@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ScrollToTopButton from "../../../components/user/ScrollToTopButton";
 import { getPublicMenu } from "../../../services/api";
 import coklatClassicImage from "../../../assets/Coklat Clasic.jpg";
 import coklatClassicRotiImage from "../../../assets/Coklat Clasic Roti.jpg";
@@ -455,6 +456,26 @@ const formatRupiah = (value) =>
 const formatPriceNumber = (value) =>
   Number(value || 0).toLocaleString("id-ID");
 
+const getPriceSortValue = (item) => {
+  if (Number.isFinite(item.priceValue)) {
+    return item.priceValue;
+  }
+
+  const priceLabel = String(item.price || "");
+  const prices = priceLabel
+    .match(/\d[\d.]*/g)
+    ?.map((value) => Number(value.replace(/\./g, "")))
+    .filter((value) => Number.isFinite(value));
+
+  if (!prices?.length) {
+    return 0;
+  }
+
+  const minPrice = Math.min(...prices);
+
+  return /k\b/i.test(priceLabel) && minPrice < 1000 ? minPrice * 1000 : minPrice;
+};
+
 const toNullableNumber = (value) => {
   if (value === null || value === undefined || value === "") {
     return null;
@@ -510,6 +531,7 @@ const mapMenuFromApi = (item) => {
     name,
     description: item.deskripsi_produk || baseItem?.description || `${name} tersedia di Kedai Sigma.`,
     price: formatVariantPriceLabel(item, baseItem, price),
+    priceValue: price,
     category: categoryValue,
     categoryLabel: baseItem?.categoryLabel || getCategoryLabel(categoryValue, item.kategori?.nama_kategori),
     image: imageUrl || localImage,
@@ -677,6 +699,7 @@ function MenuCard({ item, index }) {
 export default function Menu() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [sortMode, setSortMode] = useState("name");
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
   const [apiMenuItems, setApiMenuItems] = useState(null);
   const activeMenuItems = useMemo(() => mergeMenuItems(apiMenuItems), [apiMenuItems]);
@@ -715,10 +738,20 @@ export default function Menu() {
       return matchesFilter && matchesSearch;
     });
 
-    return activeFilter === "all"
-      ? interleaveItemsByCategory(matchingItems)
-      : matchingItems;
-  }, [activeFilter, activeMenuItems, search]);
+    return [...matchingItems].sort((first, second) => {
+      if (sortMode === "price-low") {
+        return getPriceSortValue(first) - getPriceSortValue(second)
+          || first.name.localeCompare(second.name, "id", { sensitivity: "base" });
+      }
+
+      if (sortMode === "price-high") {
+        return getPriceSortValue(second) - getPriceSortValue(first)
+          || first.name.localeCompare(second.name, "id", { sensitivity: "base" });
+      }
+
+      return first.name.localeCompare(second.name, "id", { sensitivity: "base" });
+    });
+  }, [activeFilter, activeMenuItems, search, sortMode]);
 
   const visibleItems = useMemo(() => {
     return filteredItems.slice(0, visibleCount);
@@ -750,6 +783,11 @@ export default function Menu() {
 
   function handleSearchChange(event) {
     setSearch(event.target.value);
+    setVisibleCount(INITIAL_VISIBLE_COUNT);
+  }
+
+  function handleSortChange(value) {
+    setSortMode(value);
     setVisibleCount(INITIAL_VISIBLE_COUNT);
   }
 
@@ -791,6 +829,31 @@ export default function Menu() {
               onClick={() => handleFilterChange(item.value)}
             />
           ))}
+        </section>
+
+        <section className="flex w-full flex-wrap items-center gap-3">
+          {[
+            { label: "A-Z", value: "name" },
+            { label: "Harga Termurah", value: "price-low" },
+            { label: "Harga Termahal", value: "price-high" },
+          ].map((item) => {
+            const isActive = sortMode === item.value;
+
+            return (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => handleSortChange(item.value)}
+                className={`border px-5 py-3 font-['Space_Grotesk',sans-serif] text-xs font-black uppercase tracking-[0.14em] transition ${
+                  isActive
+                    ? "border-[#EEC200] bg-[#EEC200] text-[#3C2F00]"
+                    : "border-[#5C403C]/40 bg-[#121C2A] text-[#D9E3F6] hover:border-[#EEC200]"
+                }`}
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </section>
 
         <section className="flex w-full flex-col gap-12">
@@ -837,6 +900,7 @@ export default function Menu() {
           </div>
         )}
       </main>
+      <ScrollToTopButton />
     </div>
   );
 }

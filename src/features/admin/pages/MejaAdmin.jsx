@@ -328,11 +328,11 @@ function ExternalIcon() {
 
 function StatCard({ stat }) {
   return (
-    <div className={`rounded-lg bg-white p-6 shadow-sm ${stat.borderClass || ""}`}>
+    <div className={`rounded-lg bg-white p-5 shadow-sm ${stat.borderClass || ""}`}>
       <p className="text-xs font-bold uppercase tracking-normal text-[#434655]">
         {stat.label}
       </p>
-      <p className={`mt-2 text-4xl font-black leading-10 ${stat.valueClass}`}>
+      <p className={`mt-2 text-3xl font-black leading-9 ${stat.valueClass}`}>
         {stat.value}
       </p>
       <p className="mt-2 text-xs leading-4 text-[#434655]">{stat.description}</p>
@@ -979,11 +979,11 @@ export default function MejaAdmin() {
   };
 
   return (
-    <main className="min-h-screen bg-[#F7F9FB] p-6 font-['Inter',Arial,sans-serif] text-[#191C1E] sm:p-8">
-      <section className="mx-auto flex w-full max-w-[1120px] flex-col gap-8">
+    <main className="bg-[#F7F9FB] font-['Inter',Arial,sans-serif] text-[#191C1E]">
+      <section className="mx-auto flex w-full max-w-[1120px] flex-col gap-6">
         <header className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-3xl font-extrabold leading-9 tracking-normal text-[#191C1E]">
+            <h1 className="text-2xl font-extrabold leading-8 tracking-normal text-[#191C1E]">
               Kelola Meja & QR
             </h1>
             <p className="mt-2 text-sm font-medium leading-5 text-[#434655]">
@@ -994,7 +994,7 @@ export default function MejaAdmin() {
           <button
             type="button"
             onClick={() => setIsAddModalOpen(true)}
-            className="flex h-11 items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-[#004AC6] to-[#2563EB] px-6 text-sm font-bold text-white shadow-lg shadow-blue-700/20 transition hover:brightness-105"
+            className="flex h-10 items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-[#004AC6] to-[#2563EB] px-5 text-sm font-bold text-white shadow-lg shadow-blue-700/20 transition hover:brightness-105"
           >
             <PlusIcon />
             Tambah Meja
@@ -1002,7 +1002,7 @@ export default function MejaAdmin() {
         </header>
 
         <section
-          className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4"
+          className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
           aria-label="Statistik meja"
         >
           {stats.map((stat) => (
@@ -1010,7 +1010,7 @@ export default function MejaAdmin() {
           ))}
         </section>
 
-        <section className="flex flex-col gap-6">
+        <section className="flex flex-col gap-5">
           <div className="flex items-center gap-4">
             <h2 className="whitespace-nowrap text-xl font-bold leading-7 text-[#191C1E]">
               Sektor A
@@ -1019,7 +1019,7 @@ export default function MejaAdmin() {
           </div>
 
           {tables.length > 0 ? (
-            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {tables.map((table) => (
                 <TableCard
                   key={table.id}

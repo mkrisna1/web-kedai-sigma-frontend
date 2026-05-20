@@ -20,7 +20,10 @@ export default function Navbar() {
     ),
     0
   );
-  const activeLineWidths = [74, 48, 88, 58];
+  const ctaLink =
+    location.pathname === "/reservasi"
+      ? { href: "/menu", label: "Menu" }
+      : { href: "/reservasi", label: "Reservasi" };
 
   return (
     <header className="fixed left-0 right-0 top-0 z-50 h-[95px] bg-[#091421]/90 px-6 py-4 shadow-[0_0_40px_rgba(220,38,38,0.05)] backdrop-blur-md">
@@ -36,12 +39,11 @@ export default function Navbar() {
         />
       </Link>
 
-      <nav className="absolute left-1/2 top-1/2 hidden h-10 w-[380px] -translate-x-1/2 -translate-y-1/2 grid-cols-4 items-center justify-items-center md:grid">
+      <nav className="absolute left-1/2 top-1/2 hidden h-10 w-[430px] -translate-x-1/2 -translate-y-1/2 grid-cols-4 items-center justify-items-center md:grid">
         <span
-          className="pointer-events-none absolute bottom-0 h-1 -translate-x-1/2 bg-[#DC2626] transition-[left,width] duration-300 ease-out"
+          className="pointer-events-none absolute bottom-0 h-1 w-16 -translate-x-1/2 bg-[#DC2626] transition-[left] duration-300 ease-out"
           style={{
             left: `${activeIndex * 25 + 12.5}%`,
-            width: `${activeLineWidths[activeIndex]}px`,
           }}
         />
         {navLinks.map((link) => {
@@ -67,10 +69,10 @@ export default function Navbar() {
       </nav>
 
       <Link
-        to="/reservasi"
+        to={ctaLink.href}
         className="absolute right-6 top-1/2 hidden h-10 w-[173px] -translate-y-1/2 items-center justify-center bg-[#DC2626] px-6 py-2 text-center font-grotesk text-base font-bold uppercase leading-6 text-[#FFF6F5] transition-colors hover:bg-red-700 md:flex"
       >
-        Reservasi
+        {ctaLink.label}
       </Link>
 
       <button
@@ -120,11 +122,11 @@ export default function Navbar() {
           })}
 
           <Link
-            to="/reservasi"
+            to={ctaLink.href}
             onClick={() => setMenuOpen(false)}
             className="mt-2 flex items-center justify-center bg-[#DC2626] px-6 py-3 font-grotesk text-base font-bold uppercase text-[#FFF6F5]"
           >
-            Reservasi
+            {ctaLink.label}
           </Link>
         </div>
       )}
