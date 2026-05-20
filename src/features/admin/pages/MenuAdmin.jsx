@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import americanoImage from "../../../assets/Americano.jpg";
 import ayamPopcornImage from "../../../assets/Ayam Popcorn.jpg";
 import coffeeBearImage from "../../../assets/Coffee Bear.jpg";
@@ -31,11 +31,26 @@ import tahuBaksoGorengImage from "../../../assets/Tahu Bakso Goreng.jpg";
 import tarikTeaImage from "../../../assets/Teh Tarik.jpg";
 import v6DripImage from "../../../assets/V6 Drip.jpg";
 import v6DripSusuImage from "../../../assets/V6 Drip Susu.jpg";
+import {
+  createAdminMenuItem,
+  deleteAdminMenuItem,
+  getAdminMenu,
+  getAdminMenuCategories,
+  updateAdminMenuItem,
+} from "../../../services/api";
+
+const API_ORIGIN = (
+  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api"
+).replace(/\/api\/?$/, "");
+
+const parsePriceValues = (price) =>
+  String(price || "")
+    .match(/\d[\d.]*/g)
+    ?.map((value) => Number(value.replace(/\D/g, "")))
+    .filter((value) => Number.isFinite(value)) || [];
 
 const parsePrice = (price) => {
-  const values = price.match(/\d[\d.]*/g)?.map((value) =>
-    Number(value.replace(/\D/g, ""))
-  );
+  const values = parsePriceValues(price);
 
   if (!values?.length) {
     return 0;
@@ -44,15 +59,59 @@ const parsePrice = (price) => {
   return values.reduce((total, value) => total + value, 0) / values.length;
 };
 
-const formatShortPrice = (price) => `IDR ${Math.round(price / 1000)}k`;
+const parseMoneyInput = (value) =>
+  Number(String(value || "").replace(/\D/g, "")) || 0;
 
-const categoryOptions = [
-  "Food",
-  "Coffee Based",
-  "Coffee Milk",
-  "Tea Series",
-  "Milk Series",
+const formatShortPrice = (price) => `Rp ${Math.round(price / 1000)}rb`;
+
+const fallbackCategoryOptions = [
+  "Makanan",
+  "Kopi",
+  "Teh",
+  "Susu",
 ];
+
+const temperatureOptionChoices = [
+  { value: "none", label: "Tanpa Opsi" },
+  { value: "hot", label: "Hot" },
+  { value: "ice", label: "Ice" },
+  { value: "hot_ice", label: "Hot/Ice" },
+];
+
+const normalizeTemperatureOption = (value) =>
+  temperatureOptionChoices.some((option) => option.value === value)
+    ? value
+    : "none";
+
+const getTemperatureLabel = (value) =>
+  temperatureOptionChoices.find((option) => option.value === value)?.label ||
+  "Tanpa Opsi";
+
+const inferTemperatureOption = (name, price = "") => {
+  const normalizedName = String(name || "").toLowerCase();
+  const normalizedPrice = String(price || "");
+
+  if (
+    normalizedPrice.includes("/") ||
+    normalizedName.includes("americano") ||
+    normalizedName.includes("latte") ||
+    normalizedName.includes("matcha") ||
+    normalizedName.includes("redvelvet") ||
+    normalizedName.includes("coklat classic")
+  ) {
+    return "hot_ice";
+  }
+
+  if (normalizedName.includes("ice")) {
+    return "ice";
+  }
+
+  if (normalizedName.includes("hot")) {
+    return "hot";
+  }
+
+  return "none";
+};
 
 const menuItems = [
   { name: "Kentang", sku: "SKU-FO-001", category: "Food", price: "Rp 10.000", status: "ACTIVE", image: kentangImage, thumbnail: "from-yellow-100 via-amber-200 to-orange-300" },
@@ -71,12 +130,12 @@ const menuItems = [
   { name: "Americano", sku: "SKU-CB-003", category: "Coffee Based", price: "Rp 10.000/13.000", status: "ACTIVE", image: americanoImage, thumbnail: "from-slate-100 via-stone-200 to-zinc-300" },
   { name: "Kopi Tubruk", sku: "SKU-CB-004", category: "Coffee Based", price: "Rp 8.000", status: "ACTIVE", image: kopiTubrukImage, thumbnail: "from-amber-100 via-stone-300 to-zinc-400" },
   { name: "V6 Drip", sku: "SKU-CB-005", category: "Coffee Based", price: "Rp 10.000", status: "ACTIVE", image: v6DripImage, thumbnail: "from-stone-100 via-amber-200 to-zinc-300" },
-  { name: "Coffee Milk Chocolate", sku: "SKU-CM-001", category: "Coffee Milk", price: "Rp 15.000", status: "ACTIVE", image: coffeeMilkChocolateImage, thumbnail: "from-amber-100 via-stone-200 to-orange-300" },
-  { name: "Coffee Milk", sku: "SKU-CM-002", category: "Coffee Milk", price: "Rp 13.000", status: "ACTIVE", image: coffeeMilkImage, thumbnail: "from-stone-100 via-amber-200 to-yellow-300" },
-  { name: "Coffee Latte", sku: "SKU-CM-003", category: "Coffee Milk", price: "Rp 13.000/15.000", status: "ACTIVE", image: coffeeLatteImage, thumbnail: "from-orange-100 via-amber-200 to-stone-300" },
-  { name: "Coffee Milk V2", sku: "SKU-CM-004", category: "Coffee Milk", price: "Rp 13.000", status: "ACTIVE", image: coffeeMilkV2Image, thumbnail: "from-yellow-100 via-amber-200 to-stone-300" },
-  { name: "V6 Drip Susu", sku: "SKU-CM-005", category: "Coffee Milk", price: "Rp 13.000", status: "ACTIVE", image: v6DripSusuImage, thumbnail: "from-stone-100 via-orange-200 to-amber-300" },
-  { name: "Kopi Tubruk Susu", sku: "SKU-CM-006", category: "Coffee Milk", price: "Rp 10.000", status: "ACTIVE", image: kopiTubrukSusuImage, thumbnail: "from-amber-100 via-yellow-200 to-stone-300" },
+  { name: "Coffee Milk Chocolate", sku: "SKU-CM-001", category: "Kopi", price: "Rp 15.000", status: "ACTIVE", image: coffeeMilkChocolateImage, thumbnail: "from-amber-100 via-stone-200 to-orange-300" },
+  { name: "Coffee Milk", sku: "SKU-CM-002", category: "Kopi", price: "Rp 13.000", status: "ACTIVE", image: coffeeMilkImage, thumbnail: "from-stone-100 via-amber-200 to-yellow-300" },
+  { name: "Coffee Latte", sku: "SKU-CM-003", category: "Kopi", price: "Rp 13.000/15.000", status: "ACTIVE", image: coffeeLatteImage, thumbnail: "from-orange-100 via-amber-200 to-stone-300" },
+  { name: "Coffee Milk V2", sku: "SKU-CM-004", category: "Kopi", price: "Rp 13.000", status: "ACTIVE", image: coffeeMilkV2Image, thumbnail: "from-yellow-100 via-amber-200 to-stone-300" },
+  { name: "V6 Drip Susu", sku: "SKU-CM-005", category: "Kopi", price: "Rp 13.000", status: "ACTIVE", image: v6DripSusuImage, thumbnail: "from-stone-100 via-orange-200 to-amber-300" },
+  { name: "Kopi Tubruk Susu", sku: "SKU-CM-006", category: "Kopi", price: "Rp 10.000", status: "ACTIVE", image: kopiTubrukSusuImage, thumbnail: "from-amber-100 via-yellow-200 to-stone-300" },
   { name: "Lemon Tea", sku: "SKU-TE-001", category: "Tea Series", price: "Rp 10.000", status: "ACTIVE", image: lemonTeaImage, thumbnail: "from-lime-100 via-yellow-200 to-green-300" },
   { name: "Lychee Tea", sku: "SKU-TE-002", category: "Tea Series", price: "Rp 10.000", status: "ACTIVE", image: lycheeTeaImage, thumbnail: "from-rose-100 via-pink-200 to-lime-300" },
   { name: "Tarik Tea", sku: "SKU-TE-003", category: "Tea Series", price: "Rp 13.000", status: "ACTIVE", image: tarikTeaImage, thumbnail: "from-orange-100 via-amber-200 to-yellow-300" },
@@ -89,12 +148,234 @@ const menuItems = [
   { name: "Strawberry Milk", sku: "SKU-MS-007", category: "Milk Series", price: "Rp 15.000", status: "ACTIVE", image: strawberryMilkImage, thumbnail: "from-pink-100 via-rose-200 to-red-300" },
 ];
 
+const normalizeName = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const localImageByName = menuItems.reduce((images, item) => {
+  images[normalizeName(item.name)] = item.image;
+
+  return images;
+}, {});
+
+const localImageAliases = {
+  "coffe latte": coffeeLatteImage,
+  "cofee latte": coffeeLatteImage,
+  "coffee milk chocholate": coffeeMilkChocolateImage,
+  "coffe milk chocolate": coffeeMilkChocolateImage,
+  "coffe milk chocholate": coffeeMilkChocolateImage,
+  "cofee milk chocolate": coffeeMilkChocolateImage,
+  "coffee milk cholate": coffeeMilkChocolateImage,
+  "coffe milk cholate": coffeeMilkChocolateImage,
+  "cofee milk cholate": coffeeMilkChocolateImage,
+  "cofee milk chocholate": coffeeMilkChocolateImage,
+  "coffe milk v2": coffeeMilkV2Image,
+  "cofee milk v2": coffeeMilkV2Image,
+  "tarik tea": tarikTeaImage,
+  "teh tarik": tarikTeaImage,
+};
+
+const getLocalImage = (name) =>
+  localImageByName[normalizeName(name)] || localImageAliases[normalizeName(name)];
+
+const localThumbnailByName = menuItems.reduce((thumbnails, item) => {
+  thumbnails[normalizeName(item.name)] = item.thumbnail;
+
+  return thumbnails;
+}, {});
+
+const localThumbnailAliases = {
+  "coffe latte": localThumbnailByName["coffee latte"],
+  "cofee latte": localThumbnailByName["coffee latte"],
+  "coffee milk chocholate": localThumbnailByName["coffee milk chocolate"],
+  "coffe milk chocolate": localThumbnailByName["coffee milk chocolate"],
+  "coffe milk chocholate": localThumbnailByName["coffee milk chocolate"],
+  "cofee milk chocolate": localThumbnailByName["coffee milk chocolate"],
+  "coffee milk cholate": localThumbnailByName["coffee milk chocolate"],
+  "coffe milk cholate": localThumbnailByName["coffee milk chocolate"],
+  "cofee milk cholate": localThumbnailByName["coffee milk chocolate"],
+  "cofee milk chocholate": localThumbnailByName["coffee milk chocolate"],
+  "coffe milk v2": localThumbnailByName["coffee milk v2"],
+  "cofee milk v2": localThumbnailByName["coffee milk v2"],
+  "tarik tea": localThumbnailByName["tarik tea"],
+  "teh tarik": localThumbnailByName["tarik tea"],
+};
+
+const getLocalThumbnail = (name) =>
+  localThumbnailByName[normalizeName(name)] ||
+  localThumbnailAliases[normalizeName(name)];
+
+const resolveAssetUrl = (path) => {
+  if (!path) {
+    return undefined;
+  }
+
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+
+  return `${API_ORIGIN}${path.startsWith("/") ? path : `/${path}`}`;
+};
+
+const formatRupiah = (price) =>
+  `Rp ${Number(price || 0).toLocaleString("id-ID")}`;
+
+const formatCompactRupiah = (price) =>
+  Number(price || 0).toLocaleString("id-ID");
+
+const toNullableNumber = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const number = Number(value);
+
+  return Number.isFinite(number) ? number : null;
+};
+
+const formatMenuPrice = ({
+  priceValue,
+  hotPriceValue,
+  icePriceValue,
+  temperatureOption,
+}) => {
+  const basePrice = Number(priceValue) || 0;
+  const hotPrice = hotPriceValue ?? basePrice;
+  const icePrice = icePriceValue ?? basePrice;
+
+  if (temperatureOption === "hot_ice") {
+    return hotPrice === icePrice
+      ? formatRupiah(hotPrice)
+      : `${formatRupiah(hotPrice)} / ${formatCompactRupiah(icePrice)}`;
+  }
+
+  if (temperatureOption === "hot") {
+    return formatRupiah(hotPrice);
+  }
+
+  if (temperatureOption === "ice") {
+    return formatRupiah(icePrice);
+  }
+
+  return formatRupiah(basePrice);
+};
+
+const appendTemperaturePrices = (payload, option, basePrice, formData) => {
+  if (option === "hot" || option === "hot_ice") {
+    payload.append(
+      "harga_hot",
+      String(parseMoneyInput(formData.get("hot_price")) || basePrice),
+    );
+  }
+
+  if (option === "ice" || option === "hot_ice") {
+    payload.append(
+      "harga_ice",
+      String(parseMoneyInput(formData.get("ice_price")) || basePrice),
+    );
+  }
+};
+
+const translateCategoryName = (name) => {
+  const normalized = String(name || "").toLowerCase();
+
+  if (normalized.includes("food") || normalized.includes("makan")) {
+    return "Makanan";
+  }
+
+  if (normalized.includes("tea") || normalized.includes("teh")) {
+    return "Teh";
+  }
+
+  if (normalized.includes("milk") || normalized.includes("susu")) {
+    return "Susu";
+  }
+
+  if (normalized.includes("coffee") || normalized.includes("kopi")) {
+    return "Kopi";
+  }
+
+  return name || "Tanpa Kategori";
+};
+
+const mapCategoryFromApi = (category) => ({
+  id: category.id ?? category.id_kategori,
+  name: translateCategoryName(category.nama_kategori || "Kategori"),
+});
+
+const sanitizeCategoryOptions = (options) =>
+  options.filter((category) => category.name !== "Kopi Susu");
+
+const mapStaticMenuItem = (item, index = 0) => {
+  const temperatureOption = inferTemperatureOption(item.name, item.price);
+
+  return {
+    rawId: null,
+    categoryId: null,
+    description: `${item.name} tersedia di Kedai Sigma.`,
+    priceValue: parsePrice(item.price),
+    hotPriceValue: null,
+    icePriceValue: null,
+    temperatureOption,
+    temperatureLabel: getTemperatureLabel(temperatureOption),
+    ...item,
+    sku: item.sku || `SKU-FE-${String(index + 1).padStart(3, "0")}`,
+  };
+};
+
+const mapMenuFromApi = (item, index = 0) => {
+  const name = item.nama_produk || "Menu";
+  const normalizedName = normalizeName(name);
+  const categoryName = item.kategori?.nama_kategori || "Tanpa Kategori";
+  const categoryId = item.kategori?.id ?? item.kategori?.id_kategori ?? item.id_kategori;
+  const rawId = item.id ?? item.id_produk;
+  const temperatureOption = normalizeTemperatureOption(
+    item.opsi_suhu || inferTemperatureOption(name),
+  );
+  const priceValue = Number(item.harga_produk) || 0;
+  const hotPriceValue = toNullableNumber(item.harga_hot);
+  const icePriceValue = toNullableNumber(item.harga_ice);
+
+  return {
+    rawId,
+    categoryId,
+    name,
+    sku: `SKU-${String(categoryName).slice(0, 2).toUpperCase()}-${String(
+      rawId || index + 1,
+    ).padStart(3, "0")}`,
+    category: translateCategoryName(categoryName),
+    description: item.deskripsi_produk || `${name} tersedia di Kedai Sigma.`,
+    price: formatMenuPrice({
+      priceValue,
+      hotPriceValue,
+      icePriceValue,
+      temperatureOption,
+    }),
+    priceValue,
+    hotPriceValue,
+    icePriceValue,
+    temperatureOption,
+    temperatureLabel: getTemperatureLabel(temperatureOption),
+    status:
+      item.ketersediaan_produk === "tersedia" ? "ACTIVE" : "OUT OF STOCK",
+    image: resolveAssetUrl(item.foto_produk) || getLocalImage(normalizedName),
+    thumbnail:
+      getLocalThumbnail(normalizedName) ||
+      "from-blue-100 via-sky-200 to-cyan-300",
+  };
+};
+
+const withSequentialMenuIds = (items) =>
+  items.map((item, index) => ({
+    ...item,
+    sku: `MENU-${String(index + 1).padStart(3, "0")}`,
+  }));
+
 const chunkItems = (items, size) =>
   Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
     items.slice(index * size, index * size + size)
   );
-
-const menuPages = chunkItems(menuItems, 8);
 
 function PlusIcon() {
   return (
@@ -181,31 +462,92 @@ function SelectChevronIcon() {
   );
 }
 
-function AddMenuModal({ onClose, onSave }) {
+function AddMenuModal({ categories, onClose, onSave }) {
+  const [previewImage, setPreviewImage] = useState("");
+  const [previewObjectUrl, setPreviewObjectUrl] = useState("");
+  const [temperatureOption, setTemperatureOption] = useState("none");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const selectedCategory = categories.find(
+    (category) => String(category.id) === String(selectedCategoryId),
+  );
+  const isFoodCategory = selectedCategory?.name === "Makanan";
+  const effectiveTemperatureOption = isFoodCategory ? "none" : temperatureOption;
+
+  useEffect(() => {
+    if (!selectedCategoryId && categories[0]?.id) {
+      setSelectedCategoryId(categories[0].id);
+    }
+  }, [categories, selectedCategoryId]);
+
+  useEffect(() => {
+    if (isFoodCategory && temperatureOption !== "none") {
+      setTemperatureOption("none");
+    }
+  }, [isFoodCategory, temperatureOption]);
+
+  useEffect(
+    () => () => {
+      if (previewObjectUrl) {
+        URL.revokeObjectURL(previewObjectUrl);
+      }
+    },
+    [previewObjectUrl],
+  );
+
+  const handlePhotoChange = (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (previewObjectUrl) {
+      URL.revokeObjectURL(previewObjectUrl);
+    }
+
+    const nextUrl = URL.createObjectURL(file);
+
+    setPreviewObjectUrl(nextUrl);
+    setPreviewImage(nextUrl);
+  };
+
   const handleSubmit = (event) => {
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
     const name = formData.get("name").trim() || "Menu Baru";
-    const selectedCategory = formData.get("category");
-    const price = Number(formData.get("price")) || 0;
+    const price = parseMoneyInput(formData.get("price"));
+    const hotPrice = parseMoneyInput(formData.get("hot_price"));
+    const icePrice = parseMoneyInput(formData.get("ice_price"));
+    const basePrice =
+      effectiveTemperatureOption === "hot_ice"
+        ? hotPrice || icePrice || price
+        : price;
     const status = formData.get("status");
-    const category =
-      selectedCategory === "Pilih Kategori" ? "Coffee Milk" : selectedCategory;
+    const photo = formData.get("foto_produk");
+    const payload = new FormData();
 
-    onSave({
-      name,
-      sku: `SKU-${Date.now()}`,
-      category,
-      price: `Rp ${price.toLocaleString("id-ID")}`,
-      status,
-      thumbnail: "from-blue-100 via-sky-200 to-cyan-300",
-    });
+    payload.append("nama_produk", name);
+    payload.append("kategori_id", selectedCategoryId || categories[0]?.id || "");
+    payload.append("harga_produk", String(basePrice));
+    payload.append("deskripsi_produk", formData.get("description")?.trim() || "");
+    payload.append("opsi_suhu", effectiveTemperatureOption);
+    appendTemperaturePrices(payload, effectiveTemperatureOption, basePrice, formData);
+    payload.append(
+      "ketersediaan_produk",
+      status === "OUT OF STOCK" ? "tidak_tersedia" : "tersedia",
+    );
+
+    if (photo?.size) {
+      payload.append("foto_produk", photo);
+    }
+
+    onSave(payload);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/40 p-6 backdrop-blur-sm">
-      <div className="relative flex h-[715px] w-full max-w-[672px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start overflow-hidden rounded-3xl bg-white pb-4 shadow-2xl shadow-black/25">
+      <div className="relative flex max-h-[calc(100vh-48px)] w-full max-w-[672px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start overflow-hidden rounded-3xl bg-white shadow-2xl shadow-black/25">
         <header className="flex h-[81px] w-full shrink-0 items-center justify-between border-b border-[#C3C6D7]/10 px-8 py-6">
           <h3 className="flex h-8 items-center text-2xl font-extrabold leading-8 text-[#191C1E]">
             Tambah Menu
@@ -220,7 +562,7 @@ function AddMenuModal({ onClose, onSave }) {
           </button>
         </header>
 
-        <form onSubmit={handleSubmit} className="flex w-full flex-1 flex-col gap-10 p-8">
+        <form onSubmit={handleSubmit} className="flex min-h-0 w-full flex-1 flex-col gap-8 overflow-y-auto p-8">
           <div className="grid w-full grid-cols-2 gap-x-8 gap-y-6">
             <label className="col-span-2 flex flex-col gap-1">
               <span className="text-xs font-bold leading-4 text-[#434655]">
@@ -241,11 +583,15 @@ function AddMenuModal({ onClose, onSave }) {
               <div className="relative">
                 <select
                   name="category"
+                  value={selectedCategoryId}
+                  onChange={(event) => setSelectedCategoryId(event.target.value)}
                   className="h-[38px] w-full appearance-none border-0 border-b-2 border-[#C3C6D7] bg-transparent px-3 pr-10 text-sm font-medium leading-5 text-[#191C1E] outline-none focus:border-[#2563EB]"
                 >
-                  <option>Pilih Kategori</option>
-                  {categoryOptions.map((category) => (
-                    <option key={category}>{category}</option>
+                  <option value="">Pilih Kategori</option>
+                  {categories.map((category) => (
+                    <option key={category.id || category.name} value={category.id}>
+                      {category.name}
+                    </option>
                   ))}
                 </select>
                 <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-500">
@@ -273,28 +619,97 @@ function AddMenuModal({ onClose, onSave }) {
               </div>
             </label>
 
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-bold leading-4 text-[#434655]">
-                Harga (IDR)
-              </span>
-              <div className="relative h-[38px] border-b-2 border-[#C3C6D7] focus-within:border-[#2563EB]">
-                <span className="absolute bottom-2 left-0 text-sm font-medium leading-5 text-[#434655]">
-                  IDR
+            {!isFoodCategory && (
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-bold leading-4 text-[#434655]">
+                  Opsi Suhu
                 </span>
-                <input
-                  name="price"
-                  type="number"
-                  placeholder="0"
-                  className="h-full w-full border-0 bg-transparent pl-7 pr-3 text-sm font-medium leading-[17px] text-[#191C1E] outline-none placeholder:text-[#434655]/40"
-                />
-              </div>
-            </label>
+                <div className="relative">
+                  <select
+                    name="opsi_suhu"
+                    value={temperatureOption}
+                    onChange={(event) => setTemperatureOption(event.target.value)}
+                    className="h-[38px] w-full appearance-none border-0 border-b-2 border-[#C3C6D7] bg-transparent px-3 pr-10 text-sm font-medium leading-5 text-[#191C1E] outline-none focus:border-[#2563EB]"
+                  >
+                    {temperatureOptionChoices.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-500">
+                    <SelectChevronIcon />
+                  </span>
+                </div>
+              </label>
+            )}
+
+            {effectiveTemperatureOption !== "hot_ice" && (
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-bold leading-4 text-[#434655]">
+                  Harga (Rp)
+                </span>
+                <div className="relative h-[38px] border-b-2 border-[#C3C6D7] focus-within:border-[#2563EB]">
+                  <span className="absolute bottom-2 left-0 text-sm font-medium leading-5 text-[#434655]">
+                    Rp
+                  </span>
+                  <input
+                    name="price"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0"
+                    className="h-full w-full border-0 bg-transparent pl-7 pr-3 text-sm font-medium leading-[17px] text-[#191C1E] outline-none placeholder:text-[#434655]/40"
+                  />
+                </div>
+              </label>
+            )}
+
+            {(effectiveTemperatureOption === "hot" || effectiveTemperatureOption === "hot_ice") && (
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-bold leading-4 text-[#434655]">
+                  Harga Hot (Rp)
+                </span>
+                <div className="relative h-[38px] border-b-2 border-[#C3C6D7] focus-within:border-[#2563EB]">
+                  <span className="absolute bottom-2 left-0 text-sm font-medium leading-5 text-[#434655]">
+                    Rp
+                  </span>
+                  <input
+                    name="hot_price"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Ikuti harga utama"
+                    className="h-full w-full border-0 bg-transparent pl-7 pr-3 text-sm font-medium leading-[17px] text-[#191C1E] outline-none placeholder:text-[#434655]/40"
+                  />
+                </div>
+              </label>
+            )}
+
+            {(effectiveTemperatureOption === "ice" || effectiveTemperatureOption === "hot_ice") && (
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-bold leading-4 text-[#434655]">
+                  Harga Ice (Rp)
+                </span>
+                <div className="relative h-[38px] border-b-2 border-[#C3C6D7] focus-within:border-[#2563EB]">
+                  <span className="absolute bottom-2 left-0 text-sm font-medium leading-5 text-[#434655]">
+                    Rp
+                  </span>
+                  <input
+                    name="ice_price"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Ikuti harga utama"
+                    className="h-full w-full border-0 bg-transparent pl-7 pr-3 text-sm font-medium leading-[17px] text-[#191C1E] outline-none placeholder:text-[#434655]/40"
+                  />
+                </div>
+              </label>
+            )}
 
             <label className="col-span-2 flex flex-col gap-1">
               <span className="text-xs font-bold leading-4 text-[#434655]">
                 Deskripsi
               </span>
               <textarea
+                name="description"
                 placeholder="deskripsi dari menu..."
                 className="h-[78px] w-full resize-none border-0 border-b-2 border-[#C3C6D7] bg-transparent px-3 pb-12 pt-2 text-sm font-medium leading-5 text-[#191C1E] outline-none placeholder:text-[#434655]/40 focus:border-[#2563EB]"
               />
@@ -304,17 +719,38 @@ function AddMenuModal({ onClose, onSave }) {
               <span className="text-xs font-bold leading-4 text-[#434655]">
                 Foto Menu
               </span>
-              <div className="flex h-[146px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#C3C6D7]/50 bg-[#F2F4F6]/50 p-8 text-center transition hover:border-[#2563EB]/50">
-                <input type="file" accept="image/*" className="sr-only" />
-                <div className="pb-2 text-[#434655]/40">
-                  <UploadIcon />
-                </div>
-                <p className="text-sm font-semibold leading-5 text-[#434655]">
-                  Klik untuk upload foto
-                </p>
-                <p className="pt-1 text-xs leading-4 text-[#434655]/60">
-                  PNG, JPG maksimal 2MB
-                </p>
+              <div className="relative flex h-[156px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-[#C3C6D7]/50 bg-[#F2F4F6]/50 p-8 text-center transition hover:border-[#2563EB]/50">
+                <input
+                  type="file"
+                  name="foto_produk"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  className="sr-only"
+                />
+                {previewImage ? (
+                  <>
+                    <img
+                      src={previewImage}
+                      alt="Preview menu"
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                    <span className="relative rounded-lg bg-black/60 px-4 py-2 text-xs font-bold uppercase tracking-[0.08em] text-white">
+                      Ganti Foto
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <div className="pb-2 text-[#434655]/40">
+                      <UploadIcon />
+                    </div>
+                    <p className="text-sm font-semibold leading-5 text-[#434655]">
+                      Klik untuk upload foto
+                    </p>
+                    <p className="pt-1 text-xs leading-4 text-[#434655]/60">
+                      PNG, JPG maksimal 2MB
+                    </p>
+                  </>
+                )}
               </div>
             </label>
           </div>
@@ -340,30 +776,112 @@ function AddMenuModal({ onClose, onSave }) {
   );
 }
 
-function EditMenuModal({ item, onClose, onSave }) {
+function EditMenuModal({ categories, item, onClose, onSave }) {
+  const [previewImage, setPreviewImage] = useState(item?.image || "");
+  const [previewObjectUrl, setPreviewObjectUrl] = useState("");
+  const [temperatureOption, setTemperatureOption] = useState(
+    item?.temperatureOption || "none",
+  );
+  const [selectedCategoryId, setSelectedCategoryId] = useState(item?.categoryId || "");
+  const selectedCategory = categories.find(
+    (category) => String(category.id) === String(selectedCategoryId),
+  );
+  const isFoodCategory = selectedCategory?.name === "Makanan";
+  const effectiveTemperatureOption = isFoodCategory ? "none" : temperatureOption;
+
+  useEffect(() => {
+    setPreviewImage(item?.image || "");
+    setPreviewObjectUrl((currentUrl) => {
+      if (currentUrl) {
+        URL.revokeObjectURL(currentUrl);
+      }
+
+      return "";
+    });
+  }, [item?.image, item?.rawId]);
+
+  useEffect(
+    () => () => {
+      if (previewObjectUrl) {
+        URL.revokeObjectURL(previewObjectUrl);
+      }
+    },
+    [previewObjectUrl],
+  );
+
+  useEffect(() => {
+    setTemperatureOption(item?.temperatureOption || "none");
+    setSelectedCategoryId(item?.categoryId || "");
+  }, [item?.categoryId, item?.rawId, item?.temperatureOption]);
+
+  useEffect(() => {
+    if (isFoodCategory && temperatureOption !== "none") {
+      setTemperatureOption("none");
+    }
+  }, [isFoodCategory, temperatureOption]);
+
   if (!item) {
     return null;
   }
+
+  const basePriceValue = item.priceValue ?? parsePrice(item.price);
+  const defaultHotPrice = item.hotPriceValue ?? basePriceValue;
+  const defaultIcePrice = item.icePriceValue ?? basePriceValue;
+
+  const handlePhotoChange = (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (previewObjectUrl) {
+      URL.revokeObjectURL(previewObjectUrl);
+    }
+
+    const nextUrl = URL.createObjectURL(file);
+
+    setPreviewObjectUrl(nextUrl);
+    setPreviewImage(nextUrl);
+  };
 
   const handleSubmit = (event) => {
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
-    const price = Number(formData.get("price")) || 0;
+    const price = parseMoneyInput(formData.get("price"));
+    const hotPrice = parseMoneyInput(formData.get("hot_price"));
+    const icePrice = parseMoneyInput(formData.get("ice_price"));
+    const basePrice =
+      effectiveTemperatureOption === "hot_ice"
+        ? hotPrice || icePrice || price
+        : price;
+    const photo = formData.get("foto_produk");
+    const payload = new FormData();
 
-    onSave({
-      ...item,
-      name: formData.get("name").trim() || item.name,
-      category: formData.get("category"),
-      description: formData.get("description").trim(),
-      price: `Rp ${price.toLocaleString("id-ID")}`,
-      status: formData.get("status"),
-    });
+    payload.append("nama_produk", formData.get("name").trim() || item.name);
+    payload.append("kategori_id", selectedCategoryId || item.categoryId || "");
+    payload.append("harga_produk", String(basePrice));
+    payload.append("deskripsi_produk", formData.get("description").trim());
+    payload.append("opsi_suhu", effectiveTemperatureOption);
+    appendTemperaturePrices(payload, effectiveTemperatureOption, basePrice, formData);
+    payload.append(
+      "ketersediaan_produk",
+      formData.get("status") === "OUT OF STOCK"
+        ? "tidak_tersedia"
+        : "tersedia",
+    );
+
+    if (photo?.size) {
+      payload.append("foto_produk", photo);
+    }
+
+    onSave(payload);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/40 p-6 backdrop-blur-sm">
-      <div className="relative flex h-[690px] w-full max-w-[672px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-center gap-6 overflow-hidden rounded-[32px] bg-[#F7F9FB] pt-10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]">
+      <div className="relative flex max-h-[calc(100vh-48px)] w-full max-w-[672px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-center gap-6 overflow-hidden rounded-[32px] bg-[#F7F9FB] pt-10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]">
         <header className="flex h-8 w-[calc(100%-80px)] max-w-[592px] items-center justify-between">
           <h2 className="text-2xl font-extrabold leading-8 tracking-[-0.025em] text-[#191C1E]">
             Edit Menu
@@ -381,7 +899,7 @@ function EditMenuModal({ item, onClose, onSave }) {
         <form
           id={`edit-menu-${item.sku}`}
           onSubmit={handleSubmit}
-          className="flex h-[462px] w-[calc(100%-80px)] max-w-[592px] flex-col gap-6"
+          className="flex min-h-0 w-[calc(100%-80px)] max-w-[592px] flex-1 flex-col gap-6 overflow-y-auto pb-2"
         >
           <label className="flex flex-col gap-3">
             <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
@@ -390,12 +908,18 @@ function EditMenuModal({ item, onClose, onSave }) {
             <div className="flex h-24 items-center gap-6">
               <MenuThumbnail
                 gradient={item.thumbnail}
-                image={item.image}
+                image={previewImage}
                 name={item.name}
                 className="h-20 w-20"
               />
-              <div className="flex h-24 flex-1 items-center justify-center rounded-lg border-2 border-dashed border-[#C3C6D7]/50 transition hover:border-[#004AC6]/50">
-                <input type="file" accept="image/*" className="sr-only" />
+              <div className="flex h-24 flex-1 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-[#C3C6D7]/50 transition hover:border-[#004AC6]/50">
+                <input
+                  type="file"
+                  name="foto_produk"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  className="sr-only"
+                />
                 <div className="flex flex-col items-center justify-center gap-1 text-center">
                   <div className="text-[#004AC6]">
                     <UploadIcon />
@@ -408,7 +932,7 @@ function EditMenuModal({ item, onClose, onSave }) {
             </div>
           </label>
 
-          <div className="grid grid-cols-[1fr_140px] gap-x-8 gap-y-6">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-6">
             <label className="flex flex-col gap-1">
               <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
                 Edit Nama
@@ -427,11 +951,14 @@ function EditMenuModal({ item, onClose, onSave }) {
               <div className="relative">
                 <select
                   name="category"
-                  defaultValue={item.category}
+                  value={selectedCategoryId}
+                  onChange={(event) => setSelectedCategoryId(event.target.value)}
                   className="h-[42px] w-full appearance-none border-0 border-b-2 border-[#C3C6D7] bg-transparent pr-8 text-base font-medium leading-6 text-[#191C1E] outline-none focus:border-[#2563EB]"
                 >
-                  {categoryOptions.map((category) => (
-                    <option key={category}>{category}</option>
+                  {categories.map((category) => (
+                    <option key={category.id || category.name} value={category.id}>
+                      {category.name}
+                    </option>
                   ))}
                 </select>
                 <span className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-gray-500">
@@ -451,26 +978,94 @@ function EditMenuModal({ item, onClose, onSave }) {
               />
             </label>
 
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
-                Edit Harga
-              </span>
-              <div className="relative h-[42px] border-b-2 border-[#C3C6D7] focus-within:border-[#2563EB]">
-                <span className="absolute left-0 top-2 text-sm font-medium leading-5 text-[#434655]">
-                  IDR
+            {effectiveTemperatureOption !== "hot_ice" && (
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
+                  Edit Harga
                 </span>
-                <input
-                  name="price"
-                  type="number"
-                  defaultValue={parsePrice(item.price)}
-                  className="h-full w-full border-0 bg-transparent pl-12 text-base font-medium leading-6 text-[#191C1E] outline-none"
-                />
-              </div>
-            </label>
+                <div className="relative h-[42px] border-b-2 border-[#C3C6D7] focus-within:border-[#2563EB]">
+                  <span className="absolute left-0 top-2 text-sm font-medium leading-5 text-[#434655]">
+                    Rp
+                  </span>
+                  <input
+                    name="price"
+                    type="text"
+                    inputMode="numeric"
+                    defaultValue={basePriceValue}
+                    className="h-full w-full border-0 bg-transparent pl-12 text-base font-medium leading-6 text-[#191C1E] outline-none"
+                  />
+                </div>
+              </label>
+            )}
+
+            {!isFoodCategory && (
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
+                  Opsi Suhu
+                </span>
+                <div className="relative">
+                  <select
+                    name="opsi_suhu"
+                    value={temperatureOption}
+                    onChange={(event) => setTemperatureOption(event.target.value)}
+                    className="h-[42px] w-full appearance-none border-0 border-b-2 border-[#C3C6D7] bg-transparent pr-8 text-base font-medium leading-6 text-[#191C1E] outline-none focus:border-[#2563EB]"
+                  >
+                    {temperatureOptionChoices.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-gray-500">
+                    <SelectChevronIcon />
+                  </span>
+                </div>
+              </label>
+            )}
+
+            {(effectiveTemperatureOption === "hot" || effectiveTemperatureOption === "hot_ice") && (
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
+                  Harga Hot
+                </span>
+                <div className="relative h-[42px] border-b-2 border-[#C3C6D7] focus-within:border-[#2563EB]">
+                  <span className="absolute left-0 top-2 text-sm font-medium leading-5 text-[#434655]">
+                    Rp
+                  </span>
+                  <input
+                    name="hot_price"
+                    type="text"
+                    inputMode="numeric"
+                    defaultValue={defaultHotPrice}
+                    className="h-full w-full border-0 bg-transparent pl-12 text-base font-medium leading-6 text-[#191C1E] outline-none"
+                  />
+                </div>
+              </label>
+            )}
+
+            {(effectiveTemperatureOption === "ice" || effectiveTemperatureOption === "hot_ice") && (
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
+                  Harga Ice
+                </span>
+                <div className="relative h-[42px] border-b-2 border-[#C3C6D7] focus-within:border-[#2563EB]">
+                  <span className="absolute left-0 top-2 text-sm font-medium leading-5 text-[#434655]">
+                    Rp
+                  </span>
+                  <input
+                    name="ice_price"
+                    type="text"
+                    inputMode="numeric"
+                    defaultValue={defaultIcePrice}
+                    className="h-full w-full border-0 bg-transparent pl-12 text-base font-medium leading-6 text-[#191C1E] outline-none"
+                  />
+                </div>
+              </label>
+            )}
 
             <label className="flex flex-col gap-1">
               <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
-                Info Stock
+                Info Stok
               </span>
               <div className="relative">
                 <select
@@ -533,14 +1128,14 @@ function DeleteConfirmModal({ itemName, onCancel, onConfirm }) {
               onClick={onCancel}
               className="absolute left-0 top-[21.2px] flex h-11 w-[153.75px] items-center justify-center rounded-lg bg-[#E6E8EA] text-sm font-bold leading-5 tracking-[0.35px] text-[#191C1E] transition hover:brightness-95"
             >
-              No
+              Batal
             </button>
             <button
               type="button"
               onClick={onConfirm}
               className="absolute left-[165px] top-[21.2px] flex h-11 w-[162.34px] items-center justify-center rounded-lg bg-[#BA1A1A] text-sm font-bold leading-5 tracking-[0.35px] text-white shadow-[0_10px_15px_-3px_rgba(186,26,26,0.2),0_4px_6px_-4px_rgba(186,26,26,0.2)] transition hover:brightness-105"
             >
-              Yes
+              Hapus
             </button>
           </div>
         </div>
@@ -551,12 +1146,12 @@ function DeleteConfirmModal({ itemName, onCancel, onConfirm }) {
 
 function StatCard({ label, value, danger }) {
   return (
-    <div className="h-[108px] rounded-lg bg-white p-6 shadow-[0_0_0_1px_rgba(0,0,0,0.05)]">
+    <div className="h-[96px] rounded-lg bg-white p-5 shadow-[0_0_0_1px_rgba(0,0,0,0.05)]">
       <p className="text-xs font-bold uppercase leading-4 tracking-[0.6px] text-[#434655]">
         {label}
       </p>
       <p
-        className={`mt-2 text-3xl font-bold leading-9 ${
+        className={`mt-2 text-2xl font-bold leading-8 ${
           danger ? "text-[#BA1A1A]" : "text-[#191C1E]"
         }`}
       >
@@ -582,7 +1177,7 @@ function StatusBadge({ status }) {
           isOutOfStock ? "bg-[#BA1A1A]" : "bg-[#006C49]"
         }`}
       />
-      {status}
+      {isOutOfStock ? "Stok Habis" : "Tersedia"}
     </span>
   );
 }
@@ -619,7 +1214,9 @@ function MenuRow({ item, index, onDeleteClick, onEditClick }) {
             <p className="truncate text-base font-bold leading-5 text-[#191C1E]">
               {item.name}
             </p>
-            <p className="truncate text-xs leading-4 text-[#434655]">{item.sku}</p>
+            <p className="truncate text-xs leading-4 text-[#434655]">
+              {item.sku} - {item.temperatureLabel || "Tanpa Opsi"}
+            </p>
           </div>
         </div>
       </td>
@@ -658,16 +1255,69 @@ function MenuRow({ item, index, onDeleteClick, onEditClick }) {
 
 export default function MenuAdmin() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [menuPageItems, setMenuPageItems] = useState(menuPages);
+  const [flatMenuItems, setFlatMenuItems] = useState(() =>
+    withSequentialMenuIds(menuItems.map(mapStaticMenuItem)),
+  );
+  const [categories, setCategories] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortOption, setSortOption] = useState("name-asc");
   const [currentPage, setCurrentPage] = useState(0);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
-  const items = menuPageItems[currentPage];
-  const totalMenuItems = menuPageItems.reduce(
-    (total, pageItems) => total + pageItems.length,
-    0
+  const categoryOptions = sanitizeCategoryOptions(
+    categories.length > 0
+      ? categories
+      : fallbackCategoryOptions.map((name) => ({ id: "", name })),
   );
-  const flatMenuItems = menuPageItems.flat();
+  const filteredMenuItems = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    const filteredItems = flatMenuItems.filter((item) => {
+      const matchesSearch =
+        !normalizedQuery ||
+        item.name.toLowerCase().includes(normalizedQuery) ||
+        String(item.sku || "").toLowerCase().includes(normalizedQuery) ||
+        String(item.description || "").toLowerCase().includes(normalizedQuery);
+      const matchesCategory =
+        categoryFilter === "all" || item.category === categoryFilter;
+      const matchesStatus =
+        statusFilter === "all" || item.status === statusFilter;
+
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+
+    return [...filteredItems].sort((first, second) => {
+      if (sortOption === "name-desc") {
+        return second.name.localeCompare(first.name, "id", { sensitivity: "base" });
+      }
+
+      if (sortOption === "category") {
+        return first.category.localeCompare(second.category, "id", { sensitivity: "base" })
+          || first.name.localeCompare(second.name, "id", { sensitivity: "base" });
+      }
+
+      if (sortOption === "price-asc") {
+        return parsePrice(first.price) - parsePrice(second.price);
+      }
+
+      if (sortOption === "price-desc") {
+        return parsePrice(second.price) - parsePrice(first.price);
+      }
+
+      return first.name.localeCompare(second.name, "id", { sensitivity: "base" });
+    });
+  }, [categoryFilter, flatMenuItems, searchQuery, sortOption, statusFilter]);
+  const menuPageItems = useMemo(
+    () => chunkItems(filteredMenuItems, 8),
+    [filteredMenuItems],
+  );
+  const maxPageIndex = Math.max(menuPageItems.length - 1, 0);
+  const visiblePage = Math.min(currentPage, maxPageIndex);
+  const items = menuPageItems[visiblePage] || [];
+  const totalMenuItems = flatMenuItems.length;
+  const totalFilteredItems = filteredMenuItems.length;
   const activeCategories = new Set(flatMenuItems.map((item) => item.category)).size;
   const outOfStockCount = flatMenuItems.filter(
     (item) => item.status === "OUT OF STOCK"
@@ -676,53 +1326,115 @@ export default function MenuAdmin() {
     flatMenuItems.reduce((total, item) => total + parsePrice(item.price), 0) /
     Math.max(flatMenuItems.length, 1);
   const dashboardStats = [
-    { label: "Total Items", value: String(totalMenuItems).padStart(2, "0") },
-    { label: "Active Categories", value: String(activeCategories) },
+    { label: "Total Menu", value: String(totalMenuItems).padStart(2, "0") },
+    { label: "Kategori Aktif", value: String(activeCategories) },
     {
-      label: "Out of Stock",
+      label: "Stok Habis",
       value: String(outOfStockCount).padStart(2, "0"),
       danger: true,
     },
-    { label: "Avg Price", value: formatShortPrice(averagePrice) },
+    { label: "Harga Rata-rata", value: formatShortPrice(averagePrice) },
   ];
 
-  const handleAddMenu = (newItem) => {
-    setMenuPageItems((currentPages) =>
-      currentPages.map((pageItems, pageIndex) =>
-        pageIndex === currentPage ? [newItem, ...pageItems] : pageItems
-      )
-    );
-    setIsAddModalOpen(false);
+  useEffect(() => {
+    let isMounted = true;
+
+    Promise.all([getAdminMenu(), getAdminMenuCategories()])
+      .then(([menuResponse, categoryResponse]) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setFlatMenuItems(withSequentialMenuIds((menuResponse.data || []).map(mapMenuFromApi)));
+        setCategories(
+          sanitizeCategoryOptions((categoryResponse.data || []).map(mapCategoryFromApi)),
+        );
+      })
+      .catch((error) => {
+        console.error("Gagal mengambil data menu admin:", error);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [categoryFilter, searchQuery, sortOption, statusFilter]);
+
+  const handleAddMenu = async (payload) => {
+    try {
+      const response = await createAdminMenuItem(payload);
+      const createdItem = mapMenuFromApi(response.data);
+
+      setFlatMenuItems((currentItems) =>
+        withSequentialMenuIds([createdItem, ...currentItems]),
+      );
+      setCurrentPage(0);
+      setIsAddModalOpen(false);
+    } catch (error) {
+      console.error("Gagal menambah menu:", error);
+    }
   };
 
-  const handleConfirmDelete = () => {
-    setMenuPageItems((currentPages) =>
-      currentPages.map((pageItems, pageIndex) =>
-        pageIndex === currentPage
-          ? pageItems.filter((item) => item.sku !== deleteTarget.sku)
-          : pageItems
-      )
-    );
-    setDeleteTarget(null);
+  const handleConfirmDelete = async () => {
+    const target = deleteTarget;
+
+    if (!target) {
+      return;
+    }
+
+    try {
+      if (target.rawId) {
+        await deleteAdminMenuItem(target.rawId);
+      }
+
+      setFlatMenuItems((currentItems) =>
+        withSequentialMenuIds(
+          currentItems.filter((item) =>
+            target.rawId ? item.rawId !== target.rawId : item.sku !== target.sku,
+          ),
+        ),
+      );
+      setDeleteTarget(null);
+    } catch (error) {
+      console.error("Gagal menghapus menu:", error);
+    }
   };
 
-  const handleSaveEdit = (updatedItem) => {
-    setMenuPageItems((currentPages) =>
-      currentPages.map((pageItems) =>
-        pageItems.map((item) =>
-          item.sku === updatedItem.sku ? updatedItem : item
-        )
-      )
-    );
-    setEditTarget(null);
+  const handleSaveEdit = async (payload) => {
+    if (!editTarget) {
+      return;
+    }
+
+    try {
+      if (!editTarget.rawId) {
+        return;
+      }
+
+      const response = await updateAdminMenuItem(editTarget.rawId, payload);
+      const updatedItem = mapMenuFromApi(response.data);
+
+      setFlatMenuItems((currentItems) =>
+        withSequentialMenuIds(
+          currentItems.map((item) =>
+            item.rawId === updatedItem.rawId ? updatedItem : item,
+          ),
+        ),
+      );
+      setEditTarget(null);
+    } catch (error) {
+      console.error("Gagal menyimpan menu:", error);
+    }
   };
 
   return (
-    <div className="min-h-full bg-[#F7F9FB] p-8">
-      <div className="mx-auto max-w-[960px] space-y-8">
-        <section className="flex items-end justify-between gap-6">
+    <div className="min-h-full bg-[#F7F9FB]">
+      <div className="mx-auto max-w-[960px] space-y-6">
+        <section className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
           <div>
-            <h1 className="text-3xl font-extrabold leading-9 text-[#191C1E]">
+            <h1 className="text-2xl font-extrabold leading-8 text-[#191C1E]">
               Kelola Menu
             </h1>
             <p className="mt-1 text-sm leading-5 text-[#434655]">
@@ -733,17 +1445,95 @@ export default function MenuAdmin() {
           <button
             type="button"
             onClick={() => setIsAddModalOpen(true)}
-            className="flex h-11 items-center gap-2 rounded-lg bg-gradient-to-br from-[#004AC6] to-[#2563EB] px-6 text-base font-semibold text-white shadow-lg shadow-blue-700/20 transition hover:brightness-105"
+            className="flex h-10 items-center gap-2 rounded-lg bg-gradient-to-br from-[#004AC6] to-[#2563EB] px-5 text-sm font-semibold text-white shadow-lg shadow-blue-700/20 transition hover:brightness-105"
           >
             <PlusIcon />
             Tambah Menu
           </button>
         </section>
 
-        <section className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           {dashboardStats.map((stat) => (
             <StatCard key={stat.label} {...stat} />
           ))}
+        </section>
+
+        <section className="grid gap-4 rounded-lg bg-white p-5 shadow-sm md:grid-cols-[1fr_170px_150px_170px_auto] md:items-end">
+          <label className="flex flex-col gap-2">
+            <span className="text-xs font-bold uppercase tracking-[0.08em] text-[#434655]">
+              Cari Menu
+            </span>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Nama, SKU, deskripsi..."
+              className="h-11 rounded-lg border border-[#C3C6D7] bg-white px-3 text-sm font-semibold text-[#191C1E] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            />
+          </label>
+
+          <label className="flex flex-col gap-2">
+            <span className="text-xs font-bold uppercase tracking-[0.08em] text-[#434655]">
+              Kategori
+            </span>
+            <select
+              value={categoryFilter}
+              onChange={(event) => setCategoryFilter(event.target.value)}
+              className="h-11 rounded-lg border border-[#C3C6D7] bg-white px-3 text-sm font-semibold text-[#191C1E] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            >
+              <option value="all">Semua Kategori</option>
+              {categoryOptions.map((category) => (
+                <option key={category.name} value={category.name}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-2">
+            <span className="text-xs font-bold uppercase tracking-[0.08em] text-[#434655]">
+              Status
+            </span>
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              className="h-11 rounded-lg border border-[#C3C6D7] bg-white px-3 text-sm font-semibold text-[#191C1E] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            >
+              <option value="all">Semua Status</option>
+              <option value="ACTIVE">Tersedia</option>
+              <option value="OUT OF STOCK">Stok Habis</option>
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-2">
+            <span className="text-xs font-bold uppercase tracking-[0.08em] text-[#434655]">
+              Urutkan
+            </span>
+            <select
+              value={sortOption}
+              onChange={(event) => setSortOption(event.target.value)}
+              className="h-11 rounded-lg border border-[#C3C6D7] bg-white px-3 text-sm font-semibold text-[#191C1E] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            >
+              <option value="name-asc">Nama A-Z</option>
+              <option value="name-desc">Nama Z-A</option>
+              <option value="category">Kategori</option>
+              <option value="price-asc">Harga Termurah</option>
+              <option value="price-desc">Harga Termahal</option>
+            </select>
+          </label>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSearchQuery("");
+              setCategoryFilter("all");
+              setStatusFilter("all");
+              setSortOption("name-asc");
+            }}
+            className="h-11 rounded-lg px-5 text-sm font-bold text-[#434655] transition hover:bg-[#F2F4F6]"
+          >
+            Reset
+          </button>
         </section>
 
         <section className="overflow-hidden rounded-lg bg-white shadow-sm">
@@ -759,37 +1549,48 @@ export default function MenuAdmin() {
 
               <thead>
                 <tr className="h-12 bg-[#F2F4F6]/30 text-left text-xs font-bold uppercase tracking-[1.2px] text-[#434655]">
-                  <th className="px-6">Menu Item</th>
-                  <th className="px-6">Category</th>
-                  <th className="px-6">Price</th>
+                  <th className="px-6">Menu</th>
+                  <th className="px-6">Kategori</th>
+                  <th className="px-6">Harga</th>
                   <th className="px-6">Status</th>
-                  <th className="px-6 text-right">Actions</th>
+                  <th className="px-6 text-right">Aksi</th>
                 </tr>
               </thead>
 
               <tbody>
-                {items.map((item, index) => (
-                  <MenuRow
-                    key={item.sku}
-                    item={item}
-                    index={index}
-                    onDeleteClick={setDeleteTarget}
-                    onEditClick={setEditTarget}
-                  />
-                ))}
+                {items.length > 0 ? (
+                  items.map((item, index) => (
+                    <MenuRow
+                      key={item.rawId || item.sku}
+                      item={item}
+                      index={index}
+                      onDeleteClick={setDeleteTarget}
+                      onEditClick={setEditTarget}
+                    />
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="h-28 px-6 text-center text-sm font-semibold text-[#434655]"
+                    >
+                      Menu tidak ditemukan.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
 
           <footer className="flex h-[61px] items-center justify-between border-t border-[#E6E8EA] bg-[#F2F4F6]/10 px-6">
             <p className="text-xs leading-4 text-[#434655]">
-              Showing {items.length} of {totalMenuItems} menu items
+              Menampilkan {items.length} dari {totalFilteredItems} menu
             </p>
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                disabled={currentPage === 0}
-                onClick={() => setCurrentPage((page) => Math.max(page - 1, 0))}
+                disabled={visiblePage === 0}
+                onClick={() => setCurrentPage(Math.max(visiblePage - 1, 0))}
                 className="flex h-7 w-6 items-center justify-center rounded text-[#434655] transition hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent"
               >
                 <ChevronLeftIcon />
@@ -800,7 +1601,7 @@ export default function MenuAdmin() {
                   type="button"
                   onClick={() => setCurrentPage(pageIndex)}
                   className={`flex h-7 min-w-7 items-center justify-center rounded px-3 text-xs font-bold leading-4 transition ${
-                    currentPage === pageIndex
+                    visiblePage === pageIndex
                       ? "bg-[#2563EB] text-white"
                       : "text-[#191C1E] hover:bg-slate-100"
                   }`}
@@ -810,12 +1611,11 @@ export default function MenuAdmin() {
               ))}
               <button
                 type="button"
-                disabled={currentPage === menuPageItems.length - 1}
-                onClick={() =>
-                  setCurrentPage((page) =>
-                    Math.min(page + 1, menuPageItems.length - 1)
-                  )
+                disabled={
+                  menuPageItems.length === 0 ||
+                  visiblePage === maxPageIndex
                 }
+                onClick={() => setCurrentPage(Math.min(visiblePage + 1, maxPageIndex))}
                 className="flex h-7 w-6 items-center justify-center rounded text-[#434655] transition hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent"
               >
                 <ChevronRightIcon />
@@ -827,6 +1627,7 @@ export default function MenuAdmin() {
 
       {isAddModalOpen && (
         <AddMenuModal
+          categories={categoryOptions}
           onClose={() => setIsAddModalOpen(false)}
           onSave={handleAddMenu}
         />
@@ -842,6 +1643,7 @@ export default function MenuAdmin() {
 
       {editTarget && (
         <EditMenuModal
+          categories={categoryOptions}
           item={editTarget}
           onClose={() => setEditTarget(null)}
           onSave={handleSaveEdit}

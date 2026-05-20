@@ -1,67 +1,302 @@
-export default function TopBar() {
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import {
+  getAdminOrders,
+  getAdminReservations,
+} from "../../services/api";
+
+const MAX_VISIBLE_NOTIFICATIONS = 6;
+const ACTIONABLE_NOTIFICATION_TYPES = ["Pesanan", "Reservasi"];
+
+const cn = (...classes) => classes.filter(Boolean).join(" ");
+
+const formatShortTime = (value) => {
+  if (!value) {
+    return "Baru masuk";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Baru masuk";
+  }
+
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
+const formatReservationTime = (dateValue, timeValue) => {
+  if (!dateValue && !timeValue) {
+    return "Reservasi baru";
+  }
+
+  const cleanTime = timeValue ? String(timeValue).slice(0, 5) : "";
+  const date = dateValue ? new Date(dateValue) : null;
+  const dateLabel =
+    date && !Number.isNaN(date.getTime())
+      ? new Intl.DateTimeFormat("id-ID", {
+          day: "2-digit",
+          month: "short",
+        }).format(date)
+      : "";
+
+  return [dateLabel, cleanTime].filter(Boolean).join(" - ");
+};
+
+const getTableLabel = (order) =>
+  order?.meja?.nomor_meja || order?.nomor_meja || "Meja belum dipilih";
+
+const buildNotifications = ({ orders, reservations }) => {
+  const orderNotifications = orders
+    .filter((order) => order.status_pesanan === "menunggu_konfirmasi")
+    .map((order) => ({
+      id: `order-${order.id}`,
+      type: "Pesanan",
+      title: `Pesanan baru ${getTableLabel(order)}`,
+      description: `${order.detail_pesanans?.length || 0} item menunggu diterima`,
+      time: formatShortTime(order.tgl_pesanan || order.created_at),
+      to: "/admin/pesanan",
+      tone: "blue",
+    }));
+
+  const reservationNotifications = reservations
+    .filter((reservation) => reservation.status_reservasi === "menunggu_konfirmasi")
+    .map((reservation) => ({
+      id: `reservation-${reservation.id}`,
+      type: "Reservasi",
+      title: reservation.nama_reservasi || "Reservasi baru",
+      description: `${reservation.jml_orang || 0} orang, ${formatReservationTime(
+        reservation.tgl_reservasi,
+        reservation.jam_reservasi,
+      )}`,
+      time: "Menunggu ACC",
+      to: "/admin/reservasi",
+      tone: "amber",
+    }));
+
+  return [
+    ...orderNotifications,
+    ...reservationNotifications,
+  ];
+};
+
+function BellIcon({ className = "h-5 w-5" }) {
   return (
-    <header className="flex items-center justify-between px-8 py-4 border-b border-slate-200 bg-[#F8FAFC] flex-shrink-0">
-      
-      {/* Search */}
-      <div className="flex-1 max-w-md relative">
-        <div className="relative flex items-center border-b-2 border-[#C3C6D7] bg-white overflow-hidden">
-          
-          <svg
-            className="absolute left-3 text-slate-400 flex-shrink-0"
-            width="18"
-            height="18"
-            viewBox="0 0 18 18"
-            fill="none"
-          >
-            <path
-              d="M16.6 18L10.3 11.7C9.8 12.1 9.225 12.4167 8.575 12.65C7.925 12.8833 7.23333 13 6.5 13C4.68333 13 3.14583 12.3708 1.8875 11.1125C0.629167 9.85417 0 8.31667 0 6.5C0 4.68333 0.629167 3.14583 1.8875 1.8875C3.14583 0.629167 4.68333 0 6.5 0C8.31667 0 9.85417 0.629167 11.1125 1.8875C12.3708 3.14583 13 4.68333 13 6.5C13 7.23333 12.8833 7.925 12.65 8.575C12.4167 9.225 12.1 9.8 11.7 10.3L18 16.6L16.6 18ZM6.5 11C7.75 11 8.8125 10.5625 9.6875 9.6875C10.5625 8.8125 11 7.75 11 6.5C11 5.25 10.5625 4.1875 9.6875 3.3125C8.8125 2.4375 7.75 2 6.5 2C5.25 2 4.1875 2.4375 3.3125 3.3125C2.4375 4.1875 2 5.25 2 6.5C2 7.75 2.4375 8.8125 3.3125 9.6875C4.1875 10.5625 5.25 11 6.5 11Z"
-              fill="#94A3B8"
-            />
-          </svg>
+    <svg viewBox="0 0 16 20" className={className} fill="none" aria-hidden="true">
+      <path
+        d="M0 17V15H2V8C2 6.61667 2.41667 5.3875 3.25 4.3125C4.08333 3.2375 5.16667 2.53333 6.5 2.2V1.5C6.5 1.08333 6.64583 0.729167 6.9375 0.4375C7.22917 0.145833 7.58333 0 8 0C8.41667 0 8.77083 0.145833 9.0625 0.4375C9.35417 0.729167 9.5 1.08333 9.5 1.5V2.2C10.8333 2.53333 11.9167 3.2375 12.75 4.3125C13.5833 5.3875 14 6.61667 14 8V15H16V17H0ZM8 20C7.45 20 6.97917 19.8042 6.5875 19.4125C6.19583 19.0208 6 18.55 6 18H10C10 18.55 9.80417 19.0208 9.4125 19.4125C9.02083 19.8042 8.55 20 8 20ZM4 15H12V8C12 6.9 11.6083 5.95833 10.825 5.175C10.0417 4.39167 9.1 4 8 4C6.9 4 5.95833 4.39167 5.175 5.175C4.39167 5.95833 4 6.9 4 8V15Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
 
-          <input
-            type="text"
-            placeholder="Search Orders, Table, or Items..."
-            className="w-full py-2.5 pl-10 pr-4 text-sm text-gray-500 bg-transparent outline-none placeholder-gray-400"
-          />
-        </div>
-      </div>
+export default function TopBar() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [notifications, setNotifications] = useState([]);
+  const [seenNotificationIds, setSeenNotificationIds] = useState(() => new Set());
+  const [errorMessage, setErrorMessage] = useState("");
+  const location = useLocation();
+  const dropdownRef = useRef(null);
 
-      {/* Actions */}
-      <div className="flex items-center gap-4 ml-4">
-        
-        {/* Bell */}
-        <button className="flex items-center justify-center w-9 h-9 rounded-xl hover:bg-slate-100 transition-colors">
-          <svg width="16" height="20" viewBox="0 0 16 20" fill="none">
-            <path
-              d="M0 17V15H2V8C2 6.61667 2.41667 5.3875 3.25 4.3125C4.08333 3.2375 5.16667 2.53333 6.5 2.2V1.5C6.5 1.08333 6.64583 0.729167 6.9375 0.4375C7.22917 0.145833 7.58333 0 8 0C8.41667 0 8.77083 0.145833 9.0625 0.4375C9.35417 0.729167 9.5 1.08333 9.5 1.5V2.2C10.8333 2.53333 11.9167 3.2375 12.75 4.3125C13.5833 5.3875 14 6.61667 14 8V15H16V17H0ZM8 20C7.45 20 6.97917 19.8042 6.5875 19.4125C6.19583 19.0208 6 18.55 6 18H10C10 18.55 9.80417 19.0208 9.4125 19.4125C9.02083 19.8042 8.55 20 8 20ZM4 15H12V8C12 6.9 11.6083 5.95833 10.825 5.175C10.0417 4.39167 9.1 4 8 4C6.9 4 5.95833 4.39167 5.175 5.175C4.39167 5.95833 4 6.9 4 8V15Z"
-              fill="#475569"
-            />
-          </svg>
+  const actionableNotifications = useMemo(
+    () =>
+      notifications.filter((notification) =>
+        ACTIONABLE_NOTIFICATION_TYPES.includes(notification.type),
+      ),
+    [notifications],
+  );
+  const visibleNotifications = useMemo(
+    () => actionableNotifications.slice(0, MAX_VISIBLE_NOTIFICATIONS),
+    [actionableNotifications],
+  );
+  const totalNotifications = actionableNotifications.length;
+  const unreadNotifications = useMemo(
+    () =>
+      actionableNotifications.filter(
+        (notification) => !seenNotificationIds.has(notification.id),
+      ),
+    [actionableNotifications, seenNotificationIds],
+  );
+  const badgeCount = unreadNotifications.length;
+
+  const handleBellClick = () => {
+    const nextOpenState = !isOpen;
+
+    setIsOpen(nextOpenState);
+
+    if (nextOpenState) {
+      setSeenNotificationIds((currentIds) => {
+        const nextIds = new Set(currentIds);
+
+        actionableNotifications.forEach((notification) => {
+          nextIds.add(notification.id);
+        });
+
+        return nextIds;
+      });
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadNotifications = async () => {
+      try {
+        const [ordersResult, reservationsResult] = await Promise.all([
+          getAdminOrders(),
+          getAdminReservations(),
+        ]);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setNotifications(
+          buildNotifications({
+            orders: ordersResult?.data || [],
+            reservations: reservationsResult?.data || [],
+          }),
+        );
+        setErrorMessage("");
+      } catch (error) {
+        if (isMounted) {
+          setErrorMessage(error.message || "Notifikasi belum bisa dimuat.");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadNotifications();
+    const intervalId = window.setInterval(loadNotifications, 30000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      if (!dropdownRef.current?.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  return (
+    <header className="flex items-center justify-end border-b border-slate-200 bg-[#F8FAFC] px-8 py-4">
+      <div ref={dropdownRef} className="relative">
+        <button
+          type="button"
+          onClick={handleBellClick}
+          className={cn(
+            "relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition-colors",
+            isOpen ? "bg-white text-blue-700 shadow-sm" : "hover:bg-slate-100",
+          )}
+          aria-label={`Buka notifikasi${badgeCount ? `, ${badgeCount} belum dilihat` : ""}`}
+          aria-expanded={isOpen}
+        >
+          <BellIcon />
+          {badgeCount > 0 && (
+            <span className="absolute -right-1 -top-1 flex min-w-[18px] items-center justify-center rounded-full bg-[#BA1A1A] px-1.5 py-0.5 text-[10px] font-black leading-none text-white">
+              {badgeCount > 99 ? "99+" : badgeCount}
+            </span>
+          )}
         </button>
 
-        {/* Settings */}
-        <svg width="21" height="20" viewBox="0 0 24 24" fill="none">
-  <path
-    d="M12 15.5C13.933 15.5 15.5 13.933 15.5 12C15.5 10.067 13.933 8.5 12 8.5C10.067 8.5 8.5 10.067 8.5 12C8.5 13.933 10.067 15.5 12 15.5Z"
-    stroke="#475569"
-    strokeWidth="1.5"
-  />
-  <path
-    d="M19.4 15A1.65 1.65 0 0 0 19.73 16.82L19.79 16.88A2 2 0 1 1 16.88 19.79L16.82 19.73A1.65 1.65 0 0 0 15 19.4A1.65 1.65 0 0 0 14 21V21.2A2 2 0 1 1 10 21.2V21A1.65 1.65 0 0 0 9 19.4A1.65 1.65 0 0 0 7.18 19.73L7.12 19.79A2 2 0 1 1 4.21 16.88L4.27 16.82A1.65 1.65 0 0 0 4.6 15A1.65 1.65 0 0 0 3 14H2.8A2 2 0 1 1 2.8 10H3A1.65 1.65 0 0 0 4.6 9A1.65 1.65 0 0 0 4.27 7.18L4.21 7.12A2 2 0 1 1 7.12 4.21L7.18 4.27A1.65 1.65 0 0 0 9 4.6A1.65 1.65 0 0 0 10 3V2.8A2 2 0 1 1 14 2.8V3A1.65 1.65 0 0 0 15 4.6A1.65 1.65 0 0 0 16.82 4.27L16.88 4.21A2 2 0 1 1 19.79 7.12L19.73 7.18A1.65 1.65 0 0 0 19.4 9A1.65 1.65 0 0 0 21 10H21.2A2 2 0 1 1 21.2 14H21A1.65 1.65 0 0 0 19.4 15Z"
-    stroke="#475569"
-    strokeWidth="1.5"
-  />
-</svg>
-        {/* Avatar */}
-        <div className="w-8 h-8 rounded-xl bg-slate-200 overflow-hidden flex-shrink-0">
-          <img
-            src="https://api.builder.io/api/v1/image/assets/TEMP/e6ba62826179fde8904406468cbb20af8500d9bc?width=64"
-            alt="User profile"
-            className="w-full h-full object-cover"
-          />
-        </div>
+        {isOpen && (
+          <div className="absolute right-0 top-12 z-50 w-[360px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.18)]">
+            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+              <div>
+                <p className="text-sm font-black text-slate-900">Notifikasi</p>
+                <p className="text-xs text-slate-500">
+                  {totalNotifications
+                    ? `${totalNotifications} pesanan/reservasi perlu dicek`
+                    : "Tidak ada pesanan atau reservasi baru"}
+                </p>
+              </div>
+              {isLoading && (
+                <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
+              )}
+            </div>
 
+            <div className="max-h-[420px] overflow-y-auto py-2">
+              {errorMessage && (
+                <div className="mx-3 rounded-md bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+                  {errorMessage}
+                </div>
+              )}
+
+              {!errorMessage && !isLoading && visibleNotifications.length === 0 && (
+                <div className="px-4 py-8 text-center">
+                  <p className="text-sm font-bold text-slate-800">Aman semua</p>
+                </div>
+              )}
+
+              {visibleNotifications.map((notification) => (
+                <Link
+                  key={notification.id}
+                  to={notification.to}
+                  onClick={() => setIsOpen(false)}
+                  className="mx-2 flex gap-3 rounded-md px-3 py-3 transition-colors hover:bg-slate-50"
+                >
+                  <span
+                    className={cn(
+                      "mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full",
+                      notification.tone === "blue" && "bg-blue-600",
+                      notification.tone === "amber" && "bg-amber-500",
+                    )}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center justify-between gap-3">
+                      <span className="truncate text-xs font-black uppercase tracking-wide text-slate-500">
+                        {notification.type}
+                      </span>
+                      <span className="flex-shrink-0 text-[11px] font-semibold text-slate-400">
+                        {notification.time}
+                      </span>
+                    </span>
+                    <span className="mt-1 block truncate text-sm font-bold text-slate-900">
+                      {notification.title}
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs text-slate-500">
+                      {notification.description}
+                    </span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+
+            {totalNotifications > MAX_VISIBLE_NOTIFICATIONS && (
+              <div className="border-t border-slate-100 px-4 py-3 text-center text-xs font-bold text-slate-500">
+                +{totalNotifications - MAX_VISIBLE_NOTIFICATIONS} notifikasi lain
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </header>
   );

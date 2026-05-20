@@ -1,52 +1,254 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import ScrollToTopButton from "../../../components/user/ScrollToTopButton";
+import {
+  getPublicBestSellers,
+  getPublicMenu,
+  getPublicReviews,
+} from "../../../services/api";
 import fotoKedai1 from "../../../assets/Foto Kedai 1.png";
 import fotoKedai2 from "../../../assets/Foto Kedai 2.PNG";
 import fotoKedai3 from "../../../assets/Foto Kedai 3.PNG";
 import lokasiSigma from "../../../assets/Lokasi_Sigma.png";
+import americanoImage from "../../../assets/Americano.jpg";
+import ayamPopcornImage from "../../../assets/Ayam Popcorn.jpg";
+import coffeeMilkImage from "../../../assets/Coffee Milk.jpg";
 import coffeLatteImage from "../../../assets/Coffee Latte.webp";
+import coffeMilkV2Image from "../../../assets/Coffee Milk V2.jpeg";
+import coffeMilkChocholateImage from "../../../assets/Coffe Milk Chocholate.jpg";
+import coklatClassicImage from "../../../assets/Coklat Clasic.jpg";
+import coklatClassicRotiImage from "../../../assets/Coklat Clasic Roti.jpg";
 import espressoImage from "../../../assets/Espresso.webp";
 import matchaImage from "../../../assets/Matcha.jpg";
 import indomieNyemekHaluImage from "../../../assets/Indomie Nyemek Halu.jpg";
+import indomieNyemekVinsenImage from "../../../assets/Indomie Nyemek Vinsen.jpg";
+import kentangImage from "../../../assets/Kentang.jpg";
+import redvelvetImage from "../../../assets/Redvelvet.webp";
+import tehTarikImage from "../../../assets/Teh Tarik.jpg";
 
-const stats = [
+const defaultStats = [
   { value: "5 dari 5", label: "Rating Kedai", color: "#EEC200" },
   { value: "16:00-00:00", label: "Jam Buka", color: "#4AE176" },
   { value: "32", label: "Total Menu", color: "#DC2626" },
   { value: "Rp 13.000", label: "Harga rata-rata menu", color: "#AC8884" },
 ];
 
-const menuCards = [
+const defaultFavoriteCards = [
   {
-    category: "Coffee Milk",
+    category: "Kopi",
+    name: "Espresso",
+    description: "Ekstrak kopi murni dengan rasa kuat dan aroma pekat.",
+    price: "IDR8K",
+    accent: "#EEC200",
+    image: espressoImage,
+    sold: 0,
+  },
+  {
+    category: "Kopi",
+    name: "Americano",
+    description: "Espresso yang dicampur air panas menghasilkan rasa kopi yang ringan.",
+    price: "IDR10K",
+    accent: "#EEC200",
+    image: americanoImage,
+    sold: 0,
+  },
+  {
+    category: "Kopi",
     name: "Coffee Latte",
+    description: "Kopi susu halus dengan karakter lembut dan nyaman diminum.",
     price: "IDR13K",
     accent: "#4AE176",
     image: coffeLatteImage,
+    sold: 0,
   },
   {
-    category: "Milk Series",
+    category: "Susu",
     name: "Matcha",
+    description: "Matcha susu creamy dengan rasa manis yang seimbang.",
     price: "IDR13K",
     accent: "#4AE176",
     image: matchaImage,
+    sold: 0,
   },
   {
-    category: "Food",
+    category: "Makanan",
     name: "Indomie Nyemek Halu",
+    description: "Indomie nyemek hangat dengan bumbu gurih yang nempel.",
     price: "IDR15K",
     accent: "#4AE176",
     image: indomieNyemekHaluImage,
+    sold: 0,
   },
 ];
 
 const gallery = [
   { label: "Kedai Sigma", image: fotoKedai1 },
-  { label: "Coffee Bar", image: fotoKedai2 },
+  { label: "Bar Kopi", image: fotoKedai2 },
   { label: "Underground Vibes", image: fotoKedai3 },
 ];
 
 const galleryLoop = [...gallery, ...gallery];
+
+const fallbackFavoriteImages = {
+  americano: americanoImage,
+  "hot-ice-americano": americanoImage,
+  "coffee-latte": coffeLatteImage,
+  "coffe-latte": coffeLatteImage,
+  "hot-ice-coffe-latte": coffeLatteImage,
+  "coffee-milk": coffeeMilkImage,
+  "coffee-milk-chocolate": coffeMilkChocholateImage,
+  "coffee-milk-chocholate": coffeMilkChocholateImage,
+  "coffe-milk-chocholate": coffeMilkChocholateImage,
+  "coffee-milk-v2": coffeMilkV2Image,
+  "coffe-milk-v2": coffeMilkV2Image,
+  espresso: espressoImage,
+  matcha: matchaImage,
+  "hot-ice-matcha": matchaImage,
+  redvelvet: redvelvetImage,
+  "red-velvet": redvelvetImage,
+  "teh-tarik": tehTarikImage,
+  "tarik-tea": tehTarikImage,
+  "coklat-classic": coklatClassicImage,
+  "coklat-clasic": coklatClassicImage,
+  "coklat-classic-roti": coklatClassicRotiImage,
+  "coklat-clasic-roti": coklatClassicRotiImage,
+  "ayam-popcorn": ayamPopcornImage,
+  "indomie-nyemek-halu": indomieNyemekHaluImage,
+  "indomie-nyemek-vinsen": indomieNyemekVinsenImage,
+  kentang: kentangImage,
+};
+
+const slugify = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+const resolveAssetUrl = (value) => {
+  if (!value) {
+    return "";
+  }
+
+  if (/^(https?:|data:|blob:)/i.test(value)) {
+    return value;
+  }
+
+  const hostname =
+    typeof window !== "undefined" && window.location?.hostname
+      ? window.location.hostname
+      : "127.0.0.1";
+  const fallbackOrigin =
+    typeof window !== "undefined"
+      ? `${window.location.protocol}//${hostname}:8000`
+      : "http://127.0.0.1:8000";
+
+  return `${fallbackOrigin}${value.startsWith("/") ? value : `/${value}`}`;
+};
+
+const formatRupiah = (value) =>
+  `Rp ${Number(value || 0).toLocaleString("id-ID")}`;
+
+const formatCompactPrice = (value) => {
+  const number = Number(value) || 0;
+
+  if (number >= 1000) {
+    return `IDR${Math.round(number / 1000)}K`;
+  }
+
+  return formatRupiah(number);
+};
+
+const getMenuPriceValue = (menu) => {
+  const base = Number(menu?.harga_produk) || 0;
+  const hot = Number(menu?.harga_hot) || 0;
+  const ice = Number(menu?.harga_ice) || 0;
+  const option = menu?.opsi_suhu;
+
+  if (option === "hot_ice" && hot > 0 && ice > 0) {
+    return Math.round((hot + ice) / 2);
+  }
+
+  if (option === "hot" && hot > 0) {
+    return hot;
+  }
+
+  if (option === "ice" && ice > 0) {
+    return ice;
+  }
+
+  return base;
+};
+
+const getCategoryLabel = (name) => {
+  const normalized = String(name || "").toLowerCase();
+
+  if (normalized.includes("makan") || normalized.includes("food")) {
+    return "Makanan";
+  }
+
+  if (normalized.includes("teh") || normalized.includes("tea")) {
+    return "Teh";
+  }
+
+  if (normalized.includes("susu") || normalized.includes("milk")) {
+    return "Susu";
+  }
+
+  if (normalized.includes("kopi") || normalized.includes("coffee")) {
+    return "Kopi";
+  }
+
+  return name || "Menu";
+};
+
+const buildStats = (menus, reviews) => {
+  const totalReviews = reviews.length;
+  const averageRating =
+    totalReviews === 0
+      ? 0
+      : reviews.reduce((total, review) => total + (Number(review.rating) || 0), 0) /
+        totalReviews;
+  const roundedRating = Math.round(averageRating);
+  const priceValues = menus
+    .map(getMenuPriceValue)
+    .filter((price) => Number.isFinite(price) && price > 0);
+  const averageMenuPrice =
+    priceValues.length === 0
+      ? 0
+      : Math.round(
+          priceValues.reduce((total, price) => total + price, 0) /
+            priceValues.length,
+        );
+
+  return [
+    { ...defaultStats[0], value: `${roundedRating} dari 5` },
+    defaultStats[1],
+    { ...defaultStats[2], value: String(menus.length) },
+    {
+      ...defaultStats[3],
+      value: averageMenuPrice > 0 ? formatRupiah(averageMenuPrice) : "Rp 0",
+    },
+  ];
+};
+
+const mapFavoriteFromApi = (item) => {
+  const product = item?.produk || item;
+  const name = product?.nama_produk || "Menu";
+  const slug = slugify(name);
+  const price = getMenuPriceValue(product);
+
+  return {
+    category: getCategoryLabel(product?.kategori?.nama_kategori),
+    name,
+    description:
+      product?.deskripsi_produk || `${name} tersedia di Kedai Sigma.`,
+    price: formatCompactPrice(price),
+    accent: "#4AE176",
+    image: resolveAssetUrl(product?.foto_produk) || fallbackFavoriteImages[slug] || espressoImage,
+    sold: Number(item?.jumlah) || 0,
+  };
+};
 
 function SkewLabel({ children, className = "bg-[#EEC200] text-[#3C2F00]" }) {
   return (
@@ -176,6 +378,18 @@ export default function Home() {
   const locationScrollFrame = useRef(null);
   const [locationPulse, setLocationPulse] = useState(false);
   const [locationScrollActive, setLocationScrollActive] = useState(false);
+  const [stats, setStats] = useState(defaultStats);
+  const [favoriteCards, setFavoriteCards] = useState(defaultFavoriteCards);
+
+  const highlightedFavorite = favoriteCards[0] || defaultFavoriteCards[0];
+  const sideFavorite = favoriteCards[1] || defaultFavoriteCards[1];
+  const smallFavorites = useMemo(() => {
+    const nextCards = favoriteCards.slice(2, 5);
+
+    return nextCards.length > 0
+      ? nextCards
+      : defaultFavoriteCards.slice(2, 5);
+  }, [favoriteCards]);
 
   useEffect(() => {
     return () => {
@@ -186,6 +400,56 @@ export default function Home() {
       if (locationScrollFrame.current) {
         window.cancelAnimationFrame(locationScrollFrame.current);
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    Promise.allSettled([
+      getPublicMenu(),
+      getPublicReviews(),
+      getPublicBestSellers({ limit: 5 }),
+    ]).then(([menuResult, reviewResult, bestSellerResult]) => {
+      if (!isMounted) {
+        return;
+      }
+
+      const menus =
+        menuResult.status === "fulfilled" ? menuResult.value.data || [] : [];
+      const reviews =
+        reviewResult.status === "fulfilled" ? reviewResult.value.data || [] : [];
+      const bestSellers =
+        bestSellerResult.status === "fulfilled"
+          ? bestSellerResult.value.data || []
+          : [];
+
+      if (menus.length || reviews.length) {
+        setStats(buildStats(menus, reviews));
+      }
+
+      if (bestSellers.length > 0) {
+        const seenNames = new Set();
+        const mappedFavorites = [
+          ...bestSellers.map(mapFavoriteFromApi),
+          ...defaultFavoriteCards,
+        ].filter((item) => {
+          const key = slugify(item.name);
+
+          if (seenNames.has(key)) {
+            return false;
+          }
+
+          seenNames.add(key);
+          return true;
+        });
+
+        setFavoriteCards(mappedFavorites.slice(0, 5));
+      }
+    });
+
+    return () => {
+      isMounted = false;
     };
   }, []);
 
@@ -208,7 +472,7 @@ export default function Home() {
     }
 
     const startTime = window.performance.now();
-    const duration = Math.min(1800, Math.max(1300, Math.abs(distance) * 0.45));
+    const duration = Math.min(720, Math.max(420, Math.abs(distance) * 0.18));
     const easeInOutCubic = (progress) =>
       progress < 0.5
         ? 4 * progress * progress * progress
@@ -357,8 +621,8 @@ export default function Home() {
               }}
             >
               <img
-                src={espressoImage}
-                alt="Espresso"
+                src={highlightedFavorite.image}
+                alt={highlightedFavorite.name}
                 className="absolute inset-0 h-full w-full object-cover transition duration-700 ease-out group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent transition duration-500 group-hover:from-black/95 group-hover:via-black/10" />
@@ -366,20 +630,20 @@ export default function Home() {
               <div className="absolute inset-x-0 bottom-0 p-8 md:p-10">
                 <div className="transition duration-500 ease-out group-hover:-translate-y-1">
                   <SkewLabel className="bg-[#4AE176] text-[#003915]">
-                    Best Seller
+                    Terlaris
                   </SkewLabel>
                 </div>
                 <div className="mt-4 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
                   <div>
                     <h3 className="font-['Space_Grotesk',sans-serif] text-4xl font-bold uppercase leading-10 tracking-[-0.05em] transition duration-500 ease-out group-hover:text-[#FFF6F5]">
-                      Espresso
+                      {highlightedFavorite.name}
                     </h3>
                     <p className="mt-2 font-['Be_Vietnam_Pro',sans-serif] text-base leading-6 text-[#E6BDB8]">
-                      Ekstrak kopi murni dengan rasa kuat dan aroma pekat.
+                      {highlightedFavorite.description}
                     </p>
                   </div>
                   <p className="font-['Space_Grotesk',sans-serif] text-5xl font-bold leading-none text-[#EEC200] transition duration-500 ease-out group-hover:-translate-y-1 group-hover:drop-shadow-[0_0_14px_rgba(238,194,0,0.45)]">
-                    IDR8k
+                    {highlightedFavorite.price}
                   </p>
                 </div>
               </div>
@@ -398,19 +662,18 @@ export default function Home() {
                   <CoffeeIcon />
                 </div>
                 <h3 className="mt-9 font-['Space_Grotesk',sans-serif] text-4xl font-bold uppercase leading-10 tracking-[-0.05em]">
-                  Americano
+                  {sideFavorite.name}
                 </h3>
                 <p className="mt-4 font-['Be_Vietnam_Pro',sans-serif] text-base leading-6 text-[#E6BDB8]">
-                  Espresso yang dicampur air panas menghasilkan rasa kopi yang
-                  ringan.
+                  {sideFavorite.description}
                 </p>
               </div>
               <p className="pt-8 font-['Space_Grotesk',sans-serif] text-5xl font-bold leading-[56px] text-[#EEC200]">
-                IDR10k
+                {sideFavorite.price}
               </p>
             </article>
 
-            {menuCards.map((item, index) => (
+            {smallFavorites.map((item, index) => (
               <article
                 key={item.name}
                 className="favorite-card-motion group relative min-h-[400px] overflow-hidden bg-[#121C2A] opacity-0 shadow-[0_0_30px_rgba(220,38,38,0.1)] transition-[transform,box-shadow] duration-500 ease-out hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(74,225,118,0.15)]"
@@ -535,6 +798,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      <ScrollToTopButton />
     </div>
   );
 }

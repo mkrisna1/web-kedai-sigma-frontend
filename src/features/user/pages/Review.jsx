@@ -1,77 +1,194 @@
-import { useState } from "react";
-import fotoKedai1 from "../../../assets/Foto Kedai 1.png";
-import fotoKedai2 from "../../../assets/Foto Kedai 2.PNG";
-import fotoKedai3 from "../../../assets/Foto Kedai 3.PNG";
+import { useEffect, useMemo, useState } from "react";
 import logoSigma from "../../../assets/Logo Sigma.png";
+import ScrollToTopButton from "../../../components/user/ScrollToTopButton";
+import {
+  createPublicReview,
+  getPublicReviews,
+  likePublicReview,
+} from "../../../services/api";
 
-const ratingBars = [
-  { star: 5, percent: 100, color: "#00B954" },
-  { star: 4, percent: 0, color: "#00B954" },
-  { star: 3, percent: 0, color: "#00B954" },
-  { star: 2, percent: 0, color: "#00B954" },
-  { star: 1, percent: 0, color: "#DC2626" },
-];
+const LIKE_STORAGE_KEY = "kedai-sigma-liked-reviews";
+const REVIEW_PHOTO_MAX_COUNT = 5;
+const REVIEW_PHOTO_MAX_DIMENSION = 1600;
+const REVIEW_PHOTO_TARGET_BYTES = 1200 * 1024;
+const REVIEW_PHOTO_MIN_QUALITY = 0.62;
 
-const categories = [
+const advantages = [
   {
-    label: "Bersih",
+    label: "Tempat Nyaman",
     className: "border-[#4AE176]/30 bg-[#00B954]/20 text-[#6BFF8F]",
   },
   {
-    label: "Playlist",
+    label: "Pelayanan Ramah",
     className: "border-[#EEC200]/30 bg-[#EEC200]/20 text-[#EEC200]",
   },
   {
-    label: "Affordable",
+    label: "Harga Terjangkau",
     className: "border-[#FFB4AB]/30 bg-[#DC2626]/20 text-[#FFB4AB]",
   },
   {
-    label: "Tempat Teduh",
+    label: "Wi-Fi Cepat",
     className: "border-transparent bg-[#334155] text-[#E2E8F0]",
+  },
+  {
+    label: "Colokan Tersedia",
+    className: "border-[#38BDF8]/30 bg-[#0EA5E9]/20 text-[#BAE6FD]",
+  },
+  {
+    label: "Menu Bervariasi",
+    className: "border-[#C084FC]/30 bg-[#7E22CE]/20 text-[#E9D5FF]",
   },
 ];
 
-const reviews = [
-  {
-    name: "Jennie Madya",
-    time: "Sebulan lalu",
-    rating: 5,
+const getInitials = (name) =>
+  String(name || "-")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+
+const formatReviewTime = (value) => {
+  if (!value) {
+    return "Baru saja";
+  }
+
+  const createdAt = new Date(value);
+  const diffInMinutes = Math.round((createdAt.getTime() - Date.now()) / 60000);
+  const formatter = new Intl.RelativeTimeFormat("id-ID", { numeric: "auto" });
+
+  if (Math.abs(diffInMinutes) < 60) {
+    return formatter.format(diffInMinutes, "minute");
+  }
+
+  const diffInHours = Math.round(diffInMinutes / 60);
+
+  if (Math.abs(diffInHours) < 24) {
+    return formatter.format(diffInHours, "hour");
+  }
+
+  return formatter.format(Math.round(diffInHours / 24), "day");
+};
+
+const readLikedReviews = () => {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const storedLikes = JSON.parse(window.localStorage.getItem(LIKE_STORAGE_KEY));
+
+    return Array.isArray(storedLikes) ? storedLikes.map(String) : [];
+  } catch (error) {
+    console.warn("Gagal membaca data like review:", error);
+    return [];
+  }
+};
+
+const saveLikedReviews = (reviewIds) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(LIKE_STORAGE_KEY, JSON.stringify(reviewIds));
+};
+
+const loadPhotoImage = (file) =>
+  new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Foto tidak bisa dibaca."));
+    };
+
+    image.src = url;
+  });
+
+const canvasToBlob = (canvas, type, quality) =>
+  new Promise((resolve) => {
+    canvas.toBlob(resolve, type, quality);
+  });
+
+const compressReviewPhoto = async (file) => {
+  if (!file.type.startsWith("image/")) {
+    return file;
+  }
+
+  try {
+    const image = await loadPhotoImage(file);
+    const originalWidth = image.naturalWidth || image.width;
+    const originalHeight = image.naturalHeight || image.height;
+    const scale = Math.min(
+      1,
+      REVIEW_PHOTO_MAX_DIMENSION / Math.max(originalWidth, originalHeight),
+    );
+    const width = Math.max(1, Math.round(originalWidth * scale));
+    const height = Math.max(1, Math.round(originalHeight * scale));
+    const canvas = document.createElement("canvas");
+
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext("2d")?.drawImage(image, 0, 0, width, height);
+
+    let quality = 0.84;
+    let blob = await canvasToBlob(canvas, "image/jpeg", quality);
+
+    while (
+      blob &&
+      blob.size > REVIEW_PHOTO_TARGET_BYTES &&
+      quality > REVIEW_PHOTO_MIN_QUALITY
+    ) {
+      quality = Math.max(REVIEW_PHOTO_MIN_QUALITY, quality - 0.08);
+      blob = await canvasToBlob(canvas, "image/jpeg", quality);
+    }
+
+    if (!blob) {
+      throw new Error("Foto tidak bisa diproses.");
+    }
+
+    const nameWithoutExtension = file.name.replace(/\.[^.]+$/, "") || "review-photo";
+
+    return new File([blob], `${nameWithoutExtension}.jpg`, {
+      type: "image/jpeg",
+      lastModified: file.lastModified,
+    });
+  } catch (error) {
+    console.warn("Gagal mengoptimalkan foto review:", error);
+    throw error;
+  }
+};
+
+const mapReviewFromApi = (review) => {
+  const photos = Array.isArray(review.foto_review) ? review.foto_review : [];
+  const likes = Number(review.likes_count) || 0;
+
+  return {
+    id: review.id,
+    name: review.nama_pelanggan || "-",
+    time: formatReviewTime(review.created_at),
+    rating: Number(review.rating) || 0,
     accent: "#DC2626",
     avatarAccent: "#EEC200",
-    initials: "JM",
-    text: "Tempatnya lumayan bersih, sejuk karena banyak pepohonan, cocok buat ngopi santai.",
-    helpful: "12 suka",
-    replies: "Balas",
-    photos: [],
-  },
-  {
-    name: "Natasya Andita",
-    time: "2 minggu lalu",
-    rating: 5,
-    accent: "#EEC200",
-    avatarAccent: "#4AE176",
-    initials: "NA",
-    text: "Tempatnya bersih, aesthetic, dingin, pelayanannya cepat dan ramah, playlist lagunya sangat mantap dan sesuai dengan vibes kafe nya, makanannya enak, harganya affordable dan aman di kantong, juga disediakan permainan kartu dan ada gitar juga.",
-    helpful: "9 suka",
-    replies: "Balas",
-    photos: [
-      { src: fotoKedai1, alt: "Foto area duduk Kedai Sigma" },
-      { src: fotoKedai2, alt: "Foto suasana Kedai Sigma" },
-    ],
-  },
-  {
-    name: "Rama Pradana",
-    time: "3 hari lalu",
-    rating: 5,
-    accent: "#4AE176",
-    avatarAccent: "#FFB4AB",
-    initials: "RP",
-    text: "Kopi susunya pas, suasananya santai, dan meja outdoor paling enak buat ngobrol lama. Bakal balik lagi buat coba menu makanan lainnya.",
-    helpful: "7 suka",
-    replies: "Balas",
-    photos: [{ src: fotoKedai3, alt: "Foto halaman Kedai Sigma" }],
-  },
-];
+    initials: getInitials(review.nama_pelanggan),
+    text: review.komentar || "",
+    likes,
+    helpful: `${likes} suka`,
+    replies: review.balasan_admin ? "1 balasan" : "Balas",
+    adminReply: review.balasan_admin || "",
+    photos: photos.map((src, index) => ({
+      src,
+      alt: `Foto review ${review.nama_pelanggan || "pelanggan"} ${index + 1}`,
+    })),
+  };
+};
 
 function StarIcon({ className = "h-5 w-5", filled = true }) {
   return (
@@ -201,18 +318,63 @@ function RatingStars({ rating, size = "h-3 w-3", color = "text-[#4AE176]" }) {
   );
 }
 
-function RatingSummary() {
+const getRatingLabel = (averageRating, totalReviews) => {
+  if (totalReviews === 0) {
+    return "Belum ada nilai";
+  }
+
+  if (averageRating >= 4.5) {
+    return "Nilai sangat baik";
+  }
+
+  if (averageRating >= 3.5) {
+    return "Nilai baik";
+  }
+
+  if (averageRating >= 2.5) {
+    return "Nilai cukup";
+  }
+
+  return "Perlu ditingkatkan";
+};
+
+function RatingSummary({ reviews }) {
+  const totalReviews = reviews.length;
+  const averageRating =
+    totalReviews === 0
+      ? 0
+      : reviews.reduce((total, review) => total + review.rating, 0) /
+        totalReviews;
+  const ratingBars = [5, 4, 3, 2, 1].map((star) => {
+    const totalByStar = reviews.filter((review) => review.rating === star).length;
+    const percent =
+      totalReviews === 0 ? 0 : Math.round((totalByStar / totalReviews) * 100);
+
+    return {
+      star,
+      percent,
+      color: star <= 2 ? "#DC2626" : "#00B954",
+    };
+  });
+
   return (
     <aside className="flex flex-col gap-8 lg:sticky lg:top-[127px]">
       <section className="border-l-8 border-[#EEC200] bg-[#121C2A] p-6 sm:p-8">
         <div className="flex flex-wrap items-end gap-4">
           <p className="font-['Space_Grotesk',sans-serif] text-7xl font-bold leading-none text-[#D9E3F6]">
-            5.0
+            {averageRating.toFixed(1)}
           </p>
           <div className="pb-1">
-            <RatingStars rating={5} size="h-5 w-5" color="text-[#EEC200]" />
+            <RatingStars
+              rating={Math.round(averageRating)}
+              size="h-5 w-5"
+              color="text-[#EEC200]"
+            />
             <p className="mt-1 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#64748B]">
-              7 total reviews
+              {totalReviews} total review
+            </p>
+            <p className="mt-1 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#EEC200]">
+              {getRatingLabel(averageRating, totalReviews)}
             </p>
           </div>
         </div>
@@ -240,10 +402,10 @@ function RatingSummary() {
       <section className="relative overflow-hidden bg-[#2B3544] p-6">
         <div className="relative z-10">
           <h3 className="font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-7 text-[#D9E3F6]">
-            Kategori
+            Keunggulan
           </h3>
           <div className="mt-4 flex flex-wrap gap-3">
-            {categories.map((item) => (
+            {advantages.map((item) => (
               <SkewTag key={item.label} label={item.label} className={item.className} />
             ))}
           </div>
@@ -256,9 +418,11 @@ function RatingSummary() {
   );
 }
 
-function ReviewCard({ review }) {
+function ReviewCard({ review, isLiked, onLike, onPhotoClick }) {
+  const [isReplyOpen, setIsReplyOpen] = useState(false);
+
   return (
-    <article className="relative isolate flex flex-col gap-6 bg-[#121C2A] p-6 sm:flex-row sm:p-8">
+    <article className="relative isolate flex flex-col gap-6 bg-[#121C2A] p-6 transition duration-500 ease-out hover:-translate-y-1 hover:bg-[#16202E] hover:shadow-[0_18px_42px_rgba(220,38,38,0.16)] sm:flex-row sm:p-8">
       <div
         className="absolute bottom-0 left-0 top-0 w-1"
         style={{ backgroundColor: review.accent }}
@@ -287,15 +451,25 @@ function ReviewCard({ review }) {
           {review.text}
         </p>
 
-        {review.photos.length > 0 && (
+        {review.photos?.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">
             {review.photos.map((photo) => (
-              <img
+              <button
                 key={photo.alt}
-                src={photo.src}
-                alt={photo.alt}
-                className="h-24 w-24 border-2 border-[#212B39] object-cover saturate-50 transition hover:saturate-100"
-              />
+                type="button"
+                onClick={() => onPhotoClick(photo)}
+                className="group relative h-24 w-24 overflow-hidden border-2 border-[#212B39] bg-[#091421] focus:outline-none focus:ring-2 focus:ring-[#EEC200]"
+                aria-label={`Perbesar ${photo.alt}`}
+              >
+                <img
+                  src={photo.src}
+                  alt={photo.alt}
+                  className="h-full w-full object-cover saturate-50 transition group-hover:scale-105 group-hover:saturate-100"
+                />
+                <span className="absolute inset-x-1 bottom-1 bg-black/70 px-2 py-1 font-['Space_Grotesk',sans-serif] text-[10px] font-black uppercase text-white opacity-0 transition group-hover:opacity-100 group-focus:opacity-100">
+                  Lihat
+                </span>
+              </button>
             ))}
           </div>
         )}
@@ -303,21 +477,80 @@ function ReviewCard({ review }) {
         <div className="mt-5 flex flex-wrap items-center gap-4">
           <button
             type="button"
-            className="flex items-center gap-2 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 text-[#94A3B8] transition hover:text-[#D9E3F6]"
+            onClick={() => onLike(review)}
+            disabled={isLiked}
+            className="flex items-center gap-2 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 text-[#94A3B8] transition hover:text-[#D9E3F6] disabled:cursor-not-allowed disabled:text-[#EEC200]"
+            aria-pressed={isLiked}
           >
             <LikeIcon />
-            {review.helpful}
+            {isLiked ? `${review.likes} suka` : review.helpful}
           </button>
           <button
             type="button"
+            onClick={() =>
+              review.adminReply && setIsReplyOpen((current) => !current)
+            }
+            aria-expanded={review.adminReply ? isReplyOpen : undefined}
             className="flex items-center gap-2 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 text-[#94A3B8] transition hover:text-[#D9E3F6]"
           >
             <ReplyIcon />
             {review.replies}
           </button>
         </div>
+
+        {review.adminReply && isReplyOpen && (
+          <div className="mt-5 border-l-4 border-[#EEC200] bg-[#16202E] px-5 py-4 font-['Be_Vietnam_Pro',sans-serif]">
+            <p className="font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 text-[#EEC200]">
+              Balasan admin
+            </p>
+            <p className="mt-2 text-sm leading-6 text-[#D9E3F6]">
+              {review.adminReply}
+            </p>
+          </div>
+        )}
       </div>
     </article>
+  );
+}
+
+function PhotoPreviewModal({ photo, onClose }) {
+  if (!photo) {
+    return null;
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 [animation:review-backdrop-in_220ms_ease-out]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Preview foto review"
+      onMouseDown={onClose}
+    >
+      <section
+        className="relative flex max-h-[92vh] w-fit max-w-[92vw] flex-col overflow-hidden bg-[#091421] shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-white/15 px-4 py-3">
+          <p className="font-['Space_Grotesk',sans-serif] text-xs font-black uppercase tracking-[0.18em] text-[#EEC200]">
+            Foto Review
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="bg-[#DC2626] px-4 py-2 font-['Space_Grotesk',sans-serif] text-xs font-black uppercase text-white transition hover:bg-red-700"
+          >
+            Tutup
+          </button>
+        </div>
+        <div className="flex min-h-0 flex-1 items-center justify-center bg-[#091421] p-4">
+          <img
+            src={photo.src}
+            alt={photo.alt}
+            className="block max-h-[78vh] max-w-[86vw] object-contain"
+          />
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -332,7 +565,7 @@ function ReviewSuccessPopup({ onClose }) {
       <div className="relative h-auto min-h-[415px] w-full max-w-[850px] overflow-hidden rounded-xl bg-[#091421] font-['Be_Vietnam_Pro',sans-serif] text-white shadow-[0_18px_60px_rgba(0,0,0,0.35)] [animation:review-popup-in_320ms_cubic-bezier(0.16,1,0.3,1)] sm:h-[415px]">
         <div className="flex h-[53px] items-center border-b border-white/40 px-6 sm:px-0">
           <p className="mx-auto font-['Be_Vietnam_Pro',sans-serif] text-xl leading-5 text-white sm:ml-[369px] sm:mr-0 sm:w-[305px]">
-            System
+            Sistem
           </p>
         </div>
 
@@ -355,7 +588,7 @@ function ReviewSuccessPopup({ onClose }) {
           <div className="flex items-start gap-3 sm:absolute sm:left-[253px] sm:top-[95px]">
             <SuccessIcon />
             <p className="max-w-[409px] text-left font-['Be_Vietnam_Pro',sans-serif] text-xl leading-6 text-white/50 sm:flex sm:h-[60px] sm:items-center sm:leading-5">
-              Terima kasih banyak sudah memberikan review! Feedback dari kamu bakal bantu kami jadi
+              Terima kasih banyak sudah memberikan review! Masukan dari kamu bakal bantu kami jadi
               lebih baik lagi!
             </p>
           </div>
@@ -373,10 +606,20 @@ function ReviewSuccessPopup({ onClose }) {
   );
 }
 
-function ReviewForm() {
+function ReviewForm({ onReviewCreated }) {
   const [rating, setRating] = useState(0);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [submitWarning, setSubmitWarning] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPreparingPhotos, setIsPreparingPhotos] = useState(false);
+  const [photoFiles, setPhotoFiles] = useState([]);
+  const [photoPreviews, setPhotoPreviews] = useState([]);
+
+  useEffect(() => {
+    return () => {
+      photoPreviews.forEach((photo) => URL.revokeObjectURL(photo.url));
+    };
+  }, [photoPreviews]);
 
   function clearSubmitWarning() {
     if (submitWarning) {
@@ -384,10 +627,38 @@ function ReviewForm() {
     }
   }
 
-  function handleSubmit(event) {
+  async function handlePhotoChange(event) {
+    clearSubmitWarning();
+
+    const files = Array.from(event.target.files || []).slice(0, REVIEW_PHOTO_MAX_COUNT);
+
+    setIsPreparingPhotos(true);
+
+    try {
+      const preparedFiles = await Promise.all(files.map(compressReviewPhoto));
+      const previews = preparedFiles.map((file) => ({
+        id: `${file.name}-${file.lastModified}-${file.size}`,
+        name: file.name,
+        url: URL.createObjectURL(file),
+      }));
+
+      photoPreviews.forEach((photo) => URL.revokeObjectURL(photo.url));
+      setPhotoFiles(preparedFiles);
+      setPhotoPreviews(previews);
+    } catch (error) {
+      console.error("Gagal memproses foto review:", error);
+      setPhotoFiles([]);
+      setSubmitWarning("Foto belum bisa diproses. Coba pilih ulang fotonya ya.");
+    } finally {
+      setIsPreparingPhotos(false);
+    }
+  }
+
+  async function handleSubmit(event) {
     event.preventDefault();
 
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     const name = formData.get("name")?.toString().trim();
     const comment = formData.get("comment")?.toString().trim();
 
@@ -396,8 +667,39 @@ function ReviewForm() {
       return;
     }
 
+    if (isPreparingPhotos) {
+      setSubmitWarning("Foto masih diproses. Tunggu sebentar lalu kirim lagi ya.");
+      return;
+    }
+
+    setIsSubmitting(true);
     setSubmitWarning("");
-    setShowSuccessPopup(true);
+
+    try {
+      const reviewPayload = new FormData();
+      reviewPayload.append("nama_pelanggan", name);
+      reviewPayload.append("rating", String(rating));
+      reviewPayload.append("komentar", comment);
+
+      photoFiles
+        .slice(0, REVIEW_PHOTO_MAX_COUNT)
+        .forEach((file) => reviewPayload.append("photos[]", file));
+
+      const response = await createPublicReview(reviewPayload);
+
+      onReviewCreated?.(mapReviewFromApi(response.data));
+      form.reset();
+      photoPreviews.forEach((photo) => URL.revokeObjectURL(photo.url));
+      setPhotoFiles([]);
+      setPhotoPreviews([]);
+      setRating(0);
+      setShowSuccessPopup(true);
+    } catch (error) {
+      console.error("Gagal mengirim review:", error);
+      setSubmitWarning(error.message || "Review belum bisa dikirim. Coba lagi sebentar ya.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -417,7 +719,7 @@ function ReviewForm() {
                 <input
                   type="text"
                   name="name"
-                  placeholder="ALIASES ONLY..."
+                  placeholder="NAMA PANGGILAN..."
                   onChange={clearSubmitWarning}
                   aria-invalid={Boolean(submitWarning)}
                   className="h-16 w-full border-2 border-[#5C403C] bg-transparent px-4 pt-1 font-['Space_Grotesk',sans-serif] text-lg uppercase tracking-[0.08em] text-[#D9E3F6] outline-none transition placeholder:text-[#475569] focus:border-[#EEC200]"
@@ -458,7 +760,7 @@ function ReviewForm() {
               </span>
               <textarea
                 name="comment"
-                placeholder="WHAT'S THE WORD ON THE STREET?"
+                placeholder="TULIS KESANMU DI SINI..."
                 onChange={clearSubmitWarning}
                 aria-invalid={Boolean(submitWarning)}
                 className="min-h-36 w-full resize-y border-2 border-[#5C403C] bg-transparent px-4 py-5 font-['Space_Grotesk',sans-serif] text-lg text-[#D9E3F6] outline-none transition placeholder:text-[#475569] focus:border-[#EEC200]"
@@ -479,21 +781,48 @@ function ReviewForm() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <label className="flex h-14 cursor-pointer items-center gap-2 border-2 border-dashed border-[#5C403C] px-4 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase text-[#94A3B8] transition hover:border-[#AC8884] hover:text-[#D9E3F6]">
                   <CameraIcon />
-                  Add images (photos)
-                  <input type="file" name="photos" multiple accept="image/*" className="sr-only" />
+                  Tambah foto
+                  <input
+                    type="file"
+                    name="photos"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handlePhotoChange}
+                    className="sr-only"
+                  />
                 </label>
                 <p className="max-w-[150px] font-['Be_Vietnam_Pro',sans-serif] text-[10px] font-bold uppercase leading-3 text-[#64748B]">
-                  Max 3 files, keep it real.
+                  Maksimal 5 foto.
                 </p>
               </div>
 
               <button
                 type="submit"
-                className="-skew-x-12 bg-[#DC2626] px-10 py-5 font-['Space_Grotesk',sans-serif] text-2xl font-black uppercase leading-8 text-[#FFF6F5] shadow-[8px_8px_0_#EEC200] transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-[#EEC200] focus:ring-offset-2 focus:ring-offset-[#16202E]"
+                disabled={isSubmitting || isPreparingPhotos}
+                className="-skew-x-12 bg-[#DC2626] px-10 py-5 font-['Space_Grotesk',sans-serif] text-2xl font-black uppercase leading-8 text-[#FFF6F5] shadow-[8px_8px_0_#EEC200] transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-[#EEC200] focus:ring-offset-2 focus:ring-offset-[#16202E] disabled:cursor-not-allowed disabled:opacity-70"
               >
-                <span className="block skew-x-12">Kirim</span>
+                <span className="block skew-x-12">
+                  {isPreparingPhotos ? "Proses Foto..." : isSubmitting ? "Kirim..." : "Kirim"}
+                </span>
               </button>
             </div>
+
+            {photoPreviews.length > 0 && (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                {photoPreviews.map((photo) => (
+                  <figure
+                    key={photo.id}
+                    className="overflow-hidden border-2 border-[#5C403C] bg-[#091421]"
+                  >
+                    <img
+                      src={photo.url}
+                      alt={photo.name}
+                      className="h-24 w-full object-cover"
+                    />
+                  </figure>
+                ))}
+              </div>
+            )}
           </form>
         </div>
       </section>
@@ -504,6 +833,92 @@ function ReviewForm() {
 }
 
 export default function Review() {
+  const [reviews, setReviews] = useState([]);
+  const [likedReviews, setLikedReviews] = useState(readLikedReviews);
+  const [previewPhoto, setPreviewPhoto] = useState(null);
+  const [ratingSort, setRatingSort] = useState("latest");
+  const [visibleCount, setVisibleCount] = useState(4);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getPublicReviews()
+      .then((response) => {
+        if (isMounted) {
+          setReviews((response.data || []).map(mapReviewFromApi));
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setReviews([]);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleLikeReview = async (review) => {
+    const reviewId = String(review.id || "");
+
+    if (!reviewId || likedReviews.includes(reviewId)) {
+      return;
+    }
+
+    const nextLikedReviews = [...likedReviews, reviewId];
+    setLikedReviews(nextLikedReviews);
+    saveLikedReviews(nextLikedReviews);
+    setReviews((currentReviews) =>
+      currentReviews.map((item) =>
+        String(item.id) === reviewId
+          ? {
+              ...item,
+              likes: item.likes + 1,
+              helpful: `${item.likes + 1} suka`,
+            }
+          : item,
+      ),
+    );
+
+    try {
+      const response = await likePublicReview(review.id);
+      const updatedReview = mapReviewFromApi(response.data);
+
+      setReviews((currentReviews) =>
+        currentReviews.map((item) =>
+          String(item.id) === reviewId ? updatedReview : item,
+        ),
+      );
+    } catch (error) {
+      console.error("Gagal menyimpan like review:", error);
+    }
+  };
+
+  const sortedReviews = useMemo(() => {
+    const nextReviews = [...reviews];
+
+    if (ratingSort === "highest") {
+      return nextReviews.sort((first, second) => second.rating - first.rating);
+    }
+
+    if (ratingSort === "lowest") {
+      return nextReviews.sort((first, second) => first.rating - second.rating);
+    }
+
+    return nextReviews;
+  }, [ratingSort, reviews]);
+  const visibleReviews = sortedReviews.slice(0, visibleCount);
+  const filterOptions = [
+    { value: "latest", label: "Terbaru" },
+    { value: "highest", label: "Rating Tertinggi" },
+    { value: "lowest", label: "Rating Terendah" },
+  ];
+
+  useEffect(() => {
+    setVisibleCount(4);
+  }, [ratingSort]);
+
   return (
     <div className="min-h-screen bg-[#091421] text-[#D9E3F6]">
       <div className="h-1 bg-[#050F1C]" />
@@ -511,7 +926,7 @@ export default function Review() {
       <section className="mx-auto flex w-full max-w-[1280px] flex-col gap-12 px-6 py-20 sm:px-8 lg:px-12 lg:py-24 xl:px-12">
         <header className="flex flex-col gap-2">
           <h1 className="font-['Space_Grotesk',sans-serif] text-6xl font-bold uppercase leading-none text-[#D9E3F6] sm:text-8xl">
-            Reviews.
+            Reviews
           </h1>
           <p className="font-['Be_Vietnam_Pro',sans-serif] text-sm font-bold uppercase leading-5 tracking-[0.1em] text-[#EEC200]">
             Kata-kata dari orang sigma
@@ -519,16 +934,77 @@ export default function Review() {
         </header>
 
         <div className="grid gap-8 lg:grid-cols-[minmax(280px,373px)_1fr]">
-          <RatingSummary />
+          <RatingSummary reviews={sortedReviews} />
 
           <div className="flex flex-col gap-8">
-            {reviews.map((review) => (
-              <ReviewCard key={review.name} review={review} />
+            <div className="flex flex-wrap gap-3">
+              {filterOptions.map((option) => {
+                const isActive = ratingSort === option.value;
+
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setRatingSort(option.value)}
+                    className={`border px-4 py-2 font-['Space_Grotesk',sans-serif] text-xs font-black uppercase tracking-[0.12em] transition ${
+                      isActive
+                        ? "border-[#EEC200] bg-[#EEC200] text-[#3C2F00]"
+                        : "border-[#5C403C] bg-[#121C2A] text-[#D9E3F6] hover:border-[#EEC200]"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {visibleReviews.map((review, index) => (
+              <div
+                key={review.id || review.name}
+                className="opacity-0 [animation:menu-card-in_420ms_cubic-bezier(0.16,1,0.3,1)_forwards]"
+                style={{ animationDelay: `${Math.min(index, 5) * 55}ms` }}
+              >
+                <ReviewCard
+                  review={review}
+                  isLiked={likedReviews.includes(String(review.id))}
+                  onLike={handleLikeReview}
+                  onPhotoClick={setPreviewPhoto}
+                />
+              </div>
             ))}
-            <ReviewForm />
+            {sortedReviews.length === 0 && (
+              <div className="bg-[#121C2A] p-8 font-['Be_Vietnam_Pro',sans-serif] text-sm leading-6 text-[#E6BDB8]">
+                Belum ada review.
+              </div>
+            )}
+            {visibleReviews.length < sortedReviews.length && (
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setVisibleCount((current) =>
+                      Math.min(current + 4, sortedReviews.length),
+                    )
+                  }
+                  className="bg-[#EEC200] px-8 py-4 font-['Space_Grotesk',sans-serif] text-sm font-black uppercase tracking-[0.16em] text-[#3C2F00] shadow-[6px_6px_0_#3C2F00] transition hover:-translate-y-1"
+                >
+                  Tampilkan Lagi
+                </button>
+              </div>
+            )}
+            <ReviewForm
+              onReviewCreated={(review) =>
+                setReviews((currentReviews) => [review, ...currentReviews])
+              }
+            />
           </div>
         </div>
       </section>
+      <PhotoPreviewModal
+        photo={previewPhoto}
+        onClose={() => setPreviewPhoto(null)}
+      />
+      <ScrollToTopButton />
     </div>
   );
 }

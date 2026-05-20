@@ -1,4 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import ScrollToTopButton from "../../../components/user/ScrollToTopButton";
+import { getPublicMenu } from "../../../services/api";
 import coklatClassicImage from "../../../assets/Coklat Clasic.jpg";
 import coklatClassicRotiImage from "../../../assets/Coklat Clasic Roti.jpg";
 import coffeeBearImage from "../../../assets/Coffee Bear.jpg";
@@ -36,12 +38,11 @@ const INITIAL_VISIBLE_COUNT = 9;
 const LOAD_MORE_COUNT = 6;
 
 const filters = [
-  { label: "All Menu", value: "all" },
-  { label: "Food", value: "food" },
-  { label: "Coffee Based", value: "coffee-based" },
-  { label: "Coffee Milk", value: "coffee-milk" },
-  { label: "Tea Series", value: "tea-series" },
-  { label: "Milk Series", value: "milk-series" },
+  { label: "Semua Menu", value: "all" },
+  { label: "Makanan", value: "food" },
+  { label: "Kopi", value: "coffee-based" },
+  { label: "Teh", value: "tea-series" },
+  { label: "Susu", value: "milk-series" },
 ];
 
 const categoryOrder = filters.filter((item) => item.value !== "all");
@@ -179,48 +180,48 @@ const menuItems = [
     name: "Coffee Milk Chocholate",
     description: "Kopi susu coklat yang creamy dan manis.",
     price: "IDR 15K",
-    category: "coffee-milk",
-    categoryLabel: "Coffee Milk",
+    category: "coffee-based",
+    categoryLabel: "Kopi",
     image: coffeMilkChocholateImage,
   },
   {
     name: "Coffee Milk",
     description: "Kopi susu klasik dengan rasa seimbang.",
     price: "IDR 13K",
-    category: "coffee-milk",
-    categoryLabel: "Coffee Milk",
+    category: "coffee-based",
+    categoryLabel: "Kopi",
     image: coffeeMilkImage,
   },
   {
     name: "Hot/Ice Coffe Latte",
     description: "Latte lembut yang tersedia panas atau dingin.",
     price: "IDR 15K/13K",
-    category: "coffee-milk",
-    categoryLabel: "Coffee Milk",
+    category: "coffee-based",
+    categoryLabel: "Kopi",
     image: coffeLatteImage,
   },
   {
     name: "Coffe Milk V2",
     description: "Varian kopi susu dengan rasa khas Kedai Sigma.",
     price: "IDR 13K",
-    category: "coffee-milk",
-    categoryLabel: "Coffee Milk",
+    category: "coffee-based",
+    categoryLabel: "Kopi",
     image: coffeMilkV2Image,
   },
   {
     name: "V6 Drip Susu",
     description: "Manual brew susu dengan rasa lebih lembut.",
     price: "IDR 13K",
-    category: "coffee-milk",
-    categoryLabel: "Coffee Milk",
+    category: "coffee-based",
+    categoryLabel: "Kopi",
     image: v6DripSusuImage,
   },
   {
     name: "Kopi Tubruk Susu",
     description: "Kopi tubruk klasik dengan tambahan susu.",
     price: "IDR 10K",
-    category: "coffee-milk",
-    categoryLabel: "Coffee Milk",
+    category: "coffee-based",
+    categoryLabel: "Kopi",
     image: kopiTubrukSusuImage,
   },
   {
@@ -305,6 +306,253 @@ const menuItems = [
   },
 ];
 
+const isLocalHost = (hostname) =>
+  ["localhost", "127.0.0.1", "::1"].includes(hostname);
+
+const resolveAssetUrl = (value) => {
+  if (!value) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(value)) {
+    return value;
+  }
+
+  const hostname =
+    typeof window !== "undefined" && window.location?.hostname
+      ? window.location.hostname
+      : "";
+  const apiOrigin = hostname
+    ? `${window.location.protocol}//${hostname}:8000`
+    : "http://127.0.0.1:8000";
+  const fallbackOrigin = isLocalHost(hostname)
+    ? "http://127.0.0.1:8000"
+    : apiOrigin;
+
+  return `${fallbackOrigin}${value.startsWith("/") ? value : `/${value}`}`;
+};
+
+const slugify = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+const staticMenuBySlug = new Map(menuItems.map((item) => [slugify(item.name), item]));
+
+const staticMenuAliasBySlug = {
+  americano: "Hot/Ice Americano",
+  "coffee-latte": "Hot/Ice Coffe Latte",
+  "coffe-latte": "Hot/Ice Coffe Latte",
+  "cofee-latte": "Hot/Ice Coffe Latte",
+  "coffee-milk-chocolate": "Coffee Milk Chocholate",
+  "coffe-milk-chocolate": "Coffee Milk Chocholate",
+  "cofee-milk-chocolate": "Coffee Milk Chocholate",
+  "coffee-milk-cholate": "Coffee Milk Chocholate",
+  "coffe-milk-cholate": "Coffee Milk Chocholate",
+  "cofee-milk-cholate": "Coffee Milk Chocholate",
+  "coffee-milk-chocholate": "Coffee Milk Chocholate",
+  "coffe-milk-chocholate": "Coffee Milk Chocholate",
+  "cofee-milk-chocholate": "Coffee Milk Chocholate",
+  "coffee-milk-v2": "Coffe Milk V2",
+  "coffe-milk-v2": "Coffe Milk V2",
+  "cofee-milk-v2": "Coffe Milk V2",
+  "teh-tarik": "Tarik Tea",
+  "tarik-tea": "Tarik Tea",
+  matcha: "Hot/Ice Matcha",
+  redvelvet: "Hot/Ice Redvelvet",
+  "red-velvet": "Hot/Ice Redvelvet",
+  "coklat-classic": "Hot/Ice Coklat Classic",
+  "coklat-clasic": "Hot/Ice Coklat Classic",
+  "coklat-classic-roti": "Hot/Ice Coklat Classic Roti",
+  "coklat-clasic-roti": "Hot/Ice Coklat Classic Roti",
+};
+
+const localImageBySlug = {
+  americano: americanoImage,
+  "hot-ice-americano": americanoImage,
+  "coffee-latte": coffeLatteImage,
+  "coffe-latte": coffeLatteImage,
+  "cofee-latte": coffeLatteImage,
+  "hot-ice-coffe-latte": coffeLatteImage,
+  "coffee-milk-chocolate": coffeMilkChocholateImage,
+  "coffe-milk-chocolate": coffeMilkChocholateImage,
+  "cofee-milk-chocolate": coffeMilkChocholateImage,
+  "coffee-milk-cholate": coffeMilkChocholateImage,
+  "coffe-milk-cholate": coffeMilkChocholateImage,
+  "cofee-milk-cholate": coffeMilkChocholateImage,
+  "coffee-milk-chocholate": coffeMilkChocholateImage,
+  "coffe-milk-chocholate": coffeMilkChocholateImage,
+  "cofee-milk-chocholate": coffeMilkChocholateImage,
+  "coffee-milk-v2": coffeMilkV2Image,
+  "coffe-milk-v2": coffeMilkV2Image,
+  "cofee-milk-v2": coffeMilkV2Image,
+  "teh-tarik": tehTarikImage,
+  "tarik-tea": tehTarikImage,
+  matcha: matchaImage,
+  "hot-ice-matcha": matchaImage,
+  redvelvet: redvelvetImage,
+  "red-velvet": redvelvetImage,
+  "hot-ice-redvelvet": redvelvetImage,
+  "coklat-classic": coklatClassicImage,
+  "coklat-clasic": coklatClassicImage,
+  "hot-ice-coklat-classic": coklatClassicImage,
+  "hot-ice-coklat-clasic": coklatClassicImage,
+  "coklat-classic-roti": coklatClassicRotiImage,
+  "coklat-clasic-roti": coklatClassicRotiImage,
+  "hot-ice-coklat-classic-roti": coklatClassicRotiImage,
+  "hot-ice-coklat-clasic-roti": coklatClassicRotiImage,
+};
+
+const getStaticMenuItem = (name) => {
+  const itemSlug = slugify(name);
+  const aliasName = staticMenuAliasBySlug[itemSlug];
+
+  return staticMenuBySlug.get(itemSlug) || staticMenuBySlug.get(slugify(aliasName));
+};
+
+const getMergeSlug = (name) => {
+  const itemSlug = slugify(name);
+  const aliasName = staticMenuAliasBySlug[itemSlug];
+
+  return aliasName ? slugify(aliasName) : itemSlug;
+};
+
+const inferCategoryValue = (categoryName) => {
+  const normalized = String(categoryName || "").toLowerCase();
+
+  if (normalized.includes("makan") || normalized.includes("food")) {
+    return "food";
+  }
+
+  if (normalized.includes("tea") || normalized.includes("teh")) {
+    return "tea-series";
+  }
+
+  if (normalized.includes("coffee milk") || normalized.includes("kopi susu")) {
+    return "coffee-based";
+  }
+
+  if (normalized.includes("milk") || normalized.includes("susu")) {
+    return "milk-series";
+  }
+
+  if (normalized.includes("coffee") || normalized.includes("kopi")) {
+    return "coffee-based";
+  }
+
+  return "food";
+};
+
+const getCategoryLabel = (categoryValue, categoryName) =>
+  filters.find((item) => item.value === categoryValue)?.label ||
+  categoryName ||
+  "Menu";
+
+const formatRupiah = (value) =>
+  `Rp${Number(value || 0).toLocaleString("id-ID")}`;
+
+const formatPriceNumber = (value) =>
+  Number(value || 0).toLocaleString("id-ID");
+
+const getPriceSortValue = (item) => {
+  if (Number.isFinite(item.priceValue)) {
+    return item.priceValue;
+  }
+
+  const priceLabel = String(item.price || "");
+  const prices = priceLabel
+    .match(/\d[\d.]*/g)
+    ?.map((value) => Number(value.replace(/\./g, "")))
+    .filter((value) => Number.isFinite(value));
+
+  if (!prices?.length) {
+    return 0;
+  }
+
+  const minPrice = Math.min(...prices);
+
+  return /k\b/i.test(priceLabel) && minPrice < 1000 ? minPrice * 1000 : minPrice;
+};
+
+const toNullableNumber = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const number = Number(value);
+
+  return Number.isFinite(number) ? number : null;
+};
+
+const formatVariantPriceLabel = (item, baseItem, basePrice) => {
+  const option =
+    item.opsi_suhu ||
+    (String(baseItem?.price || "").includes("/") ? "hot_ice" : "none");
+  const hotPrice = toNullableNumber(item.harga_hot);
+  const icePrice = toNullableNumber(item.harga_ice);
+
+  if (option === "hot_ice") {
+    if (hotPrice === null && icePrice === null && baseItem?.price) {
+      return String(baseItem.price).replace(/^IDR\s*/i, "Rp");
+    }
+
+    const hot = hotPrice ?? basePrice;
+    const ice = icePrice ?? basePrice;
+
+    return hot === ice
+      ? formatRupiah(hot)
+      : `${formatRupiah(hot)}/${formatPriceNumber(ice)}`;
+  }
+
+  if (option === "hot") {
+    return formatRupiah(hotPrice ?? basePrice);
+  }
+
+  if (option === "ice") {
+    return formatRupiah(icePrice ?? basePrice);
+  }
+
+  return formatRupiah(basePrice);
+};
+
+const mapMenuFromApi = (item) => {
+  const name = item.nama_produk || "Menu";
+  const baseItem = getStaticMenuItem(name);
+  const categoryValue = baseItem?.category || inferCategoryValue(item.kategori?.nama_kategori);
+  const price = Number(item.harga_produk) || 0;
+  const imageUrl = resolveAssetUrl(item.foto_produk);
+  const localImage = baseItem?.image || localImageBySlug[slugify(name)];
+
+  return {
+    ...(baseItem || {}),
+    id: item.id ?? item.id_produk,
+    name,
+    description: item.deskripsi_produk || baseItem?.description || `${name} tersedia di Kedai Sigma.`,
+    price: formatVariantPriceLabel(item, baseItem, price),
+    priceValue: price,
+    category: categoryValue,
+    categoryLabel: baseItem?.categoryLabel || getCategoryLabel(categoryValue, item.kategori?.nama_kategori),
+    image: imageUrl || localImage,
+    isAvailable: item.ketersediaan_produk !== "tidak_tersedia",
+  };
+};
+
+const mergeMenuItems = (apiItems) => {
+  if (!Array.isArray(apiItems)) {
+    return menuItems;
+  }
+
+  const mergedBySlug = new Map();
+
+  apiItems.forEach((item) => {
+    mergedBySlug.set(getMergeSlug(item.name), item);
+  });
+
+  return Array.from(mergedBySlug.values());
+};
+
 function interleaveItemsByCategory(items) {
   const groupedItems = categoryOrder.map((category) =>
     items.filter((item) => item.category === category.value)
@@ -375,9 +623,15 @@ function FilterButton({ item, active, onClick }) {
 }
 
 function MenuCard({ item, index }) {
+  const isOutOfStock = item.isAvailable === false;
+
   return (
     <article
-      className="group flex min-h-[540px] flex-col bg-[#121C2A] p-6 opacity-0 shadow-[0_0_40px_rgba(220,38,38,0.1)] transition-[transform,background-color,box-shadow] duration-500 ease-out hover:-translate-y-1.5 hover:bg-[#16202E] hover:shadow-[0_18px_48px_rgba(220,38,38,0.16)]"
+      className={`group flex min-h-[540px] flex-col border p-6 opacity-0 transition-[transform,background-color,box-shadow] duration-500 ease-out ${
+        isOutOfStock
+          ? "border-[#DC2626]/70 bg-[#16202E] shadow-[0_0_0_3px_rgba(220,38,38,0.10)]"
+          : "border-transparent bg-[#121C2A] shadow-[0_0_40px_rgba(220,38,38,0.1)] hover:-translate-y-1.5 hover:bg-[#16202E] hover:shadow-[0_18px_48px_rgba(220,38,38,0.16)]"
+      }`}
       style={{
         animation: "menu-card-in 520ms cubic-bezier(0.16, 1, 0.3, 1) forwards",
         animationDelay: `${Math.min(index % LOAD_MORE_COUNT, 5) * 70}ms`,
@@ -389,10 +643,26 @@ function MenuCard({ item, index }) {
             <img
               src={item.image}
               alt={item.name}
-              className="h-full w-full object-cover transition duration-700 ease-out group-hover:scale-105"
+              className={`h-full w-full object-cover transition duration-700 ease-out group-hover:scale-105 ${
+                isOutOfStock ? "grayscale opacity-45" : ""
+              }`}
             />
             <div className="absolute inset-0 bg-black/10 transition duration-500 group-hover:bg-black/0" />
           </>
+        )}
+
+        {!item.image && (
+          <div className="flex h-full w-full items-center justify-center bg-[#2B3544] px-6 text-center font-['Space_Grotesk',sans-serif] text-lg font-black uppercase text-[#D9E3F6]/50">
+            {item.name}
+          </div>
+        )}
+
+        {isOutOfStock && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/35">
+            <span className="border border-[#DC2626] bg-[#091421]/90 px-5 py-3 font-['Space_Grotesk',sans-serif] text-lg font-black uppercase tracking-normal text-[#FF4D4D]">
+              Stok Habis
+            </span>
+          </div>
         )}
       </div>
 
@@ -406,9 +676,21 @@ function MenuCard({ item, index }) {
           </p>
         </div>
 
-        <p className="mt-auto font-['Space_Grotesk',sans-serif] text-xl font-bold leading-7 text-[#4AE176]">
-          {item.price}
-        </p>
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
+          <p
+            className={`font-['Space_Grotesk',sans-serif] text-xl font-bold leading-7 ${
+              isOutOfStock ? "text-[#7B8798] line-through" : "text-[#4AE176]"
+            }`}
+          >
+            {item.price}
+          </p>
+
+          {isOutOfStock && (
+            <span className="border border-[#DC2626] bg-[#091421] px-3 py-2 font-['Space_Grotesk',sans-serif] text-xs font-black uppercase tracking-[1.4px] text-[#FF4D4D]">
+              Stok Habis
+            </span>
+          )}
+        </div>
       </div>
     </article>
   );
@@ -417,12 +699,36 @@ function MenuCard({ item, index }) {
 export default function Menu() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [sortMode, setSortMode] = useState("name");
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
+  const [apiMenuItems, setApiMenuItems] = useState(null);
+  const activeMenuItems = useMemo(() => mergeMenuItems(apiMenuItems), [apiMenuItems]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getPublicMenu()
+      .then((response) => {
+        if (isMounted) {
+          setApiMenuItems((response.data || []).map(mapMenuFromApi));
+        }
+      })
+      .catch((error) => {
+        console.error("Gagal mengambil menu publik:", error);
+        if (isMounted) {
+          setApiMenuItems(null);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredItems = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
-    const matchingItems = menuItems.filter((item) => {
+    const matchingItems = activeMenuItems.filter((item) => {
       const matchesFilter = activeFilter === "all" || item.category === activeFilter;
       const matchesSearch =
         keyword.length === 0 ||
@@ -432,10 +738,20 @@ export default function Menu() {
       return matchesFilter && matchesSearch;
     });
 
-    return activeFilter === "all"
-      ? interleaveItemsByCategory(matchingItems)
-      : matchingItems;
-  }, [activeFilter, search]);
+    return [...matchingItems].sort((first, second) => {
+      if (sortMode === "price-low") {
+        return getPriceSortValue(first) - getPriceSortValue(second)
+          || first.name.localeCompare(second.name, "id", { sensitivity: "base" });
+      }
+
+      if (sortMode === "price-high") {
+        return getPriceSortValue(second) - getPriceSortValue(first)
+          || first.name.localeCompare(second.name, "id", { sensitivity: "base" });
+      }
+
+      return first.name.localeCompare(second.name, "id", { sensitivity: "base" });
+    });
+  }, [activeFilter, activeMenuItems, search, sortMode]);
 
   const visibleItems = useMemo(() => {
     return filteredItems.slice(0, visibleCount);
@@ -445,7 +761,7 @@ export default function Menu() {
     if (activeFilter === "all") {
       return [
         {
-          label: "All Menu",
+          label: "Semua Menu",
           value: "all",
           items: visibleItems,
         },
@@ -470,6 +786,11 @@ export default function Menu() {
     setVisibleCount(INITIAL_VISIBLE_COUNT);
   }
 
+  function handleSortChange(value) {
+    setSortMode(value);
+    setVisibleCount(INITIAL_VISIBLE_COUNT);
+  }
+
   return (
     <div className="min-h-screen bg-[#091421] text-[#D9E3F6]">
       <div className="h-1 bg-[#050F1C]" />
@@ -484,7 +805,7 @@ export default function Menu() {
               type="search"
               value={search}
               onChange={handleSearchChange}
-              placeholder="FIND YOUR MENU"
+              placeholder="CARI MENU"
               className="h-[55px] w-full bg-[#121C2A] py-[17px] pl-12 pr-3 font-['Space_Grotesk',sans-serif] text-base font-bold leading-5 tracking-[-0.025em] text-[#D9E3F6] outline-none placeholder:text-[#5C403C] focus:ring-2 focus:ring-[#EEC200]"
             />
           </label>
@@ -494,7 +815,7 @@ export default function Menu() {
               Kedai Sigma Menu
             </p>
             <h1 className="mt-2 font-['Space_Grotesk',sans-serif] text-4xl font-black uppercase leading-none tracking-[-0.05em] text-[#D9E3F6] sm:text-5xl">
-              Find your menu
+              Temukan menu favoritmu
             </h1>
           </div>
         </section>
@@ -508,6 +829,31 @@ export default function Menu() {
               onClick={() => handleFilterChange(item.value)}
             />
           ))}
+        </section>
+
+        <section className="flex w-full flex-wrap items-center gap-3">
+          {[
+            { label: "A-Z", value: "name" },
+            { label: "Harga Termurah", value: "price-low" },
+            { label: "Harga Termahal", value: "price-high" },
+          ].map((item) => {
+            const isActive = sortMode === item.value;
+
+            return (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => handleSortChange(item.value)}
+                className={`border px-5 py-3 font-['Space_Grotesk',sans-serif] text-xs font-black uppercase tracking-[0.14em] transition ${
+                  isActive
+                    ? "border-[#EEC200] bg-[#EEC200] text-[#3C2F00]"
+                    : "border-[#5C403C]/40 bg-[#121C2A] text-[#D9E3F6] hover:border-[#EEC200]"
+                }`}
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </section>
 
         <section className="flex w-full flex-col gap-12">
@@ -554,6 +900,7 @@ export default function Menu() {
           </div>
         )}
       </main>
+      <ScrollToTopButton />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 export default function QRLayout() {
   const location = useLocation();
   const [cartItems, setCartItems] = useState([]);
+  const [qrTable, setQrTable] = useState(null);
   const menuPath = `/qr/menu${location.search}`;
   const cartPath = `/qr/keranjang${location.search}`;
 
@@ -77,6 +78,8 @@ export default function QRLayout() {
             clearCart,
             removeFromCart,
             updateCartQuantity,
+            qrTable,
+            setQrTable,
           }}
         />
 
@@ -89,7 +92,7 @@ export default function QRLayout() {
               Menu
             </Link>
             <Link to={cartPath} className="transition hover:text-[#FFB4AB]">
-              Order
+              Pesanan
             </Link>
           </nav>
         </footer>

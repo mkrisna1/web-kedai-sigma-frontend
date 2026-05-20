@@ -1,15 +1,20 @@
+import { useState } from "react";
 import Sidebar from "../../components/admin/Sidebar";
-import TopBar from "../../components/admin/TopBar";
+import TopBar from "../../components/admin/Topbar";
 import { Outlet, useLocation } from "react-router-dom";
 
 export default function AdminLayout() {
   const location = useLocation();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   return (
     <div className="flex">
       
       {/* Sidebar */}
-      <Sidebar />
+      <Sidebar
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed((current) => !current)}
+      />
 
       {/* Main */}
       <div className="flex flex-col flex-1 min-h-screen">

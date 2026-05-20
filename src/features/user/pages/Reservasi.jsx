@@ -1,7 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import fotoKedai1 from "../../../assets/Foto Kedai 1.png";
 import fotoKedai2 from "../../../assets/Foto Kedai 2.PNG";
 import logoSigma from "../../../assets/Logo Sigma.png";
+import {
+  createPublicReservation,
+  getPublicReservationTables,
+} from "../../../services/api";
 
 const inputClass =
   "h-[62px] w-full border-0 border-b-2 border-[#5C403C] bg-transparent px-1 py-4 font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-7 text-[#D9E3F6] outline-none transition placeholder:text-[#94A3B8]/75 focus:border-[#EEC200]";
@@ -81,6 +85,7 @@ function CheckBadgeIcon({ className = "h-8 w-8" }) {
 }
 
 const days = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+const INDONESIA_TIME_ZONE = "Asia/Jakarta";
 const monthNames = [
   "Januari",
   "Februari",
@@ -114,22 +119,51 @@ const timeOptions = [
   "23:30",
 ];
 
+const mapTableFromApi = (item) => ({
+  id: item.id ?? item.id_meja,
+  label: item.nomor_meja || "Meja",
+  capacity: Number(item.capacity) || 0,
+  usedSeats: Number(item.used_seats) || 0,
+  status: item.status_meja || "active",
+});
+
 function formatDateValue(year, month, date) {
   return `${String(month + 1).padStart(2, "0")}/${String(date).padStart(2, "0")}/${year}`;
 }
 
+function getIndonesiaToday() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: INDONESIA_TIME_ZONE,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  }).formatToParts(new Date());
+  const getPart = (type) => Number(parts.find((part) => part.type === type)?.value);
+
+  return new Date(getPart("year"), getPart("month") - 1, getPart("day"));
+}
+
 function getDateFromValue(value) {
   if (!value) {
-    return new Date();
+    return getIndonesiaToday();
   }
 
   const [month, date, year] = value.split("/").map(Number);
 
   if (!month || !date || !year) {
-    return new Date();
+    return getIndonesiaToday();
   }
 
   return new Date(year, month - 1, date);
+}
+
+function toApiDate(value) {
+  const date = getDateFromValue(value);
+
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+    2,
+    "0",
+  )}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function isSameDate(firstDate, secondDate) {
@@ -141,7 +175,7 @@ function isSameDate(firstDate, secondDate) {
 }
 
 function CalendarPopup({ selectedDate, onClose, onSelect }) {
-  const today = new Date();
+  const today = getIndonesiaToday();
   const selectedDateObject = getDateFromValue(selectedDate);
   const [visibleMonth, setVisibleMonth] = useState(selectedDateObject.getMonth());
   const [visibleYear, setVisibleYear] = useState(selectedDateObject.getFullYear());
@@ -362,6 +396,83 @@ function TimePopup({ selectedTime, onClose, onSelect }) {
   );
 }
 
+function TablePopup({ tables, selectedTableId, guestCount, onClose, onSelect }) {
+  return (
+    <div className="absolute left-1/2 top-full z-30 mt-4 w-[min(420px,calc(100vw-48px))] -translate-x-1/2 animate-[picker-panel_180ms_ease-out] overflow-hidden rounded-xl border border-[#2B3544] bg-[#212B39] shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
+      <div className="flex flex-col gap-6 p-6">
+        <div>
+          <h2 className="font-['Inter',sans-serif] text-lg font-bold leading-7 tracking-[-0.025em] text-[#D9E3F6]">
+            Pilih Meja
+          </h2>
+          <p className="mt-1 font-['Inter',sans-serif] text-sm text-[#94A3B8]">
+            {guestCount ? `${guestCount} orang, pilih meja yang masih kosong` : "Pilih jumlah orang dulu"}
+          </p>
+        </div>
+
+        {tables.length > 0 ? (
+          <div className="grid grid-cols-2 gap-3">
+            {tables.map((table) => {
+              const isSelected = String(selectedTableId) === String(table.id);
+
+              return (
+                <button
+                  key={table.id}
+                  type="button"
+                  onClick={() => onSelect(table.id)}
+                  className={`group relative flex min-h-[96px] flex-col items-start justify-between overflow-hidden rounded-xl border p-4 text-left font-['Inter',sans-serif] transition duration-300 hover:-translate-y-0.5 ${
+                    isSelected
+                      ? "border-[#EEC200] bg-[#DC2626] text-white shadow-[0_8px_18px_rgba(220,38,38,0.35)]"
+                      : "border-[#2B3544] bg-[#121C2A] text-[#D9E3F6] hover:border-[#EEC200]/60 hover:bg-[#2B3544]"
+                  }`}
+                >
+                  <span
+                    className={`absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-xs font-black ${
+                      isSelected
+                        ? "bg-white text-[#DC2626]"
+                        : "bg-[#2B3544] text-[#EEC200] group-hover:bg-[#EEC200] group-hover:text-[#3C2F00]"
+                    }`}
+                  >
+                    {table.capacity}
+                  </span>
+                  <span className="text-base font-bold leading-5">{table.label}</span>
+                  <span
+                    className={`text-[10px] font-bold uppercase tracking-[0.12em] ${
+                      isSelected ? "text-white/80" : "text-[#EEC200]"
+                    }`}
+                  >
+                    {table.capacity} kursi
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex min-h-[112px] items-center justify-center rounded-lg border border-[#2B3544] bg-[#121C2A] px-5 text-center font-['Inter',sans-serif] text-sm font-bold text-[#EEC200]">
+            Meja penuh
+          </div>
+        )}
+      </div>
+
+      <div className="flex h-[68px] items-center justify-end gap-3 bg-[#121C2A] px-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="h-9 px-5 font-['Inter',sans-serif] text-sm font-semibold text-[#94A3B8] transition hover:text-[#D9E3F6]"
+        >
+          Keluar
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="h-9 rounded-lg bg-[#DC2626] px-6 font-['Inter',sans-serif] text-sm font-bold text-white shadow-sm transition hover:bg-red-700"
+        >
+          Pilih
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ReservationSuccessPopup({ onClose }) {
   return (
     <div
@@ -374,7 +485,7 @@ function ReservationSuccessPopup({ onClose }) {
         <div className="relative flex min-h-[330px] flex-col border-b border-white/40 px-6 py-8 sm:min-h-[359px] sm:px-10 md:px-16">
           <div className="flex items-center justify-center border-b border-white/40 pb-8 sm:justify-start">
             <p className="font-['Be_Vietnam_Pro',sans-serif] text-xl leading-5 text-white">
-              System
+              Sistem
             </p>
           </div>
 
@@ -417,7 +528,7 @@ function ReservationSuccessPopup({ onClose }) {
   );
 }
 
-function ReservationWarningPopup({ onClose }) {
+function ReservationWarningPopup({ message, onClose }) {
   return (
     <div
       className="fixed inset-0 z-50 flex animate-[popup-backdrop_180ms_ease-out] items-center justify-center bg-black/60 px-4 py-8 backdrop-blur-sm"
@@ -428,7 +539,7 @@ function ReservationWarningPopup({ onClose }) {
       <div className="w-full max-w-[520px] animate-[popup-panel_220ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-xl border border-[#EEC200]/30 bg-[#091421] shadow-[0_24px_70px_rgba(0,0,0,0.55)]">
         <div className="border-b border-white/25 px-6 py-5 sm:px-8">
           <p className="font-['Be_Vietnam_Pro',sans-serif] text-xl leading-5 text-white">
-            System
+            Sistem
           </p>
         </div>
 
@@ -443,7 +554,7 @@ function ReservationWarningPopup({ onClose }) {
             Mohon isi yang lengkap
           </h2>
           <p className="mx-auto mt-3 max-w-[360px] font-['Be_Vietnam_Pro',sans-serif] text-sm leading-6 text-white/70">
-            Lengkapi nama, nomor telepon, tanggal, waktu, jumlah orang, dan catatan sebelum mengirim reservasi.
+            {message}
           </p>
         </div>
 
@@ -468,9 +579,67 @@ export default function Reservasi() {
   });
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
+  const [selectedTableId, setSelectedTableId] = useState("");
+  const [tableOptions, setTableOptions] = useState([]);
+  const [isLoadingTables, setIsLoadingTables] = useState(false);
   const [openPicker, setOpenPicker] = useState(null);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [showWarningPopup, setShowWarningPopup] = useState(false);
+  const [warningMessage, setWarningMessage] = useState(
+    "Lengkapi nama, nomor telepon, tanggal, waktu, jumlah orang, dan meja sebelum mengirim reservasi.",
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const guestCount = Number.parseInt(formData.people, 10) || undefined;
+    const params = {
+      ...(guestCount ? { jml_orang: guestCount } : {}),
+      ...(selectedDate ? { tgl_reservasi: toApiDate(selectedDate) } : {}),
+      ...(selectedTime ? { jam_reservasi: selectedTime } : {}),
+    };
+
+    setIsLoadingTables(true);
+    getPublicReservationTables(Object.keys(params).length ? params : undefined)
+      .then((response) => {
+        if (!isMounted) {
+          return;
+        }
+
+        const tables = (response.data || []).map(mapTableFromApi);
+        setTableOptions(tables);
+
+        setSelectedTableId((currentTableId) => {
+          if (!currentTableId) {
+            return "";
+          }
+
+          return tables.some((table) => String(table.id) === String(currentTableId))
+            ? currentTableId
+            : "";
+        });
+      })
+      .catch((error) => {
+        console.error("Gagal mengambil meja reservasi:", error);
+        if (isMounted) {
+          setTableOptions([]);
+          setSelectedTableId("");
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingTables(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [formData.people, selectedDate, selectedTime]);
+
+  const selectedTable = tableOptions.find(
+    (table) => String(table.id) === String(selectedTableId),
+  );
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -482,7 +651,7 @@ export default function Reservasi() {
     }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setOpenPicker(null);
 
@@ -492,14 +661,45 @@ export default function Reservasi() {
       selectedDate &&
       selectedTime &&
       formData.people &&
-      formData.note.trim();
+      selectedTableId;
 
     if (!isFormComplete) {
+      setWarningMessage(
+        "Lengkapi nama, nomor telepon, tanggal, waktu, jumlah orang, dan meja sebelum mengirim reservasi.",
+      );
       setShowWarningPopup(true);
       return;
     }
 
-    setShowSuccessPopup(true);
+    setIsSubmitting(true);
+
+    try {
+      await createPublicReservation({
+        nama_reservasi: formData.name.trim(),
+        no_hp: formData.phone.trim(),
+        meja_id: Number.parseInt(selectedTableId, 10),
+        tgl_reservasi: toApiDate(selectedDate),
+        jam_reservasi: selectedTime,
+        jml_orang: Number.parseInt(formData.people, 10) || 1,
+        catatan_reservasi: formData.note.trim(),
+      });
+      setShowSuccessPopup(true);
+      setFormData({
+        name: "",
+        phone: "",
+        people: "",
+        note: "",
+      });
+      setSelectedDate("");
+      setSelectedTime("");
+      setSelectedTableId("");
+    } catch (error) {
+      console.error("Gagal membuat reservasi:", error);
+      setWarningMessage(error.message || "Reservasi belum bisa dikirim. Coba lagi sebentar ya.");
+      setShowWarningPopup(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -519,15 +719,15 @@ export default function Reservasi() {
         <div className="mx-auto flex w-full max-w-[1024px] flex-col items-center gap-16">
           <header className="flex flex-col items-center gap-5 text-center">
             <div className="flex flex-col items-center gap-4 sm:flex-row">
-              <SkewBadge>Reserve Now</SkewBadge>
+              <SkewBadge>Reservasi</SkewBadge>
               <p className="font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#EEC200]">
                 Reservasi sekarang biar sigma
               </p>
             </div>
 
             <h1 className="font-['Space_Grotesk',sans-serif] text-6xl font-black uppercase leading-[0.98] tracking-[-0.05em] md:text-[92px]">
-              <span className="block text-[#D9E3F6]">Reserve</span>
-              <span className="block text-[#DC2626]">Your Spot</span>
+              <span className="block text-[#D9E3F6]">Pesan</span>
+              <span className="block text-[#DC2626]">Tempatmu</span>
             </h1>
           </header>
 
@@ -551,7 +751,7 @@ export default function Reservasi() {
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
-                    placeholder="Who are you?"
+                    placeholder="Nama kamu"
                   />
                 </Field>
 
@@ -581,7 +781,7 @@ export default function Reservasi() {
                         className={`${inputClass} flex items-center text-left`}
                       >
                         {selectedDate || (
-                          <span className="text-[#94A3B8]/75">MM/DD/YYYY</span>
+                          <span className="text-[#94A3B8]/75">Pilih tanggal</span>
                         )}
                       </button>
                       {openPicker === "date" && (
@@ -609,7 +809,7 @@ export default function Reservasi() {
                         className={`${inputClass} flex items-center text-left`}
                       >
                         {selectedTime || (
-                          <span className="text-[#94A3B8]/75">--:-- --</span>
+                          <span className="text-[#94A3B8]/75">Pilih waktu</span>
                         )}
                       </button>
                       {openPicker === "time" && (
@@ -636,22 +836,72 @@ export default function Reservasi() {
                     <option className="bg-[#212B39]" value="">
                       Pilih jumlah orang
                     </option>
-                    <option className="bg-[#212B39]" value="1 Person">
-                      1 Orang
-                    </option>
-                    <option className="bg-[#212B39]" value="2 Person">
-                      2 Orang
-                    </option>
-                    <option className="bg-[#212B39]" value="3 Person">
-                      3 Orang
-                    </option>
-                    <option className="bg-[#212B39]" value="4 Person">
-                      4 Orang
-                    </option>
-                    <option className="bg-[#212B39]" value="5+ Person">
-                      5+ Orang
-                    </option>
+                    {Array.from({ length: 8 }, (_, index) => {
+                      const guestCount = index + 1;
+
+                      return (
+                        <option
+                          key={guestCount}
+                          className="bg-[#212B39]"
+                          value={guestCount}
+                        >
+                          {guestCount} Orang
+                        </option>
+                      );
+                    })}
                   </select>
+                </Field>
+
+                <Field label="Pilih meja">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (formData.people && !isLoadingTables && tableOptions.length > 0) {
+                          setOpenPicker((current) =>
+                            current === "table" ? null : "table",
+                          );
+                        }
+                      }}
+                      disabled={!formData.people || isLoadingTables || tableOptions.length === 0}
+                      className={`${inputClass} flex items-center justify-between text-left disabled:cursor-not-allowed disabled:opacity-50`}
+                    >
+                      <span>
+                        {!formData.people
+                          ? "Pilih jumlah orang dulu"
+                          : isLoadingTables
+                            ? "Memuat meja..."
+                            : selectedTable
+                              ? `${selectedTable.label} - ${selectedTable.capacity} kursi`
+                              : tableOptions.length === 0
+                                ? "Meja penuh"
+                                : "Pilih meja"}
+                      </span>
+                      <span className="text-base text-[#EEC200]">v</span>
+                    </button>
+                    {openPicker === "table" && (
+                      <TablePopup
+                        tables={tableOptions}
+                        selectedTableId={selectedTableId}
+                        guestCount={formData.people}
+                        onClose={() => setOpenPicker(null)}
+                        onSelect={(value) => {
+                          setSelectedTableId(String(value));
+                          setOpenPicker(null);
+                        }}
+                      />
+                    )}
+                  </div>
+                  {formData.people && !isLoadingTables && tableOptions.length === 0 && (
+                    <p className="mt-2 font-['Be_Vietnam_Pro',sans-serif] text-xs font-semibold text-[#EEC200]">
+                      Meja sedang penuh atau tidak ada meja kosong dengan kapasitas {formData.people} orang.
+                    </p>
+                  )}
+                  {Number.parseInt(formData.people, 10) <= 4 && tableOptions.length > 0 && (
+                    <p className="mt-2 font-['Be_Vietnam_Pro',sans-serif] text-xs font-semibold text-[#94A3B8]">
+                      Untuk 1-4 orang, meja yang ditampilkan maksimal kapasitas 4 kursi.
+                    </p>
+                  )}
                 </Field>
 
                 <Field label="Catatan">
@@ -666,9 +916,10 @@ export default function Reservasi() {
 
                 <button
                   type="submit"
-                  className="flex h-20 w-full items-center justify-center bg-[#DC2626] px-4 py-6 text-center font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-8 tracking-[0.28em] text-[#FFF6F5] shadow-[0_10px_30px_rgba(220,38,38,0.3)] transition hover:bg-red-700 md:text-2xl"
+                  disabled={isSubmitting}
+                  className="flex h-20 w-full items-center justify-center bg-[#DC2626] px-4 py-6 text-center font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-8 tracking-[0.28em] text-[#FFF6F5] shadow-[0_10px_30px_rgba(220,38,38,0.3)] transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70 md:text-2xl"
                 >
-                  Confirm Reservation
+                  {isSubmitting ? "Mengirim..." : "Konfirmasi Reservasi"}
                 </button>
               </div>
             </form>
@@ -701,15 +952,15 @@ export default function Reservasi() {
                 </p>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <article className="h-[105px] border-l-2 border-[#4AE176] bg-[#121C2A] p-6">
-                    <WifiIcon className="h-7 w-7 text-[#4AE176]" />
+                  <article className="group h-[105px] border-l-2 border-[#4AE176] bg-[#121C2A] p-6 transition duration-300 hover:-translate-y-1 hover:bg-[#16202E] hover:shadow-[0_14px_32px_rgba(74,225,118,0.16)]">
+                    <WifiIcon className="h-7 w-7 text-[#4AE176] transition duration-300 group-hover:-translate-y-1 group-hover:scale-110" />
                     <p className="mt-4 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 tracking-[0.1em]">
                       Wifi cepat sangat sigma
                     </p>
                   </article>
 
-                  <article className="h-[105px] border-l-2 border-[#DC2626] bg-[#121C2A] p-6">
-                    <ChargeIcon className="h-7 w-7 text-[#DC2626]" />
+                  <article className="group h-[105px] border-l-2 border-[#DC2626] bg-[#121C2A] p-6 transition duration-300 hover:-translate-y-1 hover:bg-[#16202E] hover:shadow-[0_14px_32px_rgba(220,38,38,0.18)]">
+                    <ChargeIcon className="h-7 w-7 text-[#DC2626] transition duration-300 group-hover:-translate-y-1 group-hover:scale-110" />
                     <p className="mt-4 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 tracking-[0.1em]">
                       Station Charging
                     </p>
@@ -722,12 +973,12 @@ export default function Reservasi() {
               <img
                 src={fotoKedai1}
                 alt="Interior Kedai Sigma"
-                className="absolute left-0 top-0 h-80 w-[216px] border border-[#2B3544]/20 object-cover grayscale"
+                className="absolute left-0 top-0 h-80 w-[216px] border border-[#2B3544]/20 object-cover grayscale opacity-0 transition duration-700 hover:-translate-y-2 hover:grayscale-0 [animation:favorite-card-in_700ms_cubic-bezier(0.16,1,0.3,1)_forwards]"
               />
               <img
                 src={fotoKedai2}
                 alt="Suasana Kedai Sigma"
-                className="absolute left-[232px] top-12 h-80 w-[216px] border border-[#2B3544]/20 object-cover grayscale"
+                className="absolute left-[232px] top-12 h-80 w-[216px] border border-[#2B3544]/20 object-cover grayscale opacity-0 transition duration-700 hover:-translate-y-2 hover:grayscale-0 [animation:favorite-card-in_700ms_140ms_cubic-bezier(0.16,1,0.3,1)_forwards]"
               />
             </div>
           </section>
@@ -738,7 +989,10 @@ export default function Reservasi() {
         <ReservationSuccessPopup onClose={() => setShowSuccessPopup(false)} />
       )}
       {showWarningPopup && (
-        <ReservationWarningPopup onClose={() => setShowWarningPopup(false)} />
+        <ReservationWarningPopup
+          message={warningMessage}
+          onClose={() => setShowWarningPopup(false)}
+        />
       )}
     </div>
   );

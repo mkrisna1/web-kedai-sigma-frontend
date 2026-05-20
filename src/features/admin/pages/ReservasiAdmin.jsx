@@ -1,81 +1,58 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  deleteAdminReservation,
+  getAdminReservations,
+  updateAdminReservationStatus,
+} from "../../../services/api";
 
-const reservations = [
-  {
-    id: "RSV-001",
-    initials: "AR",
-    name: "Ariel Pratama",
-    phone: "+62 812-8888-2211",
-    guests: "4 Person",
-    date: "Apr 6, 2026",
-    dateValue: "2026-04-06",
-    time: "19:00 PM",
-    status: "Pending",
-  },
-  {
-    id: "RSV-002",
-    initials: "NA",
-    name: "Nadia Putri",
-    phone: "+62 813-4477-9910",
-    guests: "3 Person",
-    date: "Apr 6, 2026",
-    dateValue: "2026-04-06",
-    time: "18:30 PM",
-    status: "Confirmed",
-  },
-  {
-    id: "RSV-003",
-    initials: "BS",
-    name: "Bima Santoso",
-    phone: "+62 857-3312-0044",
-    guests: "20 Person",
-    date: "Apr 6, 2026",
-    dateValue: "2026-04-06",
-    time: "20:15 PM",
-    status: "Cancelled",
-  },
-  {
-    id: "RSV-004",
-    initials: "KY",
-    name: "Kyla Dewi",
-    phone: "+62 821-7780-2219",
-    guests: "2 Person",
-    date: "Apr 6, 2026",
-    dateValue: "2026-04-06",
-    time: "12:00 PM",
-    status: "Confirmed",
-  },
-];
-
-const reservationPages = [0, 1, 2].map((pageIndex) =>
-  reservations.map((item) => ({
-    ...item,
-    id: `${item.id}-P${pageIndex + 1}`,
-  }))
-);
+const emptyReservationPages = [[]];
 
 const statusStyles = {
-  Pending: "bg-yellow-100 text-yellow-700",
-  Confirmed: "bg-green-100 text-green-700",
-  Cancelled: "bg-red-100 text-red-700",
+  Menunggu: "bg-yellow-100 text-yellow-700",
+  Dikonfirmasi: "bg-green-100 text-green-700",
+  Dibatalkan: "bg-red-100 text-red-700",
+};
+
+const uiStatusByApiStatus = {
+  menunggu_konfirmasi: "Menunggu",
+  dikonfirmasi: "Dikonfirmasi",
+  dibatalkan: "Dibatalkan",
+};
+
+const apiStatusByUiStatus = {
+  Dikonfirmasi: "dikonfirmasi",
+  Dibatalkan: "dibatalkan",
 };
 
 const monthNames = [
-  "January",
-  "February",
-  "March",
+  "Januari",
+  "Februari",
+  "Maret",
   "April",
-  "May",
-  "June",
-  "July",
-  "August",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
   "September",
-  "October",
+  "Oktober",
   "November",
-  "December",
+  "Desember",
 ];
 
-const dayNames = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+const dayNames = ["MIN", "SEN", "SEL", "RAB", "KAM", "JUM", "SAB"];
+const INDONESIA_TIME_ZONE = "Asia/Jakarta";
+
+const getIndonesiaToday = () => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: INDONESIA_TIME_ZONE,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  }).formatToParts(new Date());
+  const getPart = (type) => Number(parts.find((part) => part.type === type)?.value);
+
+  return new Date(getPart("year"), getPart("month") - 1, getPart("day"));
+};
 
 const formatDateValue = (date) => {
   const year = date.getFullYear();
@@ -87,7 +64,7 @@ const formatDateValue = (date) => {
 
 const parseDateValue = (dateValue) => {
   if (!dateValue) {
-    return new Date(2026, 3, 1);
+    return getIndonesiaToday();
   }
 
   const [year, month, day] = dateValue.split("-").map(Number);
@@ -100,21 +77,57 @@ const formatDateLabel = (dateValue) => {
   }
 
   const date = parseDateValue(dateValue);
-  return `${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+  return `${date.getDate()} ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+};
+
+const getInitials = (name) =>
+  String(name || "-")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+
+const formatTimeLabel = (timeValue) => {
+  if (!timeValue) {
+    return "-";
+  }
+
+  return String(timeValue).slice(0, 5);
+};
+
+const mapReservationFromApi = (item) => ({
+  rawId: item.id,
+  id: `RSV-${String(item.id || 0).padStart(3, "0")}`,
+  initials: getInitials(item.nama_reservasi),
+  name: item.nama_reservasi || "-",
+  phone: item.no_hp || "-",
+  guests: `${item.jml_orang || 0} Orang`,
+  note: item.catatan_reservasi || "-",
+  date: formatDateLabel(item.tgl_reservasi),
+  dateValue: item.tgl_reservasi || "",
+  time: formatTimeLabel(item.jam_reservasi),
+  tableId: item.meja?.id ?? item.meja?.id_meja ?? item.id_meja,
+  table: item.meja?.nomor_meja || "Meja belum dipilih",
+  tableCapacity: Number(item.meja?.capacity) || 0,
+  status: uiStatusByApiStatus[item.status_reservasi] || "Menunggu",
+});
+
+const chunkReservations = (items, size = 8) => {
+  if (!items.length) {
+    return emptyReservationPages;
+  }
+
+  return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
+    items.slice(index * size, index * size + size),
+  );
 };
 
 function CalendarIcon({ className = "h-5 w-5" }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
       <path d="M7 2h2v2h6V2h2v2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2V2Zm12 8H5v10h14V10ZM5 8h14V6H5v2Z" />
-    </svg>
-  );
-}
-
-function UsersIcon({ className = "h-5 w-5" }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M16 11a4 4 0 1 0-3.46-6A5.97 5.97 0 0 1 14 9c0 .73-.13 1.43-.37 2H16ZM8 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-3.31 0-6 1.79-6 4v2h12v-2c0-2.21-2.69-4-6-4Zm8 0c-.45 0-.88.04-1.3.11.82.95 1.3 2.07 1.3 3.39V19h6v-2c0-2.21-2.69-4-6-4Z" />
     </svg>
   );
 }
@@ -159,6 +172,14 @@ function XIcon({ className = "h-4 w-4" }) {
   );
 }
 
+function TrashIcon({ className = "h-4 w-4" }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+      <path d="M9 3h6l1 2h5v2H3V5h5l1-2Zm-3 6h12l-1 12H7L6 9Zm3 2v8h2v-8H9Zm4 0v8h2v-8h-2Z" />
+    </svg>
+  );
+}
+
 function Field({ label, children }) {
   return (
     <label className="flex min-w-[220px] flex-1 flex-col gap-2">
@@ -178,7 +199,7 @@ function CalendarPopup({ value, onClose, onSelect }) {
   const [draftDate, setDraftDate] = useState(value || formatDateValue(initialDate));
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
-  const todayValue = formatDateValue(new Date());
+  const indonesiaTodayValue = formatDateValue(getIndonesiaToday());
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const calendarDays = [
@@ -210,8 +231,8 @@ function CalendarPopup({ value, onClose, onSelect }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-6">
-      <div className="flex h-[495px] w-full max-w-96 flex-col items-start overflow-hidden rounded-lg bg-white shadow-[0_10px_30px_rgba(25,28,30,0.06)]">
+    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/20 p-6">
+      <div className="flex h-[495px] w-full max-w-96 animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start overflow-hidden rounded-lg bg-white shadow-[0_10px_30px_rgba(25,28,30,0.06)]">
         <div className="flex h-[427px] w-full flex-col items-start gap-8 p-6">
           <div className="flex h-7 w-full items-center justify-between">
             <button
@@ -250,7 +271,7 @@ function CalendarPopup({ value, onClose, onSelect }) {
 
               {calendarDays.map((dateItem) => {
                 const isSelected = dateItem.value === draftDate;
-                const isToday = dateItem.value === todayValue;
+                const isToday = dateItem.value === indonesiaTodayValue;
 
                 return (
                   <button
@@ -293,7 +314,7 @@ function CalendarPopup({ value, onClose, onSelect }) {
             onClick={() => onSelect(draftDate)}
             className="flex h-9 items-center justify-center rounded-lg bg-gradient-to-r from-[#004AC6] to-[#2563EB] px-6 text-sm font-bold leading-5 text-white shadow-sm transition hover:brightness-105"
           >
-            Add
+            Pilih
           </button>
         </div>
       </div>
@@ -301,12 +322,92 @@ function CalendarPopup({ value, onClose, onSelect }) {
   );
 }
 
+function ConfirmActionModal({ action, item, onCancel, onConfirm }) {
+  const isDelete = action === "delete";
+  const title = isDelete ? "Konfirmasi Hapus" : "Konfirmasi Batalkan";
+  const body = isDelete
+    ? `Apakah Anda yakin ingin menghapus reservasi "${item?.name || "ini"}"? Tindakan ini tidak dapat dibatalkan.`
+    : `Apakah Anda yakin ingin membatalkan reservasi "${item?.name || "ini"}"? Meja akan dilepas jika tidak sedang dipakai.`;
+  const confirmLabel = isDelete ? "Hapus" : "Batalkan";
+
+  return (
+    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/40 p-6 backdrop-blur-sm">
+      <div className="relative box-border flex h-[321.8px] w-full max-w-96 animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start rounded-2xl border border-[#C3C6D7]/10 bg-white shadow-2xl shadow-black/25">
+        <div className="flex h-[319.8px] w-full flex-col items-start gap-[10.8px] p-8">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#BA1A1A]/10 text-[#BA1A1A]">
+            {isDelete ? (
+              <TrashIcon className="h-[23.75px] w-[27.5px]" />
+            ) : (
+              <XIcon className="h-[23.75px] w-[27.5px]" />
+            )}
+          </div>
+
+          <h3 className="flex h-[41.2px] w-full items-center pt-[13.2px] text-xl font-bold leading-7 tracking-[-0.5px] text-[#191C1E]">
+            {title}
+          </h3>
+
+          <p className="flex h-[69px] w-full items-center text-sm font-normal leading-[23px] text-[#434655]">
+            {body}
+          </p>
+
+          <div className="relative h-[65.2px] w-full">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="absolute left-0 top-[21.2px] flex h-11 w-[153.75px] items-center justify-center rounded-lg bg-[#E6E8EA] text-sm font-bold leading-5 tracking-[0.35px] text-[#191C1E] transition hover:brightness-95"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="absolute left-[165px] top-[21.2px] flex h-11 w-[162.34px] items-center justify-center rounded-lg bg-[#BA1A1A] text-sm font-bold leading-5 tracking-[0.35px] text-white shadow-[0_10px_15px_-3px_rgba(186,26,26,0.2),0_4px_6px_-4px_rgba(186,26,26,0.2)] transition hover:brightness-105"
+            >
+              {confirmLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ReservasiAdmin() {
-  const [pages, setPages] = useState(reservationPages);
+  const [pages, setPages] = useState(emptyReservationPages);
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("Semua Status");
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState(null);
+
+  const setReservationItems = (items) => {
+    const nextPages = chunkReservations(items);
+
+    setPages(nextPages);
+    setCurrentPage((page) => Math.min(page, nextPages.length - 1));
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getAdminReservations()
+      .then((response) => {
+        if (isMounted) {
+          setPages(chunkReservations((response.data || []).map(mapReservationFromApi)));
+          setCurrentPage(0);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setPages(emptyReservationPages);
+          setCurrentPage(0);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const matchesFilters = (item) => {
     const matchesDate = selectedDate ? item.dateValue === selectedDate : true;
@@ -329,14 +430,68 @@ export default function ReservasiAdmin() {
     currentReservations.length === 0 ? 0 : previousFilteredCount + 1;
   const lastShown = previousFilteredCount + currentReservations.length;
 
-  const updateReservationStatus = (reservationId, status) => {
-    setPages((currentPages) =>
-      currentPages.map((pageItems) =>
-        pageItems.map((item) =>
-          item.id === reservationId ? { ...item, status } : item
-        )
-      )
-    );
+  const updateReservationStatus = async (reservationId, status) => {
+    const previousPages = pages;
+    const nextItems = pages
+      .flat()
+      .map((item) => (item.id === reservationId ? { ...item, status } : item));
+
+    setReservationItems(nextItems);
+
+    const target = pages.flat().find((item) => item.id === reservationId);
+
+    if (!target?.rawId || !apiStatusByUiStatus[status]) {
+      return;
+    }
+
+    try {
+      const response = await updateAdminReservationStatus(
+        target.rawId,
+        apiStatusByUiStatus[status],
+      );
+      const updatedReservation = mapReservationFromApi(response.data);
+
+      setReservationItems(
+        pages
+          .flat()
+          .map((item) =>
+            item.rawId === updatedReservation.rawId ? updatedReservation : item
+          ),
+      );
+    } catch (error) {
+      console.error("Gagal memperbarui status reservasi:", error);
+      window.alert(error.message || "Reservasi belum bisa diperbarui.");
+      setPages(previousPages);
+    }
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmTarget?.item) {
+      return;
+    }
+
+    const { action, item } = confirmTarget;
+
+    if (action === "cancel") {
+      await updateReservationStatus(item.id, "Dibatalkan");
+      setConfirmTarget(null);
+      return;
+    }
+
+    const previousPages = pages;
+    const remainingItems = pages
+      .flat()
+      .filter((reservation) => reservation.rawId !== item.rawId);
+
+    setReservationItems(remainingItems);
+
+    try {
+      await deleteAdminReservation(item.rawId);
+      setConfirmTarget(null);
+    } catch (error) {
+      console.error("Gagal menghapus reservasi:", error);
+      setPages(previousPages);
+    }
   };
 
   const handleDateSelect = (dateValue) => {
@@ -374,18 +529,22 @@ export default function ReservasiAdmin() {
               className="h-[43px] rounded border border-b-2 border-[#C3C6D7] bg-[#F2F4F6] px-4 text-sm text-[#191C1E] outline-none transition focus:border-blue-500"
             >
               <option>Semua Status</option>
-              <option>Pending</option>
-              <option>Confirmed</option>
-              <option>Cancelled</option>
+              <option>Menunggu</option>
+              <option>Dikonfirmasi</option>
+              <option>Dibatalkan</option>
             </select>
           </Field>
 
           <button
             type="button"
-            onClick={() => setCurrentPage(0)}
+            onClick={() => {
+              setSelectedDate("");
+              setSelectedStatus("Semua Status");
+              setCurrentPage(0);
+            }}
             className="h-10 rounded-lg bg-gradient-to-br from-[#004AC6] to-[#2563EB] px-8 text-sm font-semibold text-white shadow-[0_10px_15px_-3px_rgba(59,130,246,0.2)] transition hover:brightness-105"
           >
-            Terapkan
+            Reset
           </button>
         </div>
 
@@ -411,19 +570,19 @@ export default function ReservasiAdmin() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button className="rounded p-2 text-[#434655] transition hover:bg-slate-100">
-              <DotsIcon />
-            </button>
-          </div>
+          <span className="rounded bg-[#F2F4F6] px-3 py-2 text-xs font-bold uppercase tracking-[0.08em] text-[#434655]">
+            {filteredTotal} data
+          </span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm">
+          <table className="w-full min-w-[1060px] text-sm">
             <thead className="bg-[#F2F4F6]/50 text-[10px] font-bold uppercase tracking-[0.1em] text-[#434655]">
               <tr>
                 <th className="px-6 py-4 text-left">Nama Pelanggan</th>
                 <th className="px-6 py-4 text-left">Tamu</th>
+                <th className="px-6 py-4 text-left">Meja</th>
+                <th className="px-6 py-4 text-left">Catatan</th>
                 <th className="px-6 py-4 text-left">Tanggal</th>
                 <th className="px-6 py-4 text-center">Status</th>
                 <th className="px-6 py-4 text-right">Aksi</th>
@@ -445,6 +604,15 @@ export default function ReservasiAdmin() {
                   </td>
                   <td className="px-6 py-5 font-medium">{item.guests}</td>
                   <td className="px-6 py-5">
+                    <p className="font-semibold">{item.table}</p>
+                    <p className="text-xs text-[#434655]">
+                      {item.tableCapacity ? `${item.tableCapacity} kursi` : "-"}
+                    </p>
+                  </td>
+                  <td className="max-w-[240px] px-6 py-5 text-xs font-medium leading-5 text-[#434655]">
+                    <p className="line-clamp-3">{item.note}</p>
+                  </td>
+                  <td className="px-6 py-5">
                     <p className="font-medium">{item.date}</p>
                     <p className="text-xs text-[#434655]">{item.time}</p>
                   </td>
@@ -455,47 +623,50 @@ export default function ReservasiAdmin() {
                   </td>
                   <td className="px-6 py-5">
                     <div className="flex justify-end gap-2">
-                      {item.status === "Pending" ? (
+                      {item.status === "Menunggu" ? (
                         <>
                           <button
                             type="button"
-                            onClick={() => updateReservationStatus(item.id, "Confirmed")}
+                            onClick={() => updateReservationStatus(item.id, "Dikonfirmasi")}
                             className="rounded bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-600 transition hover:bg-blue-100"
                           >
                             Terima
                           </button>
                           <button
                             type="button"
-                            onClick={() => updateReservationStatus(item.id, "Cancelled")}
+                            onClick={() => setConfirmTarget({ action: "cancel", item })}
                             className="rounded bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100"
                           >
                             Tolak
                           </button>
                         </>
-                      ) : (
+                      ) : item.status === "Dikonfirmasi" ? (
                         <button
                           type="button"
-                          className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                            item.status === "Confirmed"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                          disabled
+                          onClick={() => setConfirmTarget({ action: "cancel", item })}
+                          className="rounded bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100"
                         >
-                          {item.status === "Confirmed" ? (
-                            <CheckIcon className="h-4 w-4" />
-                          ) : (
-                            <XIcon className="h-4 w-4" />
-                          )}
+                          Batalkan
                         </button>
+                      ) : (
+                        <span className="rounded bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-500">
+                          Diproses
+                        </span>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => setConfirmTarget({ action: "delete", item })}
+                        className="rounded bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-200"
+                      >
+                        Hapus
+                      </button>
                     </div>
                   </td>
                 </tr>
               ))}
               {currentReservations.length === 0 && (
                 <tr>
-                  <td colSpan="5" className="px-6 py-10 text-center text-sm text-[#434655]">
+                  <td colSpan="7" className="px-6 py-10 text-center text-sm text-[#434655]">
                     Tidak ada reservasi yang cocok dengan filter.
                   </td>
                 </tr>
@@ -506,7 +677,7 @@ export default function ReservasiAdmin() {
 
         <div className="flex flex-col gap-4 border-t border-[#E6E8EA] bg-[#F2F4F6] p-6 text-xs font-medium text-[#434655] sm:flex-row sm:items-center sm:justify-between">
           <span>
-            Showing {firstShown} to {lastShown} of {filteredTotal} entries
+            Menampilkan {firstShown} sampai {lastShown} dari {filteredTotal} data
           </span>
           <div className="flex items-center gap-1">
             <button
@@ -515,7 +686,7 @@ export default function ReservasiAdmin() {
               onClick={() => setCurrentPage((page) => Math.max(page - 1, 0))}
               className="rounded border border-[#C3C6D7] px-3 py-1.5 disabled:opacity-40"
             >
-              Previous
+              Sebelumnya
             </button>
             {pages.map((_, pageIndex) => (
               <button
@@ -539,7 +710,7 @@ export default function ReservasiAdmin() {
               }
               className="rounded border border-[#C3C6D7] px-3 py-1.5 disabled:opacity-40"
             >
-              Next
+              Berikutnya
             </button>
           </div>
         </div>
@@ -550,6 +721,14 @@ export default function ReservasiAdmin() {
           value={selectedDate}
           onClose={() => setIsCalendarOpen(false)}
           onSelect={handleDateSelect}
+        />
+      )}
+      {confirmTarget && (
+        <ConfirmActionModal
+          action={confirmTarget.action}
+          item={confirmTarget.item}
+          onCancel={() => setConfirmTarget(null)}
+          onConfirm={handleConfirmAction}
         />
       )}
     </section>
