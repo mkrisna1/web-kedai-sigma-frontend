@@ -4,6 +4,7 @@ import {
   deleteAdminReview,
   getAdminReviews,
   replyAdminReview,
+  resolveApiAssetUrl,
 } from "../../../services/api";
 
 const getInitials = (name) =>
@@ -52,7 +53,7 @@ const mapReviewFromApi = (review) => {
     initials: getInitials(review.nama_pelanggan),
     photos: photos.map((src, index) => ({
       index,
-      src,
+      src: resolveApiAssetUrl(src),
       alt: `Foto review ${review.nama_pelanggan || "pelanggan"} ${index + 1}`,
     })),
   };

@@ -37,11 +37,8 @@ import {
   getAdminMenu,
   getAdminMenuCategories,
   updateAdminMenuItem,
+  resolveApiAssetUrl,
 } from "../../../services/api";
-
-const API_ORIGIN = (
-  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api"
-).replace(/\/api\/?$/, "");
 
 const parsePriceValues = (price) =>
   String(price || "")
@@ -206,18 +203,6 @@ const getLocalThumbnail = (name) =>
   localThumbnailByName[normalizeName(name)] ||
   localThumbnailAliases[normalizeName(name)];
 
-const resolveAssetUrl = (path) => {
-  if (!path) {
-    return undefined;
-  }
-
-  if (/^https?:\/\//i.test(path)) {
-    return path;
-  }
-
-  return `${API_ORIGIN}${path.startsWith("/") ? path : `/${path}`}`;
-};
-
 const formatRupiah = (price) =>
   `Rp ${Number(price || 0).toLocaleString("id-ID")}`;
 
@@ -359,7 +344,7 @@ const mapMenuFromApi = (item, index = 0) => {
     temperatureLabel: getTemperatureLabel(temperatureOption),
     status:
       item.ketersediaan_produk === "tersedia" ? "ACTIVE" : "OUT OF STOCK",
-    image: resolveAssetUrl(item.foto_produk) || getLocalImage(normalizedName),
+    image: resolveApiAssetUrl(item.foto_produk) || getLocalImage(normalizedName),
     thumbnail:
       getLocalThumbnail(normalizedName) ||
       "from-blue-100 via-sky-200 to-cyan-300",
@@ -369,7 +354,9 @@ const mapMenuFromApi = (item, index = 0) => {
 const withSequentialMenuIds = (items) =>
   items.map((item, index) => ({
     ...item,
-    sku: `MENU-${String(index + 1).padStart(3, "0")}`,
+    sku: item.rawId
+      ? `MENU-${String(item.rawId).padStart(3, "0")}`
+      : item.sku || `MENU-${String(index + 1).padStart(3, "0")}`,
   }));
 
 const chunkItems = (items, size) =>

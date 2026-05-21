@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import ScrollToTopButton from "../../../components/user/ScrollToTopButton";
-import { getPublicMenu } from "../../../services/api";
+import { getPublicMenu, resolveApiAssetUrl } from "../../../services/api";
 import coklatClassicImage from "../../../assets/Coklat Clasic.jpg";
 import coklatClassicRotiImage from "../../../assets/Coklat Clasic Roti.jpg";
 import coffeeBearImage from "../../../assets/Coffee Bear.jpg";
@@ -306,32 +306,6 @@ const menuItems = [
   },
 ];
 
-const isLocalHost = (hostname) =>
-  ["localhost", "127.0.0.1", "::1"].includes(hostname);
-
-const resolveAssetUrl = (value) => {
-  if (!value) {
-    return "";
-  }
-
-  if (/^https?:\/\//i.test(value)) {
-    return value;
-  }
-
-  const hostname =
-    typeof window !== "undefined" && window.location?.hostname
-      ? window.location.hostname
-      : "";
-  const apiOrigin = hostname
-    ? `${window.location.protocol}//${hostname}:8000`
-    : "http://127.0.0.1:8000";
-  const fallbackOrigin = isLocalHost(hostname)
-    ? "http://127.0.0.1:8000"
-    : apiOrigin;
-
-  return `${fallbackOrigin}${value.startsWith("/") ? value : `/${value}`}`;
-};
-
 const slugify = (value) =>
   String(value || "")
     .toLowerCase()
@@ -522,7 +496,7 @@ const mapMenuFromApi = (item) => {
   const baseItem = getStaticMenuItem(name);
   const categoryValue = baseItem?.category || inferCategoryValue(item.kategori?.nama_kategori);
   const price = Number(item.harga_produk) || 0;
-  const imageUrl = resolveAssetUrl(item.foto_produk);
+  const imageUrl = resolveApiAssetUrl(item.foto_produk);
   const localImage = baseItem?.image || localImageBySlug[slugify(name)];
 
   return {

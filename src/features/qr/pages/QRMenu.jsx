@@ -1,7 +1,7 @@
 import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import QRMenuCard from "../../../components/qr/QRMenuCard";
-import { getQrMenu } from "../../../services/api";
+import { getQrMenu, resolveApiAssetUrl } from "../../../services/api";
 import americanoImage from "../../../assets/Americano.jpg";
 import ayamPopcornImage from "../../../assets/Ayam Popcorn.jpg";
 import coklatClassicImage from "../../../assets/Coklat Clasic.jpg";
@@ -36,32 +36,6 @@ import v6DripImage from "../../../assets/V6 Drip.jpg";
 import v6DripSusuImage from "../../../assets/V6 Drip Susu.jpg";
 
 const formatRupiah = (value) => `Rp${value.toLocaleString("id-ID")}`;
-
-const isLocalHost = (hostname) =>
-  ["localhost", "127.0.0.1", "::1"].includes(hostname);
-
-const resolveAssetUrl = (value) => {
-  if (!value) {
-    return "";
-  }
-
-  if (/^https?:\/\//i.test(value)) {
-    return value;
-  }
-
-  const hostname =
-    typeof window !== "undefined" && window.location?.hostname
-      ? window.location.hostname
-      : "";
-  const apiOrigin = hostname
-    ? `${window.location.protocol}//${hostname}:8000`
-    : "http://127.0.0.1:8000";
-  const fallbackOrigin = isLocalHost(hostname)
-    ? "http://127.0.0.1:8000"
-    : apiOrigin;
-
-  return `${fallbackOrigin}${value.startsWith("/") ? value : `/${value}`}`;
-};
 
 const toNullableNumber = (value) => {
   if (value === null || value === undefined || value === "") {
@@ -565,7 +539,7 @@ const mapMenuFromApi = (item) => {
   const name = item.nama_produk || "Menu";
   const imageKey = name.toLowerCase();
   const baseItem = staticMenuBySlug.get(slugify(name));
-  const imageUrl = resolveAssetUrl(item.foto_produk);
+  const imageUrl = resolveApiAssetUrl(item.foto_produk);
   const price = Number(item.harga_produk) || baseItem?.price || 0;
   const hotPrice = toNullableNumber(item.harga_hot);
   const icePrice = toNullableNumber(item.harga_ice);

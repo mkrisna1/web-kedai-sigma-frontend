@@ -5,6 +5,7 @@ import {
   getPublicBestSellers,
   getPublicMenu,
   getPublicReviews,
+  resolveApiAssetUrl,
 } from "../../../services/api";
 import fotoKedai1 from "../../../assets/Foto Kedai 1.png";
 import fotoKedai2 from "../../../assets/Foto Kedai 2.PNG";
@@ -125,27 +126,6 @@ const slugify = (value) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
 
-const resolveAssetUrl = (value) => {
-  if (!value) {
-    return "";
-  }
-
-  if (/^(https?:|data:|blob:)/i.test(value)) {
-    return value;
-  }
-
-  const hostname =
-    typeof window !== "undefined" && window.location?.hostname
-      ? window.location.hostname
-      : "127.0.0.1";
-  const fallbackOrigin =
-    typeof window !== "undefined"
-      ? `${window.location.protocol}//${hostname}:8000`
-      : "http://127.0.0.1:8000";
-
-  return `${fallbackOrigin}${value.startsWith("/") ? value : `/${value}`}`;
-};
-
 const formatRupiah = (value) =>
   `Rp ${Number(value || 0).toLocaleString("id-ID")}`;
 
@@ -245,7 +225,7 @@ const mapFavoriteFromApi = (item) => {
       product?.deskripsi_produk || `${name} tersedia di Kedai Sigma.`,
     price: formatCompactPrice(price),
     accent: "#4AE176",
-    image: resolveAssetUrl(product?.foto_produk) || fallbackFavoriteImages[slug] || espressoImage,
+    image: resolveApiAssetUrl(product?.foto_produk) || fallbackFavoriteImages[slug] || espressoImage,
     sold: Number(item?.jumlah) || 0,
   };
 };

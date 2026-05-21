@@ -5,6 +5,7 @@ import {
   createPublicReview,
   getPublicReviews,
   likePublicReview,
+  resolveApiAssetUrl,
 } from "../../../services/api";
 
 const LIKE_STORAGE_KEY = "kedai-sigma-liked-reviews";
@@ -184,7 +185,7 @@ const mapReviewFromApi = (review) => {
     replies: review.balasan_admin ? "1 balasan" : "Balas",
     adminReply: review.balasan_admin || "",
     photos: photos.map((src, index) => ({
-      src,
+      src: resolveApiAssetUrl(src),
       alt: `Foto review ${review.nama_pelanggan || "pelanggan"} ${index + 1}`,
     })),
   };
