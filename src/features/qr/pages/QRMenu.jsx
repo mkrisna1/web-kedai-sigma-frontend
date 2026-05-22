@@ -638,15 +638,20 @@ function BottomAction({ onShowMore }) {
 }
 
 function AddMenuModal({ item, onClose, onConfirm }) {
+  const temperatureOptions = item.temperatureOptions || [];
   const [selectedOptionId, setSelectedOptionId] = useState(
-    item.temperatureOptions[0]?.id ?? ""
+    temperatureOptions[0]?.id ?? ""
   );
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState("");
   const selectedOption =
-    item.temperatureOptions.find((option) => option.id === selectedOptionId) ??
-    item.temperatureOptions[0];
+    temperatureOptions.find((option) => option.id === selectedOptionId) ??
+    temperatureOptions[0];
   const totalPrice = (selectedOption?.price ?? item.price) * quantity;
+  const notePlaceholder =
+    inferCategoryFromMenuItem(item) === "food"
+      ? "Misal: tidak pedas, saus dipisah, atau ekstra topping"
+      : "Misal: gula sedikit dan es sedikit";
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -663,13 +668,13 @@ function AddMenuModal({ item, onClose, onConfirm }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex animate-[qr-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex animate-[qr-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/60 px-4 py-6 backdrop-blur-sm"
       onMouseDown={onClose}
     >
       <form
         onSubmit={handleSubmit}
         onMouseDown={(event) => event.stopPropagation()}
-        className="relative h-[342px] w-[300px] animate-[qr-modal-panel_260ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-xl bg-[#091421] shadow-[0_1px_2px_rgba(0,0,0,0.05),0_24px_70px_rgba(0,0,0,0.32)]"
+        className="relative h-[360px] w-[min(348px,calc(100vw-32px))] animate-[qr-modal-panel_260ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-xl bg-[#091421] shadow-[0_1px_2px_rgba(0,0,0,0.05),0_24px_70px_rgba(0,0,0,0.32)]"
       >
         <header className="flex h-[52px] items-start justify-center border-b border-white/50 px-5 pt-4">
           <h2 className="text-center text-xs font-normal leading-5 text-white">
@@ -677,21 +682,21 @@ function AddMenuModal({ item, onClose, onConfirm }) {
           </h2>
         </header>
 
-        <div className="px-2 pt-1">
-          <div className="relative min-h-[92px] border-b border-white/15">
+        <div className="px-3 pt-2">
+          <div className="relative min-h-[108px] border-b border-white/15">
             <img
               src={item.image}
               alt={item.name}
-              className="absolute left-0 top-2 h-[53px] w-[53px] object-cover"
+              className="absolute left-0 top-2 h-[60px] w-[60px] rounded-md object-cover"
             />
 
-            <div className="ml-[65px] pt-2">
-              <div className="flex items-start justify-between gap-3 border-b border-white/15 pb-1">
-                <p className="font-['Source_Sans_3',Arial,sans-serif] text-[10px] font-bold uppercase leading-[10px] tracking-[-1.2px] text-white">
+            <div className="ml-[72px] pt-2">
+              <div className="flex items-start justify-between gap-3 border-b border-white/15 pb-2">
+                <p className="min-w-0 flex-1 pr-1 font-['Source_Sans_3',Arial,sans-serif] text-[12px] font-bold uppercase leading-[14px] tracking-normal text-white">
                   {item.name}
                 </p>
 
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setQuantity((current) => Math.max(current - 1, 1))}
@@ -715,7 +720,7 @@ function AddMenuModal({ item, onClose, onConfirm }) {
               </div>
 
               <div className="space-y-0.5 pt-1">
-                {item.temperatureOptions.map((option) => {
+                {temperatureOptions.map((option) => {
                   const isActive = option.id === selectedOptionId;
 
                   return (
@@ -742,7 +747,7 @@ function AddMenuModal({ item, onClose, onConfirm }) {
             </div>
           </div>
 
-          <label className="mt-[-1px] flex items-center gap-2 px-[47px] pt-1 text-[13px] font-normal leading-5 text-white/50">
+          <label className="mt-2 flex items-center gap-2 px-2 text-[13px] font-normal leading-5 text-white/50">
             <PencilIcon />
             <span>Catatan untuk Menu:</span>
           </label>
@@ -750,7 +755,7 @@ function AddMenuModal({ item, onClose, onConfirm }) {
           <textarea
             value={note}
             onChange={(event) => setNote(event.target.value)}
-            placeholder="Misal: gula sedikit dan es sedikit"
+            placeholder={notePlaceholder}
             className="mt-1 h-[156px] w-full resize-none border border-white/15 bg-white/5 px-2 py-2 font-['Space_Grotesk',Arial,sans-serif] text-[10px] font-normal leading-[12px] tracking-normal text-white/80 outline-none placeholder:text-white/25 focus:border-[#EEC200]/60"
           />
         </div>
@@ -866,17 +871,7 @@ export default function QRMenu() {
       return;
     }
 
-    if (item.temperatureOptions?.length) {
-      setConfigItem(item);
-      return;
-    }
-
-    addToCart({
-      ...item,
-      quantity: 1,
-      cartKey: `${item.id}::default::`,
-    });
-    setIsSuccessModalOpen(true);
+    setConfigItem(item);
   };
 
   const handleConfiguredAdd = (configuredItem) => {

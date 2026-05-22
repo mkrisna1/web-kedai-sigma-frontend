@@ -2,12 +2,54 @@ import { useEffect, useState } from "react";
 import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 import {
   checkoutQrOrder,
+  getQrMenu,
   getQrPaymentConfig,
   getQrPaymentStatus,
 } from "../../../services/api";
 
 const formatRupiah = (value) => `Rp ${value.toLocaleString("id-ID")}`;
 const QRIS_PAYMENT_SECONDS = 10 * 60;
+
+const normalizeMenuName = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+
+const getMenuBackendId = (item) => item?.id ?? item?.id_produk ?? null;
+const getMenuName = (item) => item?.nama_produk || item?.name || "";
+
+const extractQrMenuItems = (response) => {
+  const data = response?.data;
+
+  if (Array.isArray(data?.menu)) {
+    return data.menu;
+  }
+
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  return [];
+};
+
+const resolveCheckoutItems = async (items, mejaId) => {
+  if (items.every((item) => item.productId)) {
+    return items;
+  }
+
+  const response = await getQrMenu({ meja_id: mejaId });
+  const menuByName = new Map(
+    extractQrMenuItems(response)
+      .map((menuItem) => [normalizeMenuName(getMenuName(menuItem)), getMenuBackendId(menuItem)])
+      .filter(([name, id]) => name && id),
+  );
+
+  return items.map((item) => ({
+    ...item,
+    productId: item.productId || menuByName.get(normalizeMenuName(item.name)) || null,
+  }));
+};
 
 const formatCountdown = (seconds) => {
   const minutes = Math.floor(seconds / 60);
@@ -502,20 +544,25 @@ export default function Keranjang() {
       return;
     }
 
-    if (cartItems.some((item) => !item.productId)) {
-      window.alert("Menu belum terhubung ke backend. Pastikan backend Laravel aktif lalu buka ulang QR.");
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
+      const checkoutItems = await resolveCheckoutItems(cartItems, mejaId);
+      const disconnectedItem = checkoutItems.find((item) => !item.productId);
+
+      if (disconnectedItem) {
+        window.alert(
+          `Menu "${disconnectedItem.name}" belum tersambung ke backend. Hapus item itu lalu tambah ulang dari halaman menu QR.`,
+        );
+        return;
+      }
+
       const response = await checkoutQrOrder({
         meja_id: Number(mejaId),
         tipe_pesanan: orderType || "dine_in",
         metode_pembayaran: paymentMethod === "qris" ? "qris" : "cash",
         catatan_pesanan: paymentMethod === "qris" ? "Pembayaran QRIS" : "Bayar Tunai",
-        items: cartItems.map((item) => ({
+        items: checkoutItems.map((item) => ({
           produk_id: item.productId,
           jumlah_item: item.quantity,
           opsi_varian: [item.variantLabel, item.note].filter(Boolean).join(", ") || null,

@@ -41,7 +41,7 @@ export default function QRMenuCard({ item, onAdd }) {
           </span>
         </div>
 
-        <p className="h-[72px] overflow-hidden text-[10px] font-normal leading-[10px] text-[#E6BDB8]">
+        <p className="mb-3 h-[72px] overflow-hidden text-[10px] font-normal leading-[12px] text-[#E6BDB8]">
           {item.description}
         </p>
 

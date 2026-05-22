@@ -46,6 +46,18 @@ const parsePriceValues = (price) =>
     ?.map((value) => Number(value.replace(/\D/g, "")))
     .filter((value) => Number.isFinite(value)) || [];
 
+const MENU_PHOTO_TYPES = ["image/jpeg", "image/png"];
+const MENU_PHOTO_EXTENSIONS = [".jpg", ".jpeg", ".png"];
+const MENU_PHOTO_ERROR =
+  "Foto menu hanya boleh berformat PNG atau JPG.";
+
+const isAllowedMenuPhoto = (file) =>
+  file &&
+  MENU_PHOTO_TYPES.includes(file.type) &&
+  MENU_PHOTO_EXTENSIONS.some((extension) =>
+    file.name.toLowerCase().endsWith(extension),
+  );
+
 const parsePrice = (price) => {
   const values = parsePriceValues(price);
 
@@ -244,6 +256,22 @@ const formatMenuPrice = ({
   }
 
   return formatRupiah(basePrice);
+};
+
+const getBasePriceForTemperature = (option, price, hotPrice, icePrice) => {
+  if (option === "hot_ice") {
+    return hotPrice || icePrice || price;
+  }
+
+  if (option === "hot") {
+    return hotPrice || price;
+  }
+
+  if (option === "ice") {
+    return icePrice || price;
+  }
+
+  return price;
 };
 
 const appendTemperaturePrices = (payload, option, basePrice, formData) => {
@@ -454,6 +482,8 @@ function AddMenuModal({ categories, onClose, onSave }) {
   const [previewObjectUrl, setPreviewObjectUrl] = useState("");
   const [temperatureOption, setTemperatureOption] = useState("none");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const [photoError, setPhotoError] = useState("");
+  const [formError, setFormError] = useState("");
   const selectedCategory = categories.find(
     (category) => String(category.id) === String(selectedCategoryId),
   );
@@ -488,6 +518,13 @@ function AddMenuModal({ categories, onClose, onSave }) {
       return;
     }
 
+    if (!isAllowedMenuPhoto(file)) {
+      event.target.value = "";
+      setPreviewImage("");
+      setPhotoError(MENU_PHOTO_ERROR);
+      return;
+    }
+
     if (previewObjectUrl) {
       URL.revokeObjectURL(previewObjectUrl);
     }
@@ -496,23 +533,37 @@ function AddMenuModal({ categories, onClose, onSave }) {
 
     setPreviewObjectUrl(nextUrl);
     setPreviewImage(nextUrl);
+    setPhotoError("");
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
-    const name = formData.get("name").trim() || "Menu Baru";
+    const name = formData.get("name")?.toString().trim() || "";
+
+    if (!name) {
+      setFormError("Nama menu wajib diisi.");
+      return;
+    }
+
     const price = parseMoneyInput(formData.get("price"));
     const hotPrice = parseMoneyInput(formData.get("hot_price"));
     const icePrice = parseMoneyInput(formData.get("ice_price"));
-    const basePrice =
-      effectiveTemperatureOption === "hot_ice"
-        ? hotPrice || icePrice || price
-        : price;
+    const basePrice = getBasePriceForTemperature(
+      effectiveTemperatureOption,
+      price,
+      hotPrice,
+      icePrice,
+    );
     const status = formData.get("status");
     const photo = formData.get("foto_produk");
     const payload = new FormData();
+
+    if (photo?.size && !isAllowedMenuPhoto(photo)) {
+      setPhotoError(MENU_PHOTO_ERROR);
+      return;
+    }
 
     payload.append("nama_produk", name);
     payload.append("kategori_id", selectedCategoryId || categories[0]?.id || "");
@@ -533,8 +584,8 @@ function AddMenuModal({ categories, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/40 p-6 backdrop-blur-sm">
-      <div className="relative flex max-h-[calc(100vh-48px)] w-full max-w-[672px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start overflow-hidden rounded-3xl bg-white shadow-2xl shadow-black/25">
+    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
+      <div className="relative flex max-h-[calc(100dvh-32px)] w-full max-w-[672px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start overflow-hidden rounded-3xl bg-white shadow-2xl shadow-black/25">
         <header className="flex h-[81px] w-full shrink-0 items-center justify-between border-b border-[#C3C6D7]/10 px-8 py-6">
           <h3 className="flex h-8 items-center text-2xl font-extrabold leading-8 text-[#191C1E]">
             Tambah Menu
@@ -559,6 +610,7 @@ function AddMenuModal({ categories, onClose, onSave }) {
                 name="name"
                 type="text"
                 placeholder="nama menu..."
+                onChange={() => setFormError("")}
                 className="h-[38px] w-full border-0 border-b-2 border-[#C3C6D7] bg-transparent px-3 pb-2.5 pt-[9px] text-sm font-medium leading-[17px] text-[#191C1E] outline-none placeholder:text-[#434655]/40 focus:border-[#2563EB]"
               />
             </label>
@@ -631,7 +683,7 @@ function AddMenuModal({ categories, onClose, onSave }) {
               </label>
             )}
 
-            {effectiveTemperatureOption !== "hot_ice" && (
+            {effectiveTemperatureOption === "none" && (
               <label className="flex flex-col gap-1">
                 <span className="text-xs font-bold leading-4 text-[#434655]">
                   Harga (Rp)
@@ -664,7 +716,7 @@ function AddMenuModal({ categories, onClose, onSave }) {
                     name="hot_price"
                     type="text"
                     inputMode="numeric"
-                    placeholder="Ikuti harga utama"
+                    placeholder="0"
                     className="h-full w-full border-0 bg-transparent pl-7 pr-3 text-sm font-medium leading-[17px] text-[#191C1E] outline-none placeholder:text-[#434655]/40"
                   />
                 </div>
@@ -684,7 +736,7 @@ function AddMenuModal({ categories, onClose, onSave }) {
                     name="ice_price"
                     type="text"
                     inputMode="numeric"
-                    placeholder="Ikuti harga utama"
+                    placeholder="0"
                     className="h-full w-full border-0 bg-transparent pl-7 pr-3 text-sm font-medium leading-[17px] text-[#191C1E] outline-none placeholder:text-[#434655]/40"
                   />
                 </div>
@@ -710,7 +762,7 @@ function AddMenuModal({ categories, onClose, onSave }) {
                 <input
                   type="file"
                   name="foto_produk"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,.jpg,.jpeg,.png"
                   onChange={handlePhotoChange}
                   className="sr-only"
                 />
@@ -739,7 +791,18 @@ function AddMenuModal({ categories, onClose, onSave }) {
                   </>
                 )}
               </div>
+              {photoError && (
+                <p className="text-xs font-semibold leading-4 text-[#BA1A1A]">
+                  {photoError}
+                </p>
+              )}
             </label>
+
+            {formError && (
+              <p className="col-span-2 rounded-lg border border-[#BA1A1A]/20 bg-[#FFDAD6] px-4 py-3 text-xs font-bold leading-4 text-[#BA1A1A]">
+                {formError}
+              </p>
+            )}
           </div>
 
           <div className="flex h-11 w-full justify-end gap-4">
@@ -770,6 +833,7 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
     item?.temperatureOption || "none",
   );
   const [selectedCategoryId, setSelectedCategoryId] = useState(item?.categoryId || "");
+  const [photoError, setPhotoError] = useState("");
   const selectedCategory = categories.find(
     (category) => String(category.id) === String(selectedCategoryId),
   );
@@ -822,6 +886,12 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
       return;
     }
 
+    if (!isAllowedMenuPhoto(file)) {
+      event.target.value = "";
+      setPhotoError(MENU_PHOTO_ERROR);
+      return;
+    }
+
     if (previewObjectUrl) {
       URL.revokeObjectURL(previewObjectUrl);
     }
@@ -830,6 +900,7 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
 
     setPreviewObjectUrl(nextUrl);
     setPreviewImage(nextUrl);
+    setPhotoError("");
   };
 
   const handleSubmit = (event) => {
@@ -839,12 +910,19 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
     const price = parseMoneyInput(formData.get("price"));
     const hotPrice = parseMoneyInput(formData.get("hot_price"));
     const icePrice = parseMoneyInput(formData.get("ice_price"));
-    const basePrice =
-      effectiveTemperatureOption === "hot_ice"
-        ? hotPrice || icePrice || price
-        : price;
+    const basePrice = getBasePriceForTemperature(
+      effectiveTemperatureOption,
+      price,
+      hotPrice,
+      icePrice,
+    );
     const photo = formData.get("foto_produk");
     const payload = new FormData();
+
+    if (photo?.size && !isAllowedMenuPhoto(photo)) {
+      setPhotoError(MENU_PHOTO_ERROR);
+      return;
+    }
 
     payload.append("nama_produk", formData.get("name").trim() || item.name);
     payload.append("kategori_id", selectedCategoryId || item.categoryId || "");
@@ -867,8 +945,8 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/40 p-6 backdrop-blur-sm">
-      <div className="relative flex max-h-[calc(100vh-48px)] w-full max-w-[672px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-center gap-6 overflow-hidden rounded-[32px] bg-[#F7F9FB] pt-10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]">
+    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
+      <div className="relative flex max-h-[calc(100dvh-32px)] w-full max-w-[672px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-center gap-6 overflow-hidden rounded-[32px] bg-[#F7F9FB] pt-10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]">
         <header className="flex h-8 w-[calc(100%-80px)] max-w-[592px] items-center justify-between">
           <h2 className="text-2xl font-extrabold leading-8 tracking-[-0.025em] text-[#191C1E]">
             Edit Menu
@@ -903,7 +981,7 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
                 <input
                   type="file"
                   name="foto_produk"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,.jpg,.jpeg,.png"
                   onChange={handlePhotoChange}
                   className="sr-only"
                 />
@@ -916,6 +994,11 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
                   </span>
                 </div>
               </div>
+              {photoError && (
+                <p className="text-xs font-semibold leading-4 text-[#BA1A1A]">
+                  {photoError}
+                </p>
+              )}
             </div>
           </label>
 
@@ -965,7 +1048,7 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
               />
             </label>
 
-            {effectiveTemperatureOption !== "hot_ice" && (
+            {effectiveTemperatureOption === "none" && (
               <label className="flex flex-col gap-1">
                 <span className="text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#434655]">
                   Edit Harga
@@ -1092,9 +1175,34 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
   );
 }
 
+function ActionSuccessModal({ message, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
+      <section className="w-full max-w-sm animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-2xl bg-white shadow-2xl shadow-black/25">
+        <header className="border-b border-[#E6E8EA] px-6 py-5">
+          <p className="text-lg font-extrabold text-[#191C1E]">Sistem</p>
+        </header>
+        <div className="px-6 py-8 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-[#DFF8E8] text-sm font-black uppercase text-[#006C49]">
+            OK
+          </div>
+          <p className="mt-5 text-sm font-semibold leading-6 text-[#434655]">{message}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-12 w-full items-center justify-center bg-gradient-to-br from-[#004AC6] to-[#2563EB] text-sm font-bold text-white transition hover:brightness-105"
+        >
+          Oke
+        </button>
+      </section>
+    </div>
+  );
+}
+
 function DeleteConfirmModal({ itemName, onCancel, onConfirm }) {
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/40 p-6 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
       <div className="relative box-border flex h-[321.8px] w-full max-w-96 animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start rounded-2xl border border-[#C3C6D7]/10 bg-white shadow-2xl shadow-black/25">
         <div className="flex h-[319.8px] w-full flex-col items-start gap-[10.8px] p-8">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#BA1A1A]/10 text-[#BA1A1A]">
@@ -1253,6 +1361,7 @@ export default function MenuAdmin() {
   const [currentPage, setCurrentPage] = useState(0);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
   const categoryOptions = sanitizeCategoryOptions(
     categories.length > 0
       ? categories
@@ -1276,6 +1385,14 @@ export default function MenuAdmin() {
     });
 
     return [...filteredItems].sort((first, second) => {
+      if (sortOption === "id-asc") {
+        return (Number(first.rawId) || 0) - (Number(second.rawId) || 0);
+      }
+
+      if (sortOption === "id-desc") {
+        return (Number(second.rawId) || 0) - (Number(first.rawId) || 0);
+      }
+
       if (sortOption === "name-desc") {
         return second.name.localeCompare(first.name, "id", { sensitivity: "base" });
       }
@@ -1360,6 +1477,7 @@ export default function MenuAdmin() {
       );
       setCurrentPage(0);
       setIsAddModalOpen(false);
+      setSuccessMessage("Menu berhasil ditambahkan.");
     } catch (error) {
       console.error("Gagal menambah menu:", error);
     }
@@ -1385,6 +1503,7 @@ export default function MenuAdmin() {
         ),
       );
       setDeleteTarget(null);
+      setSuccessMessage("Menu berhasil dihapus.");
     } catch (error) {
       console.error("Gagal menghapus menu:", error);
     }
@@ -1411,6 +1530,7 @@ export default function MenuAdmin() {
         ),
       );
       setEditTarget(null);
+      setSuccessMessage("Menu berhasil diperbarui.");
     } catch (error) {
       console.error("Gagal menyimpan menu:", error);
     }
@@ -1502,6 +1622,8 @@ export default function MenuAdmin() {
               className="h-11 rounded-lg border border-[#C3C6D7] bg-white px-3 text-sm font-semibold text-[#191C1E] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
             >
               <option value="name-asc">Nama A-Z</option>
+              <option value="id-asc">ID Terkecil</option>
+              <option value="id-desc">ID Terbesar</option>
               <option value="name-desc">Nama Z-A</option>
               <option value="category">Kategori</option>
               <option value="price-asc">Harga Termurah</option>
@@ -1634,6 +1756,13 @@ export default function MenuAdmin() {
           item={editTarget}
           onClose={() => setEditTarget(null)}
           onSave={handleSaveEdit}
+        />
+      )}
+
+      {successMessage && (
+        <ActionSuccessModal
+          message={successMessage}
+          onClose={() => setSuccessMessage("")}
         />
       )}
     </div>

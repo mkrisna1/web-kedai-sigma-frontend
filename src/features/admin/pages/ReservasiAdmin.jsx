@@ -6,21 +6,25 @@ import {
 } from "../../../services/api";
 
 const emptyReservationPages = [[]];
+const ADMIN_DATA_REFRESH_EVENT = "kedai-sigma:admin-data-refreshed";
 
 const statusStyles = {
   Menunggu: "bg-yellow-100 text-yellow-700",
   Dikonfirmasi: "bg-green-100 text-green-700",
+  Selesai: "bg-blue-100 text-blue-700",
   Dibatalkan: "bg-red-100 text-red-700",
 };
 
 const uiStatusByApiStatus = {
   menunggu_konfirmasi: "Menunggu",
   dikonfirmasi: "Dikonfirmasi",
+  selesai: "Selesai",
   dibatalkan: "Dibatalkan",
 };
 
 const apiStatusByUiStatus = {
   Dikonfirmasi: "dikonfirmasi",
+  Selesai: "selesai",
   Dibatalkan: "dibatalkan",
 };
 
@@ -231,8 +235,8 @@ function CalendarPopup({ value, onClose, onSelect }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/20 p-6">
-      <div className="flex h-[495px] w-full max-w-96 animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start overflow-hidden rounded-lg bg-white shadow-[0_10px_30px_rgba(25,28,30,0.06)]">
+    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/20 p-4 sm:p-6">
+      <div className="flex max-h-[calc(100dvh-32px)] h-[495px] w-full max-w-96 animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start overflow-y-auto rounded-lg bg-white shadow-[0_10px_30px_rgba(25,28,30,0.06)]">
         <div className="flex h-[427px] w-full flex-col items-start gap-8 p-6">
           <div className="flex h-7 w-full items-center justify-between">
             <button
@@ -331,7 +335,7 @@ function ConfirmActionModal({ action, item, onCancel, onConfirm }) {
   const confirmLabel = isDelete ? "Hapus" : "Batalkan";
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/40 p-6 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
       <div className="relative box-border flex h-[321.8px] w-full max-w-96 animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start rounded-2xl border border-[#C3C6D7]/10 bg-white shadow-2xl shadow-black/25">
         <div className="flex h-[319.8px] w-full flex-col items-start gap-[10.8px] p-8">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#BA1A1A]/10 text-[#BA1A1A]">
@@ -406,6 +410,22 @@ export default function ReservasiAdmin() {
 
     return () => {
       isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleAdminDataRefresh = (event) => {
+      const refreshedReservations = event.detail?.reservations;
+
+      if (Array.isArray(refreshedReservations)) {
+        setReservationItems(refreshedReservations.map(mapReservationFromApi));
+      }
+    };
+
+    window.addEventListener(ADMIN_DATA_REFRESH_EVENT, handleAdminDataRefresh);
+
+    return () => {
+      window.removeEventListener(ADMIN_DATA_REFRESH_EVENT, handleAdminDataRefresh);
     };
   }, []);
 
@@ -531,6 +551,7 @@ export default function ReservasiAdmin() {
               <option>Semua Status</option>
               <option>Menunggu</option>
               <option>Dikonfirmasi</option>
+              <option>Selesai</option>
               <option>Dibatalkan</option>
             </select>
           </Field>
@@ -641,16 +662,25 @@ export default function ReservasiAdmin() {
                           </button>
                         </>
                       ) : item.status === "Dikonfirmasi" ? (
-                        <button
-                          type="button"
-                          onClick={() => setConfirmTarget({ action: "cancel", item })}
-                          className="rounded bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100"
-                        >
-                          Batalkan
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => updateReservationStatus(item.id, "Selesai")}
+                            className="rounded bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-600 transition hover:bg-blue-100"
+                          >
+                            Selesai
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmTarget({ action: "cancel", item })}
+                            className="rounded bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100"
+                          >
+                            Batalkan
+                          </button>
+                        </>
                       ) : (
                         <span className="rounded bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-500">
-                          Diproses
+                          Tidak ada aksi
                         </span>
                       )}
                       <button

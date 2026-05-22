@@ -6,6 +6,8 @@ import {
 } from "../../services/api";
 
 const MAX_VISIBLE_NOTIFICATIONS = 6;
+const NOTIFICATION_REFRESH_MS = 5000;
+const ADMIN_DATA_REFRESH_EVENT = "kedai-sigma:admin-data-refreshed";
 const ACTIONABLE_NOTIFICATION_TYPES = ["Pesanan", "Reservasi"];
 
 const cn = (...classes) => classes.filter(Boolean).join(" ");
@@ -157,10 +159,18 @@ export default function TopBar() {
           return;
         }
 
+        const orders = ordersResult?.data || [];
+        const reservations = reservationsResult?.data || [];
+
         setNotifications(
           buildNotifications({
-            orders: ordersResult?.data || [],
-            reservations: reservationsResult?.data || [],
+            orders,
+            reservations,
+          }),
+        );
+        window.dispatchEvent(
+          new CustomEvent(ADMIN_DATA_REFRESH_EVENT, {
+            detail: { orders, reservations },
           }),
         );
         setErrorMessage("");
@@ -175,12 +185,22 @@ export default function TopBar() {
       }
     };
 
+    const handleVisibilityRefresh = () => {
+      if (!document.hidden) {
+        loadNotifications();
+      }
+    };
+
     loadNotifications();
-    const intervalId = window.setInterval(loadNotifications, 30000);
+    const intervalId = window.setInterval(loadNotifications, NOTIFICATION_REFRESH_MS);
+    window.addEventListener("focus", loadNotifications);
+    document.addEventListener("visibilitychange", handleVisibilityRefresh);
 
     return () => {
       isMounted = false;
       window.clearInterval(intervalId);
+      window.removeEventListener("focus", loadNotifications);
+      document.removeEventListener("visibilitychange", handleVisibilityRefresh);
     };
   }, [location.pathname]);
 

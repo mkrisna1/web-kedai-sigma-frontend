@@ -8,7 +8,8 @@ import {
 } from "../../../services/api";
 
 const inputClass =
-  "h-[62px] w-full border-0 border-b-2 border-[#5C403C] bg-transparent px-1 py-4 font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-7 text-[#D9E3F6] outline-none transition placeholder:text-[#94A3B8]/75 focus:border-[#EEC200]";
+  "h-[54px] w-full border-0 border-b-2 border-[#5C403C] bg-transparent px-1 py-3 font-['Space_Grotesk',sans-serif] text-lg font-bold uppercase leading-6 text-[#D9E3F6] outline-none transition placeholder:text-[#94A3B8]/75 focus:border-[#EEC200]";
+const peopleOptions = [1, 2, 3, 4, 5, 6, 7, 8];
 
 function SkewBadge({ children, className = "bg-[#00B954] text-[#003915]" }) {
   return (
@@ -227,7 +228,7 @@ function CalendarPopup({ selectedDate, onClose, onSelect }) {
   };
 
   return (
-    <div className="absolute left-1/2 top-full z-30 mt-4 w-[min(384px,calc(100vw-48px))] -translate-x-1/2 animate-[picker-panel_180ms_ease-out] overflow-hidden rounded-lg border border-[#2B3544] bg-[#212B39] shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
+    <div className="fixed left-1/2 top-1/2 z-[60] max-h-[calc(100dvh-32px)] w-[min(384px,calc(100vw-48px))] -translate-x-1/2 -translate-y-1/2 animate-[picker-panel_180ms_ease-out] overflow-y-auto rounded-lg border border-[#2B3544] bg-[#212B39] shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
       <div className="flex flex-col gap-6 p-6">
         <div className="flex items-center justify-between gap-3">
           <button
@@ -343,7 +344,7 @@ function CalendarPopup({ selectedDate, onClose, onSelect }) {
 }
 function TimePopup({ selectedTime, onClose, onSelect }) {
   return (
-    <div className="absolute left-1/2 top-full z-30 mt-4 w-[min(384px,calc(100vw-48px))] -translate-x-1/2 animate-[picker-panel_180ms_ease-out] overflow-hidden rounded-lg border border-[#2B3544] bg-[#212B39] shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
+    <div className="fixed left-1/2 top-1/2 z-[60] max-h-[calc(100dvh-32px)] w-[min(384px,calc(100vw-48px))] -translate-x-1/2 -translate-y-1/2 animate-[picker-panel_180ms_ease-out] overflow-y-auto rounded-lg border border-[#2B3544] bg-[#212B39] shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
       <div className="flex flex-col gap-6 p-6">
         <div>
           <h2 className="font-['Inter',sans-serif] text-lg font-bold leading-7 tracking-[-0.025em] text-[#D9E3F6]">
@@ -398,7 +399,7 @@ function TimePopup({ selectedTime, onClose, onSelect }) {
 
 function TablePopup({ tables, selectedTableId, guestCount, onClose, onSelect }) {
   return (
-    <div className="absolute left-1/2 top-full z-30 mt-4 w-[min(420px,calc(100vw-48px))] -translate-x-1/2 animate-[picker-panel_180ms_ease-out] overflow-hidden rounded-xl border border-[#2B3544] bg-[#212B39] shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
+    <div className="fixed left-1/2 top-1/2 z-[60] max-h-[calc(100dvh-32px)] w-[min(420px,calc(100vw-48px))] -translate-x-1/2 -translate-y-1/2 animate-[picker-panel_180ms_ease-out] overflow-y-auto rounded-xl border border-[#2B3544] bg-[#212B39] shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
       <div className="flex flex-col gap-6 p-6">
         <div>
           <h2 className="font-['Inter',sans-serif] text-lg font-bold leading-7 tracking-[-0.025em] text-[#D9E3F6]">
@@ -476,7 +477,7 @@ function TablePopup({ tables, selectedTableId, guestCount, onClose, onSelect }) 
 function ReservationSuccessPopup({ onClose }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex animate-[popup-backdrop_180ms_ease-out] items-center justify-center bg-black/60 px-4 py-8 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex animate-[popup-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/60 px-4 py-6 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="reservation-success-title"
@@ -531,7 +532,7 @@ function ReservationSuccessPopup({ onClose }) {
 function ReservationWarningPopup({ message, onClose }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex animate-[popup-backdrop_180ms_ease-out] items-center justify-center bg-black/60 px-4 py-8 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex animate-[popup-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/60 px-4 py-6 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="reservation-warning-title"
@@ -640,6 +641,8 @@ export default function Reservasi() {
   const selectedTable = tableOptions.find(
     (table) => String(table.id) === String(selectedTableId),
   );
+  const hasNoAvailableTables =
+    Boolean(formData.people) && !isLoadingTables && tableOptions.length === 0;
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -649,6 +652,20 @@ export default function Reservasi() {
       ...current,
       [name]: nextValue,
     }));
+  };
+
+  const handleDateSelect = (value) => {
+    setSelectedDate(value);
+    setSelectedTableId("");
+  };
+
+  const handleTimeSelect = (value) => {
+    setSelectedTime(value);
+    setSelectedTableId("");
+  };
+
+  const handleTableSelect = (value) => {
+    setSelectedTableId(value);
   };
 
   const handleSubmit = async (event) => {
@@ -662,6 +679,14 @@ export default function Reservasi() {
       selectedTime &&
       formData.people &&
       selectedTableId;
+
+    if (hasNoAvailableTables) {
+      setWarningMessage(
+        `Meja untuk ${formData.people} orang sedang penuh. Coba pilih tanggal/waktu lain atau hubungi admin.`,
+      );
+      setShowWarningPopup(true);
+      return;
+    }
 
     if (!isFormComplete) {
       setWarningMessage(
@@ -706,7 +731,7 @@ export default function Reservasi() {
     <div className="min-h-screen overflow-hidden bg-[#091421] text-[#D9E3F6]">
       <div className="h-1 bg-[#050F1C]" />
 
-      <section className="relative isolate bg-[#091421] px-6 pb-24 pt-12 md:px-8 md:pt-16">
+      <section className="relative isolate bg-[#091421] px-6 pb-16 pt-8 md:px-8 md:pt-10">
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[#091421] opacity-[0.02]">
           <svg viewBox="0 0 1280 1280" className="h-[1280px] w-full min-w-[1280px]" aria-hidden="true">
             <path
@@ -716,8 +741,8 @@ export default function Reservasi() {
           </svg>
         </div>
 
-        <div className="mx-auto flex w-full max-w-[1024px] flex-col items-center gap-16">
-          <header className="flex flex-col items-center gap-5 text-center">
+        <div className="mx-auto flex w-full max-w-[760px] flex-col items-center gap-8">
+          <header className="flex max-w-[640px] flex-col items-center gap-4 text-center">
             <div className="flex flex-col items-center gap-4 sm:flex-row">
               <SkewBadge>Reservasi</SkewBadge>
               <p className="font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#EEC200]">
@@ -725,25 +750,25 @@ export default function Reservasi() {
               </p>
             </div>
 
-            <h1 className="font-['Space_Grotesk',sans-serif] text-6xl font-black uppercase leading-[0.98] tracking-[-0.05em] md:text-[92px]">
+            <h1 className="font-['Space_Grotesk',sans-serif] text-5xl font-black uppercase leading-[0.98] tracking-[-0.05em] md:text-7xl">
               <span className="block text-[#D9E3F6]">Pesan</span>
               <span className="block text-[#DC2626]">Tempatmu</span>
             </h1>
           </header>
 
-          <div className="flex w-full max-w-[672px] flex-col gap-8">
+          <div className="flex w-full flex-col gap-6">
             <form
               onSubmit={handleSubmit}
-              className="w-full bg-[#212B39] px-6 py-10 shadow-[0_0_60px_rgba(0,0,0,0.6)] sm:px-12 sm:pb-16 sm:pt-12"
+              className="mx-auto w-full max-w-[720px] bg-[#212B39] px-6 py-7 shadow-[0_0_60px_rgba(0,0,0,0.6)] sm:px-8 sm:py-8 lg:px-10"
             >
-              <div className="flex items-center gap-3 border-b border-[#5C403C] pb-6">
+              <div className="flex items-center gap-3 border-b border-[#5C403C] pb-5">
                 <FormIcon className="h-5 w-6 text-[#EEC200]" />
                 <h2 className="font-['Space_Grotesk',sans-serif] text-2xl font-bold uppercase leading-8 tracking-[-0.025em]">
                   Form Reservasi
                 </h2>
               </div>
 
-              <div className="mt-10 flex flex-col gap-10">
+              <div className="mt-7 grid gap-x-8 gap-y-6 lg:grid-cols-2">
                 <Field label="Nama kamu">
                   <input
                     className={inputClass}
@@ -768,63 +793,61 @@ export default function Reservasi() {
                   />
                 </Field>
 
-                <div className="grid gap-8 sm:grid-cols-2">
-                  <Field label="Tanggal reservasi">
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setOpenPicker((current) =>
-                            current === "date" ? null : "date",
-                          )
-                        }
-                        className={`${inputClass} flex items-center text-left`}
-                      >
-                        {selectedDate || (
-                          <span className="text-[#94A3B8]/75">Pilih tanggal</span>
-                        )}
-                      </button>
-                      {openPicker === "date" && (
-                        <CalendarPopup
-                          selectedDate={selectedDate}
-                          onClose={() => setOpenPicker(null)}
-                          onSelect={(value) => {
-                            setSelectedDate(value);
-                            setOpenPicker(null);
-                          }}
-                        />
+                <Field label="Tanggal reservasi">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenPicker((current) =>
+                          current === "date" ? null : "date",
+                        )
+                      }
+                      className={`${inputClass} flex items-center text-left`}
+                    >
+                      {selectedDate || (
+                        <span className="text-[#94A3B8]/75">Pilih tanggal</span>
                       )}
-                    </div>
-                  </Field>
+                    </button>
+                    {openPicker === "date" && (
+                      <CalendarPopup
+                        selectedDate={selectedDate}
+                        onClose={() => setOpenPicker(null)}
+                        onSelect={(value) => {
+                          handleDateSelect(value);
+                          setOpenPicker(null);
+                        }}
+                      />
+                    )}
+                  </div>
+                </Field>
 
-                  <Field label="Waktu hadir">
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setOpenPicker((current) =>
-                            current === "time" ? null : "time",
-                          )
-                        }
-                        className={`${inputClass} flex items-center text-left`}
-                      >
-                        {selectedTime || (
-                          <span className="text-[#94A3B8]/75">Pilih waktu</span>
-                        )}
-                      </button>
-                      {openPicker === "time" && (
-                        <TimePopup
-                          selectedTime={selectedTime}
-                          onClose={() => setOpenPicker(null)}
-                          onSelect={(value) => {
-                            setSelectedTime(value);
-                            setOpenPicker(null);
-                          }}
-                        />
+                <Field label="Waktu hadir">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenPicker((current) =>
+                          current === "time" ? null : "time",
+                        )
+                      }
+                      className={`${inputClass} flex items-center text-left`}
+                    >
+                      {selectedTime || (
+                        <span className="text-[#94A3B8]/75">Pilih waktu</span>
                       )}
-                    </div>
-                  </Field>
-                </div>
+                    </button>
+                    {openPicker === "time" && (
+                      <TimePopup
+                        selectedTime={selectedTime}
+                        onClose={() => setOpenPicker(null)}
+                        onSelect={(value) => {
+                          handleTimeSelect(value);
+                          setOpenPicker(null);
+                        }}
+                      />
+                    )}
+                  </div>
+                </Field>
 
                 <Field label="Berapa orang">
                   <select
@@ -836,19 +859,11 @@ export default function Reservasi() {
                     <option className="bg-[#212B39]" value="">
                       Pilih jumlah orang
                     </option>
-                    {Array.from({ length: 8 }, (_, index) => {
-                      const guestCount = index + 1;
-
-                      return (
-                        <option
-                          key={guestCount}
-                          className="bg-[#212B39]"
-                          value={guestCount}
-                        >
-                          {guestCount} Orang
-                        </option>
-                      );
-                    })}
+                    {peopleOptions.map((option) => (
+                      <option key={option} className="bg-[#212B39]" value={option}>
+                        {option} Orang
+                      </option>
+                    ))}
                   </select>
                 </Field>
 
@@ -857,13 +872,15 @@ export default function Reservasi() {
                     <button
                       type="button"
                       onClick={() => {
-                        if (formData.people && !isLoadingTables && tableOptions.length > 0) {
-                          setOpenPicker((current) =>
-                            current === "table" ? null : "table",
-                          );
+                        if (!formData.people || hasNoAvailableTables) {
+                          return;
                         }
+
+                        setOpenPicker((current) =>
+                          current === "table" ? null : "table",
+                        );
                       }}
-                      disabled={!formData.people || isLoadingTables || tableOptions.length === 0}
+                      disabled={!formData.people || isLoadingTables || hasNoAvailableTables}
                       className={`${inputClass} flex items-center justify-between text-left disabled:cursor-not-allowed disabled:opacity-50`}
                     >
                       <span>
@@ -871,13 +888,13 @@ export default function Reservasi() {
                           ? "Pilih jumlah orang dulu"
                           : isLoadingTables
                             ? "Memuat meja..."
-                            : selectedTable
-                              ? `${selectedTable.label} - ${selectedTable.capacity} kursi`
-                              : tableOptions.length === 0
-                                ? "Meja penuh"
-                                : "Pilih meja"}
+                            : hasNoAvailableTables
+                              ? "Meja penuh"
+                              : selectedTable?.label || "Pilih meja"}
                       </span>
-                      <span className="text-base text-[#EEC200]">v</span>
+                      {formData.people && !hasNoAvailableTables && (
+                        <span className="text-base text-[#EEC200]">v</span>
+                      )}
                     </button>
                     {openPicker === "table" && (
                       <TablePopup
@@ -886,45 +903,50 @@ export default function Reservasi() {
                         guestCount={formData.people}
                         onClose={() => setOpenPicker(null)}
                         onSelect={(value) => {
-                          setSelectedTableId(String(value));
+                          handleTableSelect(value);
                           setOpenPicker(null);
                         }}
                       />
                     )}
                   </div>
-                  {formData.people && !isLoadingTables && tableOptions.length === 0 && (
-                    <p className="mt-2 font-['Be_Vietnam_Pro',sans-serif] text-xs font-semibold text-[#EEC200]">
-                      Meja sedang penuh atau tidak ada meja kosong dengan kapasitas {formData.people} orang.
-                    </p>
-                  )}
-                  {Number.parseInt(formData.people, 10) <= 4 && tableOptions.length > 0 && (
+                  {Number.parseInt(formData.people, 10) <= 4 && formData.people && (
                     <p className="mt-2 font-['Be_Vietnam_Pro',sans-serif] text-xs font-semibold text-[#94A3B8]">
                       Untuk 1-4 orang, meja yang ditampilkan maksimal kapasitas 4 kursi.
                     </p>
                   )}
+                  {hasNoAvailableTables && (
+                    <p
+                      className="mt-2 rounded-lg border border-[#DC2626]/35 bg-[#DC2626]/15 px-3 py-2 font-['Be_Vietnam_Pro',sans-serif] text-xs font-semibold leading-5 text-[#FFD6D1]"
+                      role="alert"
+                    >
+                      Meja untuk {formData.people} orang sedang penuh. Coba pilih tanggal/waktu lain atau hubungi admin.
+                    </p>
+                  )}
                 </Field>
 
-                <Field label="Catatan">
-                  <textarea
-                    className="min-h-[106px] w-full resize-none border-0 border-b-2 border-[#5C403C] bg-transparent px-1 py-4 font-['Space_Grotesk',sans-serif] text-base font-bold leading-6 text-[#D9E3F6] outline-none transition placeholder:text-[#94A3B8]/75 focus:border-[#EEC200]"
-                    name="note"
-                    value={formData.note}
-                    onChange={handleChange}
-                    placeholder="cth: request tambah terminal kaka"
-                  />
-                </Field>
+                <div className="lg:col-span-2">
+                  <Field label="Catatan">
+                    <textarea
+                      className="min-h-[74px] w-full resize-none border-0 border-b-2 border-[#5C403C] bg-transparent px-1 py-3 font-['Space_Grotesk',sans-serif] text-base font-bold leading-6 text-[#D9E3F6] outline-none transition placeholder:text-[#94A3B8]/75 focus:border-[#EEC200]"
+                      name="note"
+                      value={formData.note}
+                      onChange={handleChange}
+                      placeholder="cth: request tambah terminal kaka"
+                    />
+                  </Field>
+                </div>
 
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex h-20 w-full items-center justify-center bg-[#DC2626] px-4 py-6 text-center font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-8 tracking-[0.28em] text-[#FFF6F5] shadow-[0_10px_30px_rgba(220,38,38,0.3)] transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70 md:text-2xl"
+                  className="flex h-16 w-full items-center justify-center bg-[#DC2626] px-4 py-4 text-center font-['Space_Grotesk',sans-serif] text-lg font-bold uppercase leading-7 tracking-[0.2em] text-[#FFF6F5] shadow-[0_10px_30px_rgba(220,38,38,0.3)] transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70 md:text-2xl lg:col-span-2"
                 >
                   {isSubmitting ? "Mengirim..." : "Konfirmasi Reservasi"}
                 </button>
               </div>
             </form>
 
-            <div className="-skew-x-12 bg-[#EEC200] px-5 py-4 text-[#3C2F00]">
+            <div className="mx-auto w-full max-w-[720px] -skew-x-12 bg-[#EEC200] px-5 py-3 text-[#3C2F00]">
               <div className="flex skew-x-12 items-center gap-4">
                 <NoticeIcon className="h-6 w-7 shrink-0" />
                 <p className="font-['Be_Vietnam_Pro',sans-serif] text-[11px] font-bold uppercase leading-[14px] tracking-[-0.025em]">

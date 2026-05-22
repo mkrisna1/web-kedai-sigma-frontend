@@ -8,7 +8,7 @@ export default function AdminLayout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   return (
-    <div className="flex">
+    <div className="flex min-w-0 overflow-x-hidden">
       
       {/* Sidebar */}
       <Sidebar
@@ -17,13 +17,13 @@ export default function AdminLayout() {
       />
 
       {/* Main */}
-      <div className="flex flex-col flex-1 min-h-screen">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         
         {/* TopBar */}
         <TopBar />
 
         {/* Content */}
-        <main className="p-6 bg-slate-100 flex-1">
+        <main className="min-w-0 flex-1 bg-slate-100 p-6">
           <div key={location.pathname} className="page-route-transition h-full">
             <Outlet />
           </div>

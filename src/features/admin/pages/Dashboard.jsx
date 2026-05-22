@@ -153,8 +153,8 @@ function CalendarPopup({ value, onClose, onSelect }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/20 p-6">
-      <div className="flex h-[495px] w-full max-w-96 animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col overflow-hidden rounded-lg bg-white shadow-[0_10px_30px_rgba(25,28,30,0.12)]">
+    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/20 p-4 sm:p-6">
+      <div className="flex max-h-[calc(100dvh-32px)] h-[495px] w-full max-w-96 animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col overflow-y-auto rounded-lg bg-white shadow-[0_10px_30px_rgba(25,28,30,0.12)]">
         <div className="flex h-[427px] w-full flex-col gap-8 p-6">
           <div className="flex h-7 w-full items-center justify-between">
             <button
@@ -243,8 +243,9 @@ const Dashboard = () => {
   const [dashboard, setDashboard] = useState(emptyDashboard);
   const [incomePeriod, setIncomePeriod] = useState("day");
   const [selectedDate, setSelectedDate] = useState(formatDateValue(getIndonesiaToday()));
-  const [trafficMonth, setTrafficMonth] = useState(getIndonesiaToday().getMonth() + 1);
-  const [trafficYear, setTrafficYear] = useState(getIndonesiaToday().getFullYear());
+  const today = getIndonesiaToday();
+  const trafficMonth = today.getMonth() + 1;
+  const trafficYear = today.getFullYear();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   useEffect(() => {
@@ -418,14 +419,6 @@ const Dashboard = () => {
                 aria-expanded={showAllTransactions}
               >
                 <span>{showAllTransactions ? "Sembunyikan" : "Lihat Semua"}</span>
-                <span
-                  className={`text-base leading-none transition-transform duration-300 ${
-                    showAllTransactions ? "rotate-180" : ""
-                  }`}
-                  aria-hidden="true"
-                >
-                  v
-                </span>
               </button>
             </div>
 
@@ -488,35 +481,11 @@ const Dashboard = () => {
             <div className="flex flex-col gap-4">
               <div>
                 <h3 className="text-lg font-bold text-[#191C1E]">
-                  Trafik Puncak Bulanan
+                  Traffic Puncak
                 </h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  Total pesanan per hari dalam satu bulan
+                  Hari paling ramai berdasarkan pesanan.
                 </p>
-              </div>
-              <div className="grid grid-cols-[1fr_96px] gap-3">
-                <select
-                  value={trafficMonth}
-                  onChange={(event) => setTrafficMonth(Number(event.target.value))}
-                  className="h-10 rounded-lg border border-[#E6E8EA] bg-white px-3 text-sm font-bold text-[#191C1E] outline-none focus:border-[#2563EB]"
-                >
-                  {monthNames.map((monthName, index) => (
-                    <option key={monthName} value={index + 1}>
-                      {monthName}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={trafficYear}
-                  onChange={(event) => setTrafficYear(Number(event.target.value))}
-                  className="h-10 rounded-lg border border-[#E6E8EA] bg-white px-3 text-sm font-bold text-[#191C1E] outline-none focus:border-[#2563EB]"
-                >
-                  {yearOptions.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
               </div>
             </div>
 
@@ -543,7 +512,7 @@ const Dashboard = () => {
               <div className="flex justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="h-4 w-4 rounded-full bg-[#2563EB]" />
-                  <span>Total bulan ini</span>
+                  <span>Total pesanan</span>
                 </div>
                 <span className="font-bold">{monthlyTrafficTotal} Pesanan</span>
               </div>
