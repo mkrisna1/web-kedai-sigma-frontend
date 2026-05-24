@@ -144,8 +144,10 @@ export default function Sidebar({ isCollapsed = false, onToggleCollapse }) {
       onClick={onToggleCollapse}
       aria-label={isCollapsed ? "Lebarkan sidebar" : "Minimize sidebar"}
       title={isCollapsed ? "Lebarkan sidebar" : "Minimize sidebar"}
-      className={`flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 ${
-        isCollapsed ? "absolute left-[58px] top-4 bg-white shadow-sm" : ""
+      className={`flex items-center justify-center text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 ${
+        isCollapsed
+          ? "absolute right-[-12px] top-[22px] h-7 w-7 rounded-full border border-slate-200 bg-white shadow-sm"
+          : "h-9 w-9 rounded-lg"
       }`}
     >
       <CollapseIcon isCollapsed={isCollapsed} />

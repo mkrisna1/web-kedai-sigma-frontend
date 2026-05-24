@@ -350,7 +350,7 @@ function QrisPaymentModal({ payment, onClose, onConfirmPaid }) {
       aria-modal="true"
       aria-labelledby="qris-payment-title"
     >
-      <section className="flex max-h-[92vh] w-[min(390px,calc(100vw-32px))] animate-[qr-modal-panel_260ms_cubic-bezier(0.16,1,0.3,1)] flex-col overflow-hidden rounded-xl border border-[#EEC200]/60 bg-[#091421] shadow-[0_24px_70px_rgba(0,0,0,0.38)]">
+      <section className="flex max-h-[calc(100vh-24px)] w-[min(390px,calc(100vw-32px))] animate-[qr-modal-panel_260ms_cubic-bezier(0.16,1,0.3,1)] flex-col overflow-hidden rounded-xl border border-[#EEC200]/60 bg-[#091421] shadow-[0_24px_70px_rgba(0,0,0,0.38)]">
         <header className="border-b border-white/15 px-5 py-4 text-center">
           <p className="text-xs font-bold uppercase tracking-[1.4px] text-[#EEC200]">
             Pembayaran QRIS
@@ -383,11 +383,11 @@ function QrisPaymentModal({ payment, onClose, onConfirmPaid }) {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-lg bg-white p-3">
+          <div className="rounded-lg bg-white p-3">
             <img
               src={qrisStaticImage}
               alt="QRIS pembayaran Kedai Sigma"
-              className="mx-auto max-h-[430px] w-full object-contain"
+              className="mx-auto h-auto w-full object-contain"
             />
           </div>
 
