@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ViewportPortal from "../../../components/common/ViewportPortal";
 import logoSigma from "../../../assets/Logo Sigma.png";
 import ScrollToTopButton from "../../../components/user/ScrollToTopButton";
 import {
@@ -531,6 +532,7 @@ function PhotoPreviewModal({ photo, onClose }) {
   }
 
   return (
+    <ViewportPortal>
     <div
       className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80 p-4 [animation:review-backdrop-in_220ms_ease-out]"
       role="dialog"
@@ -563,11 +565,13 @@ function PhotoPreviewModal({ photo, onClose }) {
         </div>
       </section>
     </div>
+    </ViewportPortal>
   );
 }
 
 function ReviewSuccessPopup({ onClose }) {
   return (
+    <ViewportPortal>
     <div
       className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 px-4 py-6 [animation:review-backdrop-in_220ms_ease-out]"
       role="dialog"
@@ -615,6 +619,7 @@ function ReviewSuccessPopup({ onClose }) {
         </button>
       </div>
     </div>
+    </ViewportPortal>
   );
 }
 

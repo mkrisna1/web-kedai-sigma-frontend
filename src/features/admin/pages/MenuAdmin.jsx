@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ViewportPortal from "../../../components/common/ViewportPortal";
 import americanoImage from "../../../assets/Americano.jpg";
 import ayamPopcornImage from "../../../assets/Ayam Popcorn.jpg";
 import coffeeBearImage from "../../../assets/Coffee Bear.jpg";
@@ -584,7 +585,8 @@ function AddMenuModal({ categories, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
+    <ViewportPortal>
+      <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
       <div className="relative flex max-h-[calc(100dvh-32px)] w-full max-w-[672px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start overflow-hidden rounded-3xl bg-white shadow-2xl shadow-black/25">
         <header className="flex h-[81px] w-full shrink-0 items-center justify-between border-b border-[#C3C6D7]/10 px-8 py-6">
           <h3 className="flex h-8 items-center text-2xl font-extrabold leading-8 text-[#191C1E]">
@@ -822,7 +824,8 @@ function AddMenuModal({ categories, onClose, onSave }) {
           </div>
         </form>
       </div>
-    </div>
+      </div>
+    </ViewportPortal>
   );
 }
 
@@ -945,7 +948,8 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
+    <ViewportPortal>
+      <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
       <div className="relative flex max-h-[calc(100dvh-32px)] w-full max-w-[672px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-center gap-6 overflow-hidden rounded-[32px] bg-[#F7F9FB] pt-10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]">
         <header className="flex h-8 w-[calc(100%-80px)] max-w-[592px] items-center justify-between">
           <h2 className="text-2xl font-extrabold leading-8 tracking-[-0.025em] text-[#191C1E]">
@@ -1171,13 +1175,15 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </ViewportPortal>
   );
 }
 
 function ActionSuccessModal({ message, onClose }) {
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
+    <ViewportPortal>
+      <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
       <section className="w-full max-w-sm animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-2xl bg-white shadow-2xl shadow-black/25">
         <header className="border-b border-[#E6E8EA] px-6 py-5">
           <p className="text-lg font-extrabold text-[#191C1E]">Sistem</p>
@@ -1196,13 +1202,15 @@ function ActionSuccessModal({ message, onClose }) {
           Oke
         </button>
       </section>
-    </div>
+      </div>
+    </ViewportPortal>
   );
 }
 
 function DeleteConfirmModal({ itemName, onCancel, onConfirm }) {
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
+    <ViewportPortal>
+      <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
       <div className="relative box-border flex h-[321.8px] w-full max-w-96 animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start rounded-2xl border border-[#C3C6D7]/10 bg-white shadow-2xl shadow-black/25">
         <div className="flex h-[319.8px] w-full flex-col items-start gap-[10.8px] p-8">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#BA1A1A]/10 text-[#BA1A1A]">
@@ -1235,7 +1243,8 @@ function DeleteConfirmModal({ itemName, onCancel, onConfirm }) {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </ViewportPortal>
   );
 }
 

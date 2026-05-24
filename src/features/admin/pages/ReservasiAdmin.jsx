@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ViewportPortal from "../../../components/common/ViewportPortal";
 import {
   deleteAdminReservation,
   getAdminReservations,
@@ -235,6 +236,7 @@ function CalendarPopup({ value, onClose, onSelect }) {
   };
 
   return (
+    <ViewportPortal>
     <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/20 p-4 sm:p-6">
       <div className="flex max-h-[calc(100dvh-32px)] h-[495px] w-full max-w-96 animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start overflow-y-auto rounded-lg bg-white shadow-[0_10px_30px_rgba(25,28,30,0.06)]">
         <div className="flex h-[427px] w-full flex-col items-start gap-8 p-6">
@@ -323,6 +325,7 @@ function CalendarPopup({ value, onClose, onSelect }) {
         </div>
       </div>
     </div>
+    </ViewportPortal>
   );
 }
 
@@ -335,6 +338,7 @@ function ConfirmActionModal({ action, item, onCancel, onConfirm }) {
   const confirmLabel = isDelete ? "Hapus" : "Batalkan";
 
   return (
+    <ViewportPortal>
     <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
       <div className="relative box-border flex h-[321.8px] w-full max-w-96 animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start rounded-2xl border border-[#C3C6D7]/10 bg-white shadow-2xl shadow-black/25">
         <div className="flex h-[319.8px] w-full flex-col items-start gap-[10.8px] p-8">
@@ -373,6 +377,7 @@ function ConfirmActionModal({ action, item, onCancel, onConfirm }) {
         </div>
       </div>
     </div>
+    </ViewportPortal>
   );
 }
 

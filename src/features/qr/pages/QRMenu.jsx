@@ -1,6 +1,7 @@
 import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import QRMenuCard from "../../../components/qr/QRMenuCard";
+import ViewportPortal from "../../../components/common/ViewportPortal";
 import { getQrMenu, resolveApiAssetUrl } from "../../../services/api";
 import americanoImage from "../../../assets/Americano.jpg";
 import ayamPopcornImage from "../../../assets/Ayam Popcorn.jpg";
@@ -53,6 +54,20 @@ const formatPriceLabel = (price, temperatureOptions = []) =>
   temperatureOptions.length
     ? temperatureOptions.map((option) => formatShortK(option.price)).join("/")
     : formatShortK(price);
+
+const getSortPrice = (item, direction) => {
+  const variantPrices = (item.temperatureOptions || [])
+    .map((option) => Number(option.price))
+    .filter(Number.isFinite);
+
+  if (!variantPrices.length) {
+    return Number(item.price) || 0;
+  }
+
+  return direction === "desc"
+    ? Math.max(...variantPrices)
+    : Math.min(...variantPrices);
+};
 
 const menuItems = [
   {
@@ -667,6 +682,7 @@ function AddMenuModal({ item, onClose, onConfirm }) {
   };
 
   return (
+    <ViewportPortal>
     <div
       className="fixed inset-0 z-50 flex animate-[qr-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/60 px-4 py-6 backdrop-blur-sm"
       onMouseDown={onClose}
@@ -769,11 +785,30 @@ function AddMenuModal({ item, onClose, onConfirm }) {
         </button>
       </form>
     </div>
+    </ViewportPortal>
   );
 }
 
+function FilterIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" className="h-[15px] w-[15px]">
+      <path
+        d="M1.5 3.5C1.5 2.67 2.17 2 3 2h10c.83 0 1.5.67 1.5 1.5 0 .37-.14.73-.4 1.01L10 8.98V13a1 1 0 0 1-.45.83l-2 1.33A1 1 0 0 1 6 14.33V8.98L1.9 4.51a1.5 1.5 0 0 1-.4-1.01ZM3.1 4 8 9.35V12.46l.5-.33V9.35L12.9 4H3.1Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+const priceSortOptions = [
+  { value: "default", label: "Default" },
+  { value: "low", label: "Harga Terendah" },
+  { value: "high", label: "Harga Tertinggi" },
+];
+
 function CartSuccessModal({ onClose }) {
   return (
+    <ViewportPortal>
     <div className="fixed inset-0 z-50 flex animate-[qr-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
       <section className="relative h-[338px] w-[min(348px,calc(100vw-32px))] animate-[qr-modal-panel_260ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-xl bg-[#091421] shadow-[0_1px_2px_rgba(0,0,0,0.05),0_24px_70px_rgba(0,0,0,0.32)]">
         <header className="flex h-[44px] items-start justify-center border-b border-white/50 pt-3">
@@ -795,6 +830,7 @@ function CartSuccessModal({ onClose }) {
         </button>
       </section>
     </div>
+    </ViewportPortal>
   );
 }
 
@@ -803,6 +839,8 @@ export default function QRMenu() {
   const [searchParams] = useSearchParams();
   const [activeCategory, setActiveCategory] = useState("all");
   const [query, setQuery] = useState("");
+  const [priceSort, setPriceSort] = useState("default");
+  const [isPriceFilterOpen, setIsPriceFilterOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(4);
   const [configItem, setConfigItem] = useState(null);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
@@ -850,7 +888,7 @@ export default function QRMenu() {
   const filteredItems = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
-    return activeMenuItems.filter((item) => {
+    const matches = activeMenuItems.filter((item) => {
       const itemCategory = inferCategoryFromMenuItem(item);
       const matchesCategory =
         activeCategory === "all" || itemCategory === activeCategory;
@@ -861,7 +899,17 @@ export default function QRMenu() {
 
       return matchesCategory && matchesQuery;
     });
-  }, [activeCategory, activeMenuItems, query]);
+
+    if (priceSort === "low") {
+      return [...matches].sort((a, b) => getSortPrice(a, "asc") - getSortPrice(b, "asc"));
+    }
+
+    if (priceSort === "high") {
+      return [...matches].sort((a, b) => getSortPrice(b, "desc") - getSortPrice(a, "desc"));
+    }
+
+    return matches;
+  }, [activeCategory, activeMenuItems, priceSort, query]);
 
   const visibleItems = filteredItems.slice(0, visibleCount);
   const hasMore = filteredItems.length > visibleCount;
@@ -916,8 +964,8 @@ export default function QRMenu() {
         })}
       </nav>
 
-      <section className="relative flex h-[58px] w-full max-w-[246px] items-center">
-        <label className="flex h-12 w-[210px] max-w-full items-center gap-2 border-l-4 border-[#EEC200] bg-[#212B39] px-4 text-[#EEC200]">
+      <section className="relative flex w-full max-w-[334px] items-center gap-2">
+        <label className="flex h-10 min-w-0 flex-1 items-center gap-1.5 border-l-4 border-[#EEC200] bg-[#212B39] px-3 text-[#EEC200]">
           <SearchIcon />
           <input
             value={query}
@@ -926,26 +974,70 @@ export default function QRMenu() {
               setVisibleCount(4);
             }}
             placeholder="cari menu..."
-            className="h-8 min-w-0 flex-1 bg-transparent px-3 text-xs font-bold uppercase leading-[15px] tracking-[1.2px] text-[#E6BDB8] outline-none placeholder:text-[#E6BDB8]"
+            className="h-7 min-w-0 flex-1 bg-transparent px-2 text-[11px] font-bold uppercase leading-[14px] tracking-[1px] text-[#E6BDB8] outline-none placeholder:text-[#E6BDB8]"
           />
         </label>
 
         <Link
           to={cartPath}
           aria-label="Buka keranjang"
-          className="absolute left-[218px] top-[13px] flex h-8 w-[42px] items-center text-[#EEC200]"
+          className="relative flex h-10 w-10 shrink-0 items-center justify-center text-[#EEC200] transition hover:text-[#FFB4AB]"
         >
-          <CartIcon />
+          <CartIcon className="h-8 w-7" />
           {cartCount > 0 && (
-            <span className="absolute left-7 top-[-12px] text-xl font-bold leading-[25px] tracking-[1.2px] text-white">
+            <span className="absolute right-0 top-[-9px] text-xl font-bold leading-[25px] tracking-[1.2px] text-white">
               {cartCount}
             </span>
           )}
         </Link>
+
+        <button
+          type="button"
+          onClick={() => setIsPriceFilterOpen((isOpen) => !isOpen)}
+          aria-label="Filter harga menu"
+          aria-expanded={isPriceFilterOpen}
+          className={`flex h-10 w-10 shrink-0 items-center justify-center border-l-4 bg-[#212B39] transition ${
+            priceSort === "default"
+              ? "border-[#DC2626] text-[#EEC200] hover:text-[#FFB4AB] active:text-[#FFB4AB] focus-visible:text-[#FFB4AB]"
+              : "border-[#FFB4AB] text-[#FFB4AB]"
+          }`}
+        >
+          <FilterIcon />
+        </button>
+
+        {isPriceFilterOpen && (
+          <div className="absolute right-0 top-[52px] z-30 w-[190px] origin-top-right animate-[qr-filter-menu-in_180ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden border border-[#EEC200]/40 bg-[#091421] shadow-[0_16px_34px_rgba(0,0,0,0.35)]">
+            {priceSortOptions.map((option) => {
+              const isActive = option.value === priceSort;
+
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    setPriceSort(option.value);
+                    setVisibleCount(4);
+                    setIsPriceFilterOpen(false);
+                  }}
+                  className={`flex h-11 w-full items-center justify-between px-4 text-left font-['Space_Grotesk',Arial,sans-serif] text-[11px] font-bold uppercase tracking-[1.1px] transition ${
+                    isActive
+                      ? "bg-[#EEC200] text-[#3C2F00]"
+                      : "text-[#E6BDB8] hover:bg-[#212B39] hover:text-white"
+                  }`}
+                >
+                  <span>{option.label}</span>
+                  {isActive && (
+                    <span className="h-2 w-2 rounded-full bg-[#3C2F00]" aria-hidden="true" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       <section
-        key={`${activeCategory}-${query.trim().toLowerCase()}`}
+        key={`${activeCategory}-${query.trim().toLowerCase()}-${priceSort}`}
         className="grid w-full max-w-[334px] grid-cols-2 gap-x-8 gap-y-8 animate-[qr-menu-grid-in_220ms_ease-out]"
       >
         {visibleItems.map((item, index) => (

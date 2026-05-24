@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ViewportPortal from "../../../components/common/ViewportPortal";
 import {
   getAdminMenu,
   getAdminOrderReceipt,
@@ -462,12 +463,13 @@ function StockIssuePopup({ order, replacementOptions, onClose, onResolve }) {
   };
 
   return (
-    <div
+    <ViewportPortal>
+      <div
       className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 px-4 py-6 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="stock-issue-title"
-    >
+      >
       <div className="max-h-[calc(100dvh-32px)] w-full max-w-[560px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-y-auto rounded-2xl bg-white shadow-[0_24px_70px_rgba(15,23,42,0.25)]">
         <div className="px-7 pb-5 pt-7">
           <div className="flex items-start justify-between gap-4">
@@ -596,7 +598,8 @@ function StockIssuePopup({ order, replacementOptions, onClose, onResolve }) {
           </form>
         </div>
       </div>
-    </div>
+      </div>
+    </ViewportPortal>
   );
 }
 
@@ -637,7 +640,8 @@ function CalendarPopup({ value, onClose, onSelect }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/20 p-4 sm:p-6">
+    <ViewportPortal>
+      <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/20 p-4 sm:p-6">
       <div className="flex max-h-[calc(100dvh-32px)] h-[495px] w-full max-w-96 animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col overflow-y-auto rounded-lg bg-white shadow-[0_10px_30px_rgba(25,28,30,0.12)]">
         <div className="flex h-[427px] w-full flex-col gap-8 p-6">
           <div className="flex h-7 w-full items-center justify-between">
@@ -718,7 +722,8 @@ function CalendarPopup({ value, onClose, onSelect }) {
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </ViewportPortal>
   );
 }
 

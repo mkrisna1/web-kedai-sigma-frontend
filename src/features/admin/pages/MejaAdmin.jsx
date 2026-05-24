@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ViewportPortal from "../../../components/common/ViewportPortal";
 import {
   createAdminTable,
   deleteAdminTable,
@@ -394,7 +395,8 @@ function AddTableModal({ suggestedId, existingTables, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
+    <ViewportPortal>
+      <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
       <form
         onSubmit={handleSubmit}
         className="max-h-[calc(100dvh-32px)] w-full max-w-[520px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-y-auto rounded-2xl bg-white shadow-2xl shadow-black/25"
@@ -480,13 +482,15 @@ function AddTableModal({ suggestedId, existingTables, onClose, onSave }) {
           </button>
         </footer>
       </form>
-    </div>
+      </div>
+    </ViewportPortal>
   );
 }
 
 function ActionSuccessModal({ message, onClose }) {
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
+    <ViewportPortal>
+      <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
       <section className="w-full max-w-sm animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-2xl bg-white shadow-2xl shadow-black/25">
         <header className="border-b border-[#E6E8EA] px-6 py-5">
           <p className="text-lg font-extrabold text-[#191C1E]">Sistem</p>
@@ -505,7 +509,8 @@ function ActionSuccessModal({ message, onClose }) {
           Oke
         </button>
       </section>
-    </div>
+      </div>
+    </ViewportPortal>
   );
 }
 
@@ -515,7 +520,8 @@ function DeleteConfirmModal({ table, onCancel, onConfirm }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
+    <ViewportPortal>
+      <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
       <section className="max-h-[calc(100dvh-32px)] w-full max-w-sm animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-y-auto rounded-2xl bg-white p-8 shadow-2xl shadow-black/25">
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#BA1A1A]/10 text-[#BA1A1A]">
           <TrashIcon className="h-5 w-5" />
@@ -545,7 +551,8 @@ function DeleteConfirmModal({ table, onCancel, onConfirm }) {
           </button>
         </div>
       </section>
-    </div>
+      </div>
+    </ViewportPortal>
   );
 }
 
@@ -570,7 +577,8 @@ function QrPreviewModal({ table, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
+    <ViewportPortal>
+      <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
       <section className="max-h-[calc(100dvh-32px)] w-full max-w-[560px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-y-auto rounded-2xl bg-white shadow-2xl shadow-black/25">
         <header className="flex items-center justify-between border-b border-[#E6E8EA] px-6 py-5">
           <div>
@@ -644,7 +652,8 @@ function QrPreviewModal({ table, onClose }) {
           </div>
         </div>
       </section>
-    </div>
+      </div>
+    </ViewportPortal>
   );
 }
 

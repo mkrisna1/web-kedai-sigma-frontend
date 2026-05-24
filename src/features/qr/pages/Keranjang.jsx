@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext, useSearchParams } from "react-router-dom";
+import ViewportPortal from "../../../components/common/ViewportPortal";
+import qrisStaticImage from "../../../assets/qris-static.jpeg";
 import {
   checkoutQrOrder,
   getQrMenu,
-  getQrPaymentConfig,
-  getQrPaymentStatus,
 } from "../../../services/api";
 
 const formatRupiah = (value) => `Rp ${value.toLocaleString("id-ID")}`;
@@ -165,6 +165,7 @@ function CartItemCard({ item, onQuantityChange, onRemove }) {
 
 function OrderSubmittedModal({ onClose }) {
   return (
+    <ViewportPortal>
     <div
       className="fixed inset-0 z-50 flex animate-[qr-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/70 px-4 py-8 backdrop-blur-sm"
       role="dialog"
@@ -202,11 +203,13 @@ function OrderSubmittedModal({ onClose }) {
         </div>
       </section>
     </div>
+    </ViewportPortal>
   );
 }
 
 function OrderTypeModal({ isSubmitting, onClose, onConfirm }) {
   return (
+    <ViewportPortal>
     <div
       className="fixed inset-0 z-50 flex animate-[qr-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/70 px-4 py-8 backdrop-blur-sm"
       role="dialog"
@@ -252,18 +255,17 @@ function OrderTypeModal({ isSubmitting, onClose, onConfirm }) {
         </div>
       </section>
     </div>
+    </ViewportPortal>
   );
 }
 
 function PaymentMethodModal({
-  isLoadingPaymentConfig,
   isSubmitting,
   onClose,
   onSelect,
-  qrisEnabled,
-  qrisMessage,
 }) {
   return (
+    <ViewportPortal>
     <div
       className="fixed inset-0 z-50 flex animate-[qr-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/70 px-4 py-8 backdrop-blur-sm"
       role="dialog"
@@ -292,21 +294,12 @@ function PaymentMethodModal({
           </button>
           <button
             type="button"
-            disabled={isSubmitting || isLoadingPaymentConfig || !qrisEnabled}
+            disabled={isSubmitting}
             onClick={() => onSelect("qris")}
-            className="flex h-14 items-center justify-center bg-[#DC2626] font-['Space_Grotesk',Arial,sans-serif] text-sm font-black uppercase tracking-[1.6px] text-white transition hover:bg-[#B91C1C] disabled:cursor-not-allowed disabled:bg-[#334155] disabled:text-[#CBD5E1] disabled:opacity-100"
+            className="flex h-14 items-center justify-center bg-[#DC2626] font-['Space_Grotesk',Arial,sans-serif] text-sm font-black uppercase tracking-[1.6px] text-white transition hover:bg-[#B91C1C] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isLoadingPaymentConfig
-              ? "Mengecek QRIS..."
-              : qrisEnabled
-                ? "Bayar QRIS"
-                : "QRIS Belum Aktif"}
+            Bayar QRIS
           </button>
-          {!qrisEnabled && !isLoadingPaymentConfig && (
-            <p className="rounded-lg border border-[#EEC200]/20 bg-[#16202E] px-3 py-2 text-center text-xs font-semibold leading-5 text-[#E6BDB8]">
-              {qrisMessage || "QRIS belum aktif. Silakan pilih pembayaran tunai dulu."}
-            </p>
-          )}
           <button
             type="button"
             disabled={isSubmitting}
@@ -318,10 +311,11 @@ function PaymentMethodModal({
         </div>
       </section>
     </div>
+    </ViewportPortal>
   );
 }
 
-function QrisPaymentModal({ payment, isChecking, onClose, onCheckStatus }) {
+function QrisPaymentModal({ payment, onClose, onConfirmPaid }) {
   const getInitialSeconds = () => {
     if (!payment?.payment_expired_at) {
       return QRIS_PAYMENT_SECONDS;
@@ -348,19 +342,8 @@ function QrisPaymentModal({ payment, isChecking, onClose, onCheckStatus }) {
     return () => window.clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (isExpired) {
-      return undefined;
-    }
-
-    const interval = window.setInterval(() => {
-      onCheckStatus();
-    }, 5000);
-
-    return () => window.clearInterval(interval);
-  }, [isExpired, onCheckStatus]);
-
   return (
+    <ViewportPortal>
     <div
       className="fixed inset-0 z-50 flex animate-[qr-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/75 px-4 py-8 backdrop-blur-sm"
       role="dialog"
@@ -401,21 +384,15 @@ function QrisPaymentModal({ payment, isChecking, onClose, onCheckStatus }) {
           </div>
 
           <div className="overflow-hidden rounded-lg bg-white p-3">
-            {payment?.payment_qr_url ? (
-              <img
-                src={payment.payment_qr_url}
-                alt="QRIS pembayaran Kedai Sigma"
-                className="mx-auto max-h-[430px] w-full object-contain"
-              />
-            ) : (
-              <div className="flex min-h-[280px] items-center justify-center px-4 text-center text-sm font-bold leading-6 text-[#3C2F00]">
-                QR pembayaran belum tersedia dari gateway.
-              </div>
-            )}
+            <img
+              src={qrisStaticImage}
+              alt="QRIS pembayaran Kedai Sigma"
+              className="mx-auto max-h-[430px] w-full object-contain"
+            />
           </div>
 
           <p className="text-center text-xs font-semibold leading-5 text-[#E6BDB8]">
-            Menunggu konfirmasi pembayaran dari GoPay/Midtrans.
+            Setelah bayar, tekan cek status atau tunjukkan bukti pembayaran ke kasir.
           </p>
         </div>
 
@@ -433,7 +410,6 @@ function QrisPaymentModal({ payment, isChecking, onClose, onCheckStatus }) {
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              disabled={isChecking}
               onClick={onClose}
               className="h-12 border border-[#5C403C] font-['Space_Grotesk',Arial,sans-serif] text-xs font-black uppercase tracking-[1.4px] text-[#E6BDB8] transition hover:border-[#EEC200] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -441,16 +417,17 @@ function QrisPaymentModal({ payment, isChecking, onClose, onCheckStatus }) {
             </button>
             <button
               type="button"
-              disabled={isChecking || isExpired}
-              onClick={onCheckStatus}
+              disabled={isExpired}
+              onClick={onConfirmPaid}
               className="h-12 bg-[#EEC200] font-['Space_Grotesk',Arial,sans-serif] text-xs font-black uppercase tracking-[1.4px] text-[#3C2F00] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isExpired ? "Waktu Habis" : isChecking ? "Mengecek..." : "Cek Status"}
+              {isExpired ? "Waktu Habis" : "Sudah Bayar"}
             </button>
           </div>
         </div>
       </section>
     </div>
+    </ViewportPortal>
   );
 }
 
@@ -467,50 +444,12 @@ export default function Keranjang() {
   const [isOrderTypeModalOpen, setIsOrderTypeModalOpen] = useState(false);
   const [pendingOrderType, setPendingOrderType] = useState("");
   const [isPaymentMethodModalOpen, setIsPaymentMethodModalOpen] = useState(false);
-  const [paymentConfig, setPaymentConfig] = useState(null);
-  const [isLoadingPaymentConfig, setIsLoadingPaymentConfig] = useState(false);
   const [qrisPayment, setQrisPayment] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isCheckingPayment, setIsCheckingPayment] = useState(false);
   const [searchParams] = useSearchParams();
   const queryString = searchParams.toString();
   const menuPath = queryString ? `/qr/menu?${queryString}` : "/qr/menu";
   const mejaId = searchParams.get("meja_id") || qrTable?.id;
-  const qrisEnabled = paymentConfig?.qris_enabled === true;
-  const qrisMessage = paymentConfig?.message;
-
-  useEffect(() => {
-    if (!isPaymentMethodModalOpen) {
-      return undefined;
-    }
-
-    let isMounted = true;
-
-    setIsLoadingPaymentConfig(true);
-    getQrPaymentConfig()
-      .then((response) => {
-        if (isMounted) {
-          setPaymentConfig(response.data);
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setPaymentConfig({
-            qris_enabled: false,
-            message: "QRIS belum bisa dicek. Silakan pilih pembayaran tunai dulu.",
-          });
-        }
-      })
-      .finally(() => {
-        if (isMounted) {
-          setIsLoadingPaymentConfig(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [isPaymentMethodModalOpen]);
 
   const openOrderTypeModal = () => {
     if (!cartItems.length) {
@@ -527,10 +466,6 @@ export default function Keranjang() {
   };
 
   const handlePaymentMethodSelect = (method) => {
-    if (method === "qris" && !qrisEnabled) {
-      return;
-    }
-
     handleCheckoutSubmit(pendingOrderType || "dine_in", method);
   };
 
@@ -560,8 +495,8 @@ export default function Keranjang() {
       const response = await checkoutQrOrder({
         meja_id: Number(mejaId),
         tipe_pesanan: orderType || "dine_in",
-        metode_pembayaran: paymentMethod === "qris" ? "qris" : "cash",
-        catatan_pesanan: paymentMethod === "qris" ? "Pembayaran QRIS" : "Bayar Tunai",
+        metode_pembayaran: "cash",
+        catatan_pesanan: paymentMethod === "qris" ? "Pembayaran QRIS manual" : "Bayar Tunai",
         items: checkoutItems.map((item) => ({
           produk_id: item.productId,
           jumlah_item: item.quantity,
@@ -574,54 +509,19 @@ export default function Keranjang() {
       clearCart();
 
       if (paymentMethod === "qris") {
-        setQrisPayment(response.data);
+        setQrisPayment({
+          ...response.data,
+          total_harga: response.data?.total_harga || cartTotal,
+        });
         return;
       }
 
       setIsOrderSubmitted(true);
     } catch (error) {
       console.error("Gagal mengirim pesanan:", error);
-      const message =
-        paymentMethod === "qris"
-          ? "QRIS belum aktif. Silakan pilih pembayaran tunai dulu."
-          : error.message || "Pesanan belum bisa dikirim.";
-
-      window.alert(message);
+      window.alert(error.message || "Pesanan belum bisa dikirim.");
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handlePaymentStatusCheck = async () => {
-    if (!qrisPayment?.id || isCheckingPayment) {
-      return;
-    }
-
-    setIsCheckingPayment(true);
-
-    try {
-      const response = await getQrPaymentStatus(qrisPayment.id);
-      const updatedPayment = response.data;
-
-      setQrisPayment(updatedPayment);
-
-      if (updatedPayment?.status_pembayaran === "lunas") {
-        setQrisPayment(null);
-        setIsOrderSubmitted(true);
-      }
-
-      if (
-        updatedPayment?.status_pesanan === "dibatalkan" ||
-        ["expire", "cancel", "deny", "failure"].includes(updatedPayment?.payment_status)
-      ) {
-        setQrisPayment(null);
-        window.alert("Pembayaran QRIS sudah tidak aktif. Silakan pesan ulang.");
-      }
-    } catch (error) {
-      console.error("Gagal mengecek status pembayaran:", error);
-      window.alert(error.message || "Status pembayaran belum bisa dicek.");
-    } finally {
-      setIsCheckingPayment(false);
     }
   };
 
@@ -700,23 +600,22 @@ export default function Keranjang() {
       )}
       {isPaymentMethodModalOpen && (
         <PaymentMethodModal
-          isLoadingPaymentConfig={isLoadingPaymentConfig}
           isSubmitting={isSubmitting}
           onClose={() => {
             setIsPaymentMethodModalOpen(false);
             setPendingOrderType("");
           }}
           onSelect={handlePaymentMethodSelect}
-          qrisEnabled={qrisEnabled}
-          qrisMessage={qrisMessage}
         />
       )}
       {qrisPayment && (
         <QrisPaymentModal
           payment={qrisPayment}
-          isChecking={isCheckingPayment}
           onClose={() => setQrisPayment(null)}
-          onCheckStatus={handlePaymentStatusCheck}
+          onConfirmPaid={() => {
+            setQrisPayment(null);
+            setIsOrderSubmitted(true);
+          }}
         />
       )}
     </main>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ViewportPortal from "../../../components/common/ViewportPortal";
 import {
   deleteAdminReviewPhoto,
   deleteAdminReview,
@@ -260,6 +261,7 @@ function PhotoPreviewModal({ target, onClose, onDelete }) {
   const { photo } = target;
 
   return (
+    <ViewportPortal>
     <div
       className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/80 p-4 backdrop-blur-sm sm:p-6"
       role="dialog"
@@ -301,6 +303,7 @@ function PhotoPreviewModal({ target, onClose, onDelete }) {
         </footer>
       </section>
     </div>
+    </ViewportPortal>
   );
 }
 
@@ -326,6 +329,7 @@ function ReplyModal({ review, onClose, onSave }) {
   };
 
   return (
+    <ViewportPortal>
     <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
       <form
         onSubmit={handleSubmit}
@@ -364,6 +368,7 @@ function ReplyModal({ review, onClose, onSave }) {
         </footer>
       </form>
     </div>
+    </ViewportPortal>
   );
 }
 
@@ -373,6 +378,7 @@ function DeleteReviewModal({ review, onClose, onConfirm }) {
   }
 
   return (
+    <ViewportPortal>
     <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
       <section className="max-h-[calc(100dvh-32px)] w-full max-w-sm animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-y-auto rounded-2xl bg-white p-8 shadow-2xl shadow-black/25">
         <h2 className="text-xl font-bold text-[#191C1E]">
@@ -399,6 +405,7 @@ function DeleteReviewModal({ review, onClose, onConfirm }) {
         </div>
       </section>
     </div>
+    </ViewportPortal>
   );
 }
 
@@ -408,6 +415,7 @@ function DeletePhotoModal({ target, onClose, onConfirm }) {
   }
 
   return (
+    <ViewportPortal>
     <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
       <section className="max-h-[calc(100dvh-32px)] w-full max-w-sm animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-y-auto rounded-2xl bg-white p-8 shadow-2xl shadow-black/25">
         <h2 className="text-xl font-bold text-[#191C1E]">
@@ -439,6 +447,7 @@ function DeletePhotoModal({ target, onClose, onConfirm }) {
         </div>
       </section>
     </div>
+    </ViewportPortal>
   );
 }
 
