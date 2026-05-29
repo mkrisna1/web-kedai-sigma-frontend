@@ -532,7 +532,7 @@ export default function Home() {
       <div className="h-1 bg-[#050F1C]" />
 
       <section className="relative isolate flex min-h-[921px] items-center overflow-hidden px-6 py-24 md:px-24">
-        <div className="pointer-events-none absolute left-[12%] top-[21%] -z-10 select-none font-['Space_Grotesk',sans-serif] text-[230px] font-black uppercase leading-none tracking-[-0.05em] text-[#DC2626]/24 md:left-[18%] md:text-[470px]">
+        <div className="pointer-events-none absolute left-[20%] top-[25%] -z-10 select-none font-['Space_Grotesk',sans-serif] text-[230px] font-black uppercase leading-none tracking-[-0.05em] text-[#DC2626]/24 md:left-[22%] md:text-[430px]">
           SIGMA
         </div>
 
@@ -540,7 +540,7 @@ export default function Home() {
           <SkewLabel>EST. 2025 // DESA BULUSARI</SkewLabel>
 
           <h1 className="mt-6 font-['Space_Grotesk',sans-serif] text-7xl font-bold uppercase leading-[0.86] tracking-[-0.05em] text-[#D9E3F6] drop-shadow-[0_0_15px_rgba(220,38,38,0.8)] md:text-[150px]">
-                    Kedai Sigma
+            Kedai
           </h1>
 
           <p className="mt-6 max-w-[376px] font-['Be_Vietnam_Pro',sans-serif] text-xl font-medium leading-8 text-[#E6BDB8] md:text-2xl">
