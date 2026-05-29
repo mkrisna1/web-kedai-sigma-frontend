@@ -532,7 +532,7 @@ export default function Home() {
       <div className="h-1 bg-[#050F1C]" />
 
       <section className="relative isolate flex min-h-[921px] items-center overflow-hidden px-6 py-24 md:px-24">
-        <div className="pointer-events-none absolute left-[22%] top-[25%] -z-10 select-none font-['Space_Grotesk',sans-serif] text-[180px] font-black uppercase leading-none tracking-[-0.05em] text-[#DC2626]/20 md:text-[400px]">
+        <div className="pointer-events-none absolute left-[12%] top-[21%] -z-10 select-none font-['Space_Grotesk',sans-serif] text-[230px] font-black uppercase leading-none tracking-[-0.05em] text-[#DC2626]/24 md:left-[18%] md:text-[470px]">
           SIGMA
         </div>
 
@@ -540,7 +540,7 @@ export default function Home() {
           <SkewLabel>EST. 2025 // DESA BULUSARI</SkewLabel>
 
           <h1 className="mt-6 font-['Space_Grotesk',sans-serif] text-7xl font-bold uppercase leading-[0.86] tracking-[-0.05em] text-[#D9E3F6] drop-shadow-[0_0_15px_rgba(220,38,38,0.8)] md:text-[150px]">
-            Kedai
+                    Kedai Sigma
           </h1>
 
           <p className="mt-6 max-w-[376px] font-['Be_Vietnam_Pro',sans-serif] text-xl font-medium leading-8 text-[#E6BDB8] md:text-2xl">
@@ -656,8 +656,14 @@ export default function Home() {
                   "favorite-card-in 700ms 110ms cubic-bezier(0.16, 1, 0.3, 1) forwards",
               }}
             >
+              <img
+                src={sideFavorite.image}
+                alt={sideFavorite.name}
+                className="absolute inset-0 h-full w-full object-cover opacity-35 saturate-75 transition duration-700 ease-out group-hover:scale-105 group-hover:opacity-45"
+              />
+              <div className="absolute inset-0 bg-[#212B39]/70" />
               <div className="pointer-events-none absolute right-[-54px] top-[-54px] h-36 w-36 rounded-full border border-[#DC2626]/30 transition duration-700 group-hover:scale-125 group-hover:border-[#EEC200]/40" />
-              <div>
+              <div className="relative z-10">
                 <div className="text-[#DC2626] transition duration-500 ease-out group-hover:-translate-y-2 group-hover:text-[#EEC200]">
                   <CoffeeIcon />
                 </div>
@@ -668,7 +674,7 @@ export default function Home() {
                   {sideFavorite.description}
                 </p>
               </div>
-              <p className="pt-8 font-['Space_Grotesk',sans-serif] text-5xl font-bold leading-[56px] text-[#EEC200]">
+              <p className="relative z-10 pt-8 font-['Space_Grotesk',sans-serif] text-5xl font-bold leading-[56px] text-[#EEC200]">
                 {sideFavorite.price}
               </p>
             </article>

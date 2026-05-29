@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import americanoImage from "../../../assets/Americano.jpg";
 import ayamPopcornImage from "../../../assets/Ayam Popcorn.jpg";
 import coffeeBearImage from "../../../assets/Coffee Bear.jpg";
@@ -77,6 +77,7 @@ const temperatureOptionChoices = [
   { value: "ice", label: "Ice" },
   { value: "hot_ice", label: "Hot/Ice" },
 ];
+const MENU_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 const normalizeTemperatureOption = (value) =>
   temperatureOptionChoices.some((option) => option.value === value)
@@ -501,6 +502,12 @@ function AddMenuModal({ categories, onClose, onSave }) {
       return;
     }
 
+    if (!MENU_PHOTO_TYPES.includes(file.type)) {
+      event.target.value = "";
+      window.alert("Foto menu hanya boleh JPG, PNG, atau WEBP. PDF/dokumen tidak bisa.");
+      return;
+    }
+
     if (previewObjectUrl) {
       URL.revokeObjectURL(previewObjectUrl);
     }
@@ -723,7 +730,7 @@ function AddMenuModal({ categories, onClose, onSave }) {
                 <input
                   type="file"
                   name="foto_produk"
-                  accept="image/*"
+                  accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                   onChange={handlePhotoChange}
                   className="sr-only"
                 />
@@ -835,6 +842,12 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
       return;
     }
 
+    if (!MENU_PHOTO_TYPES.includes(file.type)) {
+      event.target.value = "";
+      window.alert("Foto menu hanya boleh JPG, PNG, atau WEBP. PDF/dokumen tidak bisa.");
+      return;
+    }
+
     if (previewObjectUrl) {
       URL.revokeObjectURL(previewObjectUrl);
     }
@@ -916,7 +929,7 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
                 <input
                   type="file"
                   name="foto_produk"
-                  accept="image/*"
+                  accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                   onChange={handlePhotoChange}
                   className="sr-only"
                 />
@@ -1335,13 +1348,10 @@ export default function MenuAdmin() {
     },
     { label: "Harga Rata-rata", value: formatShortPrice(averagePrice) },
   ];
-
-  useEffect(() => {
-    let isMounted = true;
-
+  const loadMenuData = useCallback((signal) => {
     Promise.all([getAdminMenu(), getAdminMenuCategories()])
       .then(([menuResponse, categoryResponse]) => {
-        if (!isMounted) {
+        if (signal?.cancelled) {
           return;
         }
 
@@ -1351,13 +1361,22 @@ export default function MenuAdmin() {
         );
       })
       .catch((error) => {
-        console.error("Gagal mengambil data menu admin:", error);
+        if (!signal?.cancelled) {
+          console.error("Gagal mengambil data menu admin:", error);
+        }
       });
+  }, []);
+
+  useEffect(() => {
+    const signal = { cancelled: false };
+    loadMenuData(signal);
+    const interval = window.setInterval(() => loadMenuData(signal), 8000);
 
     return () => {
-      isMounted = false;
+      signal.cancelled = true;
+      window.clearInterval(interval);
     };
-  }, []);
+  }, [loadMenuData]);
 
   useEffect(() => {
     setCurrentPage(0);
@@ -1373,6 +1392,7 @@ export default function MenuAdmin() {
       );
       setCurrentPage(0);
       setIsAddModalOpen(false);
+      loadMenuData();
     } catch (error) {
       console.error("Gagal menambah menu:", error);
     }
@@ -1398,6 +1418,7 @@ export default function MenuAdmin() {
         ),
       );
       setDeleteTarget(null);
+      loadMenuData();
     } catch (error) {
       console.error("Gagal menghapus menu:", error);
     }
@@ -1424,6 +1445,7 @@ export default function MenuAdmin() {
         ),
       );
       setEditTarget(null);
+      loadMenuData();
     } catch (error) {
       console.error("Gagal menyimpan menu:", error);
     }

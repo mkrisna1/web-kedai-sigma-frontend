@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   getAdminMenu,
   getAdminOrderReceipt,
@@ -174,6 +174,7 @@ const mapOrderFromApi = (order) => ({
   status: uiStatusByApiStatus[order.status_pesanan] || "pending",
   paymentStatus: order.status_pembayaran,
   paymentMethod: order.metode_pembayaran || "cash",
+  paymentProvider: order.payment_provider,
   gatewayStatus: order.payment_status,
   items: (order.detail_pesanans || []).map((detail) => {
     const quantity = Number(detail.jumlah_item) || 1;
@@ -272,6 +273,7 @@ function OrderCard({
   status,
   paymentStatus,
   paymentMethod,
+  paymentProvider,
   gatewayStatus,
   items,
   onAccept,
@@ -285,9 +287,12 @@ function OrderCard({
   const isDimmed = isCompleted || isCancelled;
   const total = formatRupiah(getOrderTotal(items));
   const isOnlinePayment = ["qris", "gopay"].includes(paymentMethod);
-  const isPaymentPending = isOnlinePayment && paymentStatus !== "lunas";
+  const isStaticQris = paymentProvider === "static_qris";
+  const isPaymentPending = isOnlinePayment && !isStaticQris && paymentStatus !== "lunas";
   const paymentLabel = isOnlinePayment
-    ? paymentStatus === "lunas"
+    ? isStaticQris && paymentStatus !== "lunas"
+      ? "QRIS Manual"
+      : paymentStatus === "lunas"
       ? "QRIS Lunas"
       : gatewayStatus
         ? `QRIS ${gatewayStatus}`
@@ -750,20 +755,15 @@ export default function Pesanan() {
   const [replacementMenuOptions, setReplacementMenuOptions] = useState(
     fallbackReplacementMenuOptions,
   );
-
-  useEffect(() => {
-    let isMounted = true;
-
+  const loadOrders = useCallback((signal) => {
     Promise.allSettled([getAdminOrders(), getAdminMenu()])
       .then(([ordersResult, menuResult]) => {
-        if (!isMounted) {
+        if (signal?.cancelled) {
           return;
         }
 
         if (ordersResult.status === "fulfilled") {
           setOrders((ordersResult.value.data || []).map(mapOrderFromApi));
-        } else {
-          setOrders([]);
         }
 
         if (menuResult.status === "fulfilled") {
@@ -775,12 +775,24 @@ export default function Pesanan() {
             setReplacementMenuOptions(availableMenu);
           }
         }
+      })
+      .catch((error) => {
+        if (!signal?.cancelled) {
+          console.error("Gagal mengambil data pesanan:", error);
+        }
       });
+  }, []);
+
+  useEffect(() => {
+    const signal = { cancelled: false };
+    loadOrders(signal);
+    const interval = window.setInterval(() => loadOrders(signal), 5000);
 
     return () => {
-      isMounted = false;
+      signal.cancelled = true;
+      window.clearInterval(interval);
     };
-  }, []);
+  }, [loadOrders]);
 
   const dateOrders = useMemo(
     () => orders.filter((order) => order.dateValue === selectedDate),
@@ -833,6 +845,7 @@ export default function Pesanan() {
             : currentOrder,
         ),
       );
+      loadOrders();
     } catch (error) {
       console.error("Gagal memperbarui status pesanan:", error);
       setOrders(previousOrders);
@@ -867,6 +880,7 @@ export default function Pesanan() {
         ),
       );
       setOrderToCancel(null);
+      loadOrders();
     } catch (error) {
       console.error("Gagal menyimpan perubahan stok pesanan:", error);
     }

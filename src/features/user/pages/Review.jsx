@@ -10,8 +10,9 @@ import {
 const LIKE_STORAGE_KEY = "kedai-sigma-liked-reviews";
 const REVIEW_PHOTO_MAX_COUNT = 5;
 const REVIEW_PHOTO_MAX_DIMENSION = 1600;
-const REVIEW_PHOTO_TARGET_BYTES = 1200 * 1024;
+const REVIEW_PHOTO_TARGET_BYTES = 420 * 1024;
 const REVIEW_PHOTO_MIN_QUALITY = 0.62;
+const REVIEW_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 const advantages = [
   {
@@ -631,6 +632,15 @@ function ReviewForm({ onReviewCreated }) {
     clearSubmitWarning();
 
     const files = Array.from(event.target.files || []).slice(0, REVIEW_PHOTO_MAX_COUNT);
+    const invalidFile = files.find((file) => !REVIEW_PHOTO_TYPES.includes(file.type));
+
+    if (invalidFile) {
+      event.target.value = "";
+      setPhotoFiles([]);
+      setPhotoPreviews([]);
+      setSubmitWarning("Upload review hanya boleh foto JPG, PNG, atau WEBP. PDF/dokumen tidak bisa.");
+      return;
+    }
 
     setIsPreparingPhotos(true);
 
@@ -786,7 +796,7 @@ function ReviewForm({ onReviewCreated }) {
                     type="file"
                     name="photos"
                     multiple
-                    accept="image/jpeg,image/png,image/webp"
+                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                     onChange={handlePhotoChange}
                     className="sr-only"
                   />

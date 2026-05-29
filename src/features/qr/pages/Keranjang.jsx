@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext, useSearchParams } from "react-router-dom";
+import staticQrisImage from "../../../assets/Qriss Sar.png";
 import {
   checkoutQrOrder,
   getQrPaymentConfig,
@@ -297,6 +298,8 @@ function QrisPaymentModal({ payment, isChecking, onClose, onCheckStatus }) {
   const [secondsLeft, setSecondsLeft] = useState(getInitialSeconds);
   const isExpired = secondsLeft <= 0;
   const total = Number(payment?.total_harga) || 0;
+  const isStaticQris = payment?.payment_provider === "static_qris";
+  const qrImage = payment?.payment_qr_url || staticQrisImage;
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -359,9 +362,9 @@ function QrisPaymentModal({ payment, isChecking, onClose, onCheckStatus }) {
           </div>
 
           <div className="overflow-hidden rounded-lg bg-white p-3">
-            {payment?.payment_qr_url ? (
+            {qrImage ? (
               <img
-                src={payment.payment_qr_url}
+                src={qrImage}
                 alt="QRIS pembayaran Kedai Sigma"
                 className="mx-auto max-h-[430px] w-full object-contain"
               />
@@ -373,7 +376,9 @@ function QrisPaymentModal({ payment, isChecking, onClose, onCheckStatus }) {
           </div>
 
           <p className="text-center text-xs font-semibold leading-5 text-[#E6BDB8]">
-            Menunggu konfirmasi pembayaran dari GoPay/Midtrans.
+            {isStaticQris
+              ? `Bayar sesuai nominal ${formatRupiah(total)} lalu tunjukkan bukti ke admin.`
+              : "Menunggu konfirmasi pembayaran dari GoPay/Midtrans."}
           </p>
         </div>
 
