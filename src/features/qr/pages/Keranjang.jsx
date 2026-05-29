@@ -378,7 +378,7 @@ function QrisPaymentModal({ payment, isChecking, onClose, onCheckStatus }) {
           <p className="text-center text-xs font-semibold leading-5 text-[#E6BDB8]">
             {isStaticQris
               ? `Bayar sesuai nominal ${formatRupiah(total)} lalu tunjukkan bukti ke admin.`
-              : "Menunggu konfirmasi pembayaran dari GoPay/Midtrans."}
+              : "Menunggu konfirmasi pembayaran dari Xendit QRIS."}
           </p>
         </div>
 
