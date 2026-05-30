@@ -7,6 +7,12 @@ const isPrivateNetworkHost = (hostname) =>
   /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname);
 
 const resolveApiBaseUrl = () => {
+  const configuredApiBaseUrl = import.meta.env?.VITE_API_BASE_URL;
+
+  if (configuredApiBaseUrl) {
+    return configuredApiBaseUrl;
+  }
+
   if (typeof window !== "undefined" && window.location?.hostname) {
     const { hostname, protocol } = window.location;
 
@@ -15,13 +21,7 @@ const resolveApiBaseUrl = () => {
     }
   }
 
-  const configuredApiBaseUrl = import.meta.env?.VITE_API_BASE_URL;
-
-  if (configuredApiBaseUrl) {
-    return configuredApiBaseUrl;
-  }
-
-  return "http://127.0.0.1:8000/api";
+  return "https://web-kedai-sigma-backend.vercel.app/api";
 };
 
 export const API_BASE_URL = resolveApiBaseUrl();
