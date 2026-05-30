@@ -532,7 +532,7 @@ export default function Home() {
       <div className="h-1 bg-[#050F1C]" />
 
       <section className="relative isolate flex min-h-[921px] items-center overflow-hidden px-6 py-24 md:px-24">
-        <div className="pointer-events-none absolute left-[20%] top-[25%] -z-10 select-none font-['Space_Grotesk',sans-serif] text-[230px] font-black uppercase leading-none tracking-[-0.05em] text-[#DC2626]/24 md:left-[22%] md:text-[430px]">
+        <div className="pointer-events-none absolute left-[20%] top-[25%] -z-10 select-none font-['Space_Grotesk',sans-serif] text-[230px] font-black uppercase leading-none tracking-[-0.05em] text-[#5C0C0C]/55 md:left-[22%] md:text-[430px]">
           SIGMA
         </div>
 
