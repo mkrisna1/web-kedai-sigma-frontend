@@ -4,6 +4,7 @@ import {
   deleteAdminReview,
   getAdminReviews,
   replyAdminReview,
+  resolveApiAssetUrl,
 } from "../../../services/api";
 
 const getInitials = (name) =>
@@ -52,7 +53,7 @@ const mapReviewFromApi = (review) => {
     initials: getInitials(review.nama_pelanggan),
     photos: photos.map((src, index) => ({
       index,
-      src,
+      src: resolveApiAssetUrl(src),
       alt: `Foto review ${review.nama_pelanggan || "pelanggan"} ${index + 1}`,
     })),
   };
@@ -260,7 +261,7 @@ function PhotoPreviewModal({ target, onClose, onDelete }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/80 p-6 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/80 p-4 backdrop-blur-sm sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-label="Preview foto review"
@@ -325,10 +326,10 @@ function ReplyModal({ review, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/40 p-6 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-[520px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-2xl bg-white shadow-2xl shadow-black/25"
+        className="max-h-[calc(100dvh-32px)] w-full max-w-[520px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-y-auto rounded-2xl bg-white shadow-2xl shadow-black/25"
       >
         <header className="border-b border-[#E6E8EA] px-6 py-5">
           <h2 className="text-xl font-extrabold text-[#191C1E]">
@@ -372,8 +373,8 @@ function DeleteReviewModal({ review, onClose, onConfirm }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/40 p-6 backdrop-blur-sm">
-      <section className="w-full max-w-sm animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] rounded-2xl bg-white p-8 shadow-2xl shadow-black/25">
+    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
+      <section className="max-h-[calc(100dvh-32px)] w-full max-w-sm animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-y-auto rounded-2xl bg-white p-8 shadow-2xl shadow-black/25">
         <h2 className="text-xl font-bold text-[#191C1E]">
           Hapus review dari {review.name}?
         </h2>
@@ -407,8 +408,8 @@ function DeletePhotoModal({ target, onClose, onConfirm }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/40 p-6 backdrop-blur-sm">
-      <section className="w-full max-w-sm animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] rounded-2xl bg-white p-8 shadow-2xl shadow-black/25">
+    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
+      <section className="max-h-[calc(100dvh-32px)] w-full max-w-sm animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-y-auto rounded-2xl bg-white p-8 shadow-2xl shadow-black/25">
         <h2 className="text-xl font-bold text-[#191C1E]">
           Hapus foto review?
         </h2>

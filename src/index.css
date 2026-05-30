@@ -106,21 +106,17 @@ body {
 
 @keyframes page-route-in {
   from {
-    filter: blur(6px);
     opacity: 0;
-    translate: 0 18px;
   }
 
   to {
-    filter: blur(0);
     opacity: 1;
-    translate: 0 0;
   }
 }
 
 .page-route-transition {
-  animation: page-route-in 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  will-change: filter, opacity, translate;
+  animation: page-route-in 240ms ease-out both;
+  will-change: opacity;
 }
 
 @keyframes location-scroll-track {

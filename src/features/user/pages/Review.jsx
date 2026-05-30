@@ -5,14 +5,18 @@ import {
   createPublicReview,
   getPublicReviews,
   likePublicReview,
+  resolveApiAssetUrl,
 } from "../../../services/api";
 
 const LIKE_STORAGE_KEY = "kedai-sigma-liked-reviews";
 const REVIEW_PHOTO_MAX_COUNT = 5;
+const REVIEW_PHOTO_ALLOWED_TYPES = ["image/jpeg", "image/png"];
+const REVIEW_PHOTO_ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png"];
+const REVIEW_PHOTO_TYPE_ERROR =
+  "Foto review hanya boleh berformat PNG atau JPG.";
 const REVIEW_PHOTO_MAX_DIMENSION = 1600;
-const REVIEW_PHOTO_TARGET_BYTES = 420 * 1024;
+const REVIEW_PHOTO_TARGET_BYTES = 1200 * 1024;
 const REVIEW_PHOTO_MIN_QUALITY = 0.62;
-const REVIEW_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 const advantages = [
   {
@@ -118,9 +122,16 @@ const canvasToBlob = (canvas, type, quality) =>
     canvas.toBlob(resolve, type, quality);
   });
 
+const isAllowedReviewPhoto = (file) =>
+  file &&
+  REVIEW_PHOTO_ALLOWED_TYPES.includes(file.type) &&
+  REVIEW_PHOTO_ALLOWED_EXTENSIONS.some((extension) =>
+    file.name.toLowerCase().endsWith(extension),
+  );
+
 const compressReviewPhoto = async (file) => {
-  if (!file.type.startsWith("image/")) {
-    return file;
+  if (!isAllowedReviewPhoto(file)) {
+    throw new Error(REVIEW_PHOTO_TYPE_ERROR);
   }
 
   try {
@@ -185,7 +196,7 @@ const mapReviewFromApi = (review) => {
     replies: review.balasan_admin ? "1 balasan" : "Balas",
     adminReply: review.balasan_admin || "",
     photos: photos.map((src, index) => ({
-      src,
+      src: resolveApiAssetUrl(src),
       alt: `Foto review ${review.nama_pelanggan || "pelanggan"} ${index + 1}`,
     })),
   };
@@ -521,7 +532,7 @@ function PhotoPreviewModal({ photo, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 [animation:review-backdrop-in_220ms_ease-out]"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80 p-4 [animation:review-backdrop-in_220ms_ease-out]"
       role="dialog"
       aria-modal="true"
       aria-label="Preview foto review"
@@ -558,7 +569,7 @@ function PhotoPreviewModal({ photo, onClose }) {
 function ReviewSuccessPopup({ onClose }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6 [animation:review-backdrop-in_220ms_ease-out]"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 px-4 py-6 [animation:review-backdrop-in_220ms_ease-out]"
       role="dialog"
       aria-modal="true"
       aria-labelledby="review-success-title"
@@ -632,13 +643,14 @@ function ReviewForm({ onReviewCreated }) {
     clearSubmitWarning();
 
     const files = Array.from(event.target.files || []).slice(0, REVIEW_PHOTO_MAX_COUNT);
-    const invalidFile = files.find((file) => !REVIEW_PHOTO_TYPES.includes(file.type));
+    const invalidFile = files.find((file) => !isAllowedReviewPhoto(file));
 
     if (invalidFile) {
       event.target.value = "";
+      photoPreviews.forEach((photo) => URL.revokeObjectURL(photo.url));
       setPhotoFiles([]);
       setPhotoPreviews([]);
-      setSubmitWarning("Upload review hanya boleh foto JPG, PNG, atau WEBP. PDF/dokumen tidak bisa.");
+      setSubmitWarning(REVIEW_PHOTO_TYPE_ERROR);
       return;
     }
 
@@ -714,14 +726,14 @@ function ReviewForm({ onReviewCreated }) {
 
   return (
     <>
-      <section className="relative overflow-hidden bg-[#16202E] p-6 sm:p-8 lg:p-12">
+      <section className="relative mx-auto w-full max-w-[760px] overflow-hidden bg-[#16202E] p-5 sm:p-6 lg:p-8">
         <div className="relative z-10">
-          <h2 className="font-['Space_Grotesk',sans-serif] text-3xl font-bold uppercase leading-10 text-[#D9E3F6] sm:text-4xl">
+          <h2 className="font-['Space_Grotesk',sans-serif] text-2xl font-bold uppercase leading-8 text-[#D9E3F6] sm:text-3xl">
             Tinggalkan jejak anda
           </h2>
 
-          <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-8">
-            <div className="grid gap-8 md:grid-cols-2">
+          <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-6">
+            <div className="grid gap-6 md:grid-cols-2">
               <label className="relative block pt-2">
                 <span className="absolute left-4 top-0 bg-[#16202E] px-2 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 text-[#EEC200]">
                   Identitas
@@ -796,13 +808,13 @@ function ReviewForm({ onReviewCreated }) {
                     type="file"
                     name="photos"
                     multiple
-                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                    accept="image/jpeg,image/png,.jpg,.jpeg,.png"
                     onChange={handlePhotoChange}
                     className="sr-only"
                   />
                 </label>
                 <p className="max-w-[150px] font-['Be_Vietnam_Pro',sans-serif] text-[10px] font-bold uppercase leading-3 text-[#64748B]">
-                  Maksimal 5 foto.
+                  PNG/JPG, maksimal 5 foto.
                 </p>
               </div>
 
@@ -933,9 +945,9 @@ export default function Review() {
     <div className="min-h-screen bg-[#091421] text-[#D9E3F6]">
       <div className="h-1 bg-[#050F1C]" />
 
-      <section className="mx-auto flex w-full max-w-[1280px] flex-col gap-12 px-6 py-20 sm:px-8 lg:px-12 lg:py-24 xl:px-12">
-        <header className="flex flex-col gap-2">
-          <h1 className="font-['Space_Grotesk',sans-serif] text-6xl font-bold uppercase leading-none text-[#D9E3F6] sm:text-8xl">
+      <section className="mx-auto flex w-full max-w-[900px] flex-col gap-8 px-6 py-8 sm:px-8 md:py-10 lg:px-10 lg:py-12 xl:px-10">
+        <header className="mx-auto flex w-full max-w-[760px] flex-col gap-2">
+          <h1 className="font-['Space_Grotesk',sans-serif] text-5xl font-bold uppercase leading-none text-[#D9E3F6] sm:text-6xl">
             Reviews
           </h1>
           <p className="font-['Be_Vietnam_Pro',sans-serif] text-sm font-bold uppercase leading-5 tracking-[0.1em] text-[#EEC200]">
@@ -943,7 +955,7 @@ export default function Review() {
           </p>
         </header>
 
-        <div className="grid gap-8 lg:grid-cols-[minmax(280px,373px)_1fr]">
+        <div className="mx-auto grid w-full max-w-[900px] gap-8 lg:grid-cols-[minmax(260px,320px)_1fr]">
           <RatingSummary reviews={sortedReviews} />
 
           <div className="flex flex-col gap-8">
@@ -1002,13 +1014,14 @@ export default function Review() {
                 </button>
               </div>
             )}
-            <ReviewForm
-              onReviewCreated={(review) =>
-                setReviews((currentReviews) => [review, ...currentReviews])
-              }
-            />
           </div>
         </div>
+
+        <ReviewForm
+          onReviewCreated={(review) =>
+            setReviews((currentReviews) => [review, ...currentReviews])
+          }
+        />
       </section>
       <PhotoPreviewModal
         photo={previewPhoto}

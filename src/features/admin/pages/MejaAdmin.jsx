@@ -394,10 +394,10 @@ function AddTableModal({ suggestedId, existingTables, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/40 p-6 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-[520px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-2xl bg-white shadow-2xl shadow-black/25"
+        className="max-h-[calc(100dvh-32px)] w-full max-w-[520px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-y-auto rounded-2xl bg-white shadow-2xl shadow-black/25"
       >
         <header className="flex items-center justify-between border-b border-[#E6E8EA] px-6 py-5">
           <div>
@@ -484,14 +484,39 @@ function AddTableModal({ suggestedId, existingTables, onClose, onSave }) {
   );
 }
 
+function ActionSuccessModal({ message, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
+      <section className="w-full max-w-sm animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-2xl bg-white shadow-2xl shadow-black/25">
+        <header className="border-b border-[#E6E8EA] px-6 py-5">
+          <p className="text-lg font-extrabold text-[#191C1E]">Sistem</p>
+        </header>
+        <div className="px-6 py-8 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-[#DFF8E8] text-sm font-black uppercase text-[#006C49]">
+            OK
+          </div>
+          <p className="mt-5 text-sm font-semibold leading-6 text-[#434655]">{message}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-12 w-full items-center justify-center bg-gradient-to-br from-[#004AC6] to-[#2563EB] text-sm font-bold text-white transition hover:brightness-105"
+        >
+          Oke
+        </button>
+      </section>
+    </div>
+  );
+}
+
 function DeleteConfirmModal({ table, onCancel, onConfirm }) {
   if (!table) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/40 p-6 backdrop-blur-sm">
-      <section className="w-full max-w-sm animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] rounded-2xl bg-white p-8 shadow-2xl shadow-black/25">
+    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
+      <section className="max-h-[calc(100dvh-32px)] w-full max-w-sm animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-y-auto rounded-2xl bg-white p-8 shadow-2xl shadow-black/25">
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#BA1A1A]/10 text-[#BA1A1A]">
           <TrashIcon className="h-5 w-5" />
         </div>
@@ -545,8 +570,8 @@ function QrPreviewModal({ table, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/40 p-6 backdrop-blur-sm">
-      <section className="w-full max-w-[560px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-2xl bg-white shadow-2xl shadow-black/25">
+    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
+      <section className="max-h-[calc(100dvh-32px)] w-full max-w-[560px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-y-auto rounded-2xl bg-white shadow-2xl shadow-black/25">
         <header className="flex items-center justify-between border-b border-[#E6E8EA] px-6 py-5">
           <div>
             <h2 className="text-xl font-extrabold text-[#191C1E]">
@@ -789,6 +814,7 @@ export default function MejaAdmin() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [qrTarget, setQrTarget] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
   const suggestedTableId = useMemo(() => getNextTableId(tables), [tables]);
 
   useEffect(() => {
@@ -890,6 +916,7 @@ export default function MejaAdmin() {
         withTableDisplayIds([...currentTables, createdTable]),
       );
       setIsAddModalOpen(false);
+      setSuccessMessage(`${createdTable.name} berhasil ditambahkan.`);
     } catch (error) {
       console.error("Gagal menambah meja:", error);
       window.alert("Gagal menambah meja. Pastikan nomor meja belum digunakan.");
@@ -937,18 +964,24 @@ export default function MejaAdmin() {
   const handleConfirmDelete = async () => {
     const target = deleteTarget;
 
+    if (!target) {
+      return;
+    }
+
     setTables((currentTables) =>
       withTableDisplayIds(currentTables.filter((table) => table.id !== target.id))
     );
     setDeleteTarget(null);
 
-    if (target?.backendId) {
+    if (target.backendId) {
       try {
         await deleteAdminTable(target.backendId);
       } catch (error) {
         console.error("Gagal menghapus meja:", error);
       }
     }
+
+    setSuccessMessage(`${target.name} berhasil dihapus.`);
   };
 
   const handleGenerateQr = async (table) => {
@@ -1062,6 +1095,13 @@ export default function MejaAdmin() {
 
       {qrTarget && (
         <QrPreviewModal table={qrTarget} onClose={() => setQrTarget(null)} />
+      )}
+
+      {successMessage && (
+        <ActionSuccessModal
+          message={successMessage}
+          onClose={() => setSuccessMessage("")}
+        />
       )}
     </main>
   );

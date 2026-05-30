@@ -9,6 +9,17 @@ const navLinks = [
   { label: "Review", href: "/review" },
 ];
 
+const scrollPageToTop = () => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const options = { top: 0, left: 0, behavior: "smooth" };
+
+  window.scrollTo(options);
+  window.requestAnimationFrame?.(() => window.scrollTo(options));
+};
+
 export default function Navbar() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -20,17 +31,17 @@ export default function Navbar() {
     ),
     0
   );
-  const ctaLink =
-    location.pathname === "/reservasi"
-      ? { href: "/menu", label: "Menu" }
-      : { href: "/reservasi", label: "Reservasi" };
+  const handleNavigate = () => {
+    setMenuOpen(false);
+    scrollPageToTop();
+  };
 
   return (
     <header className="fixed left-0 right-0 top-0 z-50 h-[95px] bg-[#091421]/90 px-6 py-4 shadow-[0_0_40px_rgba(220,38,38,0.05)] backdrop-blur-md">
       <Link
         to="/"
         className="absolute left-4 top-1/2 flex h-10 w-[173px] -translate-y-1/2 items-center justify-start transition duration-300 hover:opacity-90"
-        onClick={() => setMenuOpen(false)}
+        onClick={handleNavigate}
       >
         <img
           src={logoSigma}
@@ -56,6 +67,7 @@ export default function Navbar() {
             <Link
               key={link.href}
               to={link.href}
+              onClick={handleNavigate}
               className={`flex h-10 items-start justify-center pt-1 font-grotesk text-base uppercase leading-6 tracking-normal transition-colors ${
                 isActive
                   ? "font-bold text-[#FFB4AB]"
@@ -67,13 +79,6 @@ export default function Navbar() {
           );
         })}
       </nav>
-
-      <Link
-        to={ctaLink.href}
-        className="absolute right-6 top-1/2 hidden h-10 w-[173px] -translate-y-1/2 items-center justify-center bg-[#DC2626] px-6 py-2 text-center font-grotesk text-base font-bold uppercase leading-6 text-[#FFF6F5] transition-colors hover:bg-red-700 md:flex"
-      >
-        {ctaLink.label}
-      </Link>
 
       <button
         type="button"
@@ -111,7 +116,7 @@ export default function Navbar() {
               <Link
                 key={link.href}
                 to={link.href}
-                onClick={() => setMenuOpen(false)}
+                onClick={handleNavigate}
                 className={`font-grotesk text-base font-black uppercase tracking-normal ${
                   isActive ? "text-[#FFB4AB]" : "text-[#94A3B8]"
                 }`}
@@ -120,14 +125,6 @@ export default function Navbar() {
               </Link>
             );
           })}
-
-          <Link
-            to={ctaLink.href}
-            onClick={() => setMenuOpen(false)}
-            className="mt-2 flex items-center justify-center bg-[#DC2626] px-6 py-3 font-grotesk text-base font-bold uppercase text-[#FFF6F5]"
-          >
-            {ctaLink.label}
-          </Link>
         </div>
       )}
     </header>

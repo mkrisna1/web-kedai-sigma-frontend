@@ -7,6 +7,12 @@ const isPrivateNetworkHost = (hostname) =>
   /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname);
 
 const resolveApiBaseUrl = () => {
+  const configuredApiBaseUrl = import.meta.env?.VITE_API_BASE_URL;
+
+  if (configuredApiBaseUrl) {
+    return configuredApiBaseUrl;
+  }
+
   if (typeof window !== "undefined" && window.location?.hostname) {
     const { hostname, protocol } = window.location;
 
@@ -15,14 +21,44 @@ const resolveApiBaseUrl = () => {
     }
   }
 
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
-  }
-
-  return "http://127.0.0.1:8000/api";
+  return "https://web-kedai-sigma-backend.vercel.app/api";
 };
 
-const API_BASE_URL = resolveApiBaseUrl();
+export const API_BASE_URL = resolveApiBaseUrl();
+export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+
+export const resolveApiAssetUrl = (value) => {
+  const rawValue = String(value || "").trim();
+
+  if (!rawValue) {
+    return "";
+  }
+
+  if (/^(data:|blob:)/i.test(rawValue)) {
+    return rawValue;
+  }
+
+  try {
+    const apiOriginUrl = new URL(API_ORIGIN);
+    const assetUrl = new URL(rawValue, `${apiOriginUrl.origin}/`);
+
+    if (
+      /^https?:$/i.test(assetUrl.protocol) &&
+      isLocalHost(assetUrl.hostname)
+    ) {
+      assetUrl.protocol = apiOriginUrl.protocol;
+      assetUrl.hostname = apiOriginUrl.hostname;
+      assetUrl.port = apiOriginUrl.port;
+    }
+
+    return assetUrl.toString();
+  } catch (error) {
+    console.warn("Gagal menyusun URL asset:", error);
+
+    return rawValue;
+  }
+};
+
 const ADMIN_TOKEN_KEY = "admin_token";
 const ADMIN_DATA_KEY = "admin_data";
 
