@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   getAdminNotifications,
   markAdminNotificationRead,
@@ -119,6 +119,7 @@ export default function TopBar({ onMenuClick }) {
   const [seenNotificationIds, setSeenNotificationIds] = useState(() => new Set());
   const [errorMessage, setErrorMessage] = useState("");
   const location = useLocation();
+  const navigate = useNavigate();
   const dropdownRef = useRef(null);
 
   const actionableNotifications = useMemo(
@@ -173,6 +174,18 @@ export default function TopBar({ onMenuClick }) {
 
   const handleMarkAsRead = async (notification) => {
     removeNotification(notification.id);
+
+    try {
+      await markAdminNotificationRead(notification.type, notification.entityId);
+    } catch (error) {
+      setErrorMessage(error.message || "Notifikasi belum bisa ditandai dibaca.");
+    }
+  };
+
+  const handleOpenNotification = async (notification) => {
+    removeNotification(notification.id);
+    setIsOpen(false);
+    navigate(notification.to);
 
     try {
       await markAdminNotificationRead(notification.type, notification.entityId);
@@ -366,19 +379,19 @@ export default function TopBar({ onMenuClick }) {
                       {notification.description}
                     </span>
                     <span className="mt-3 flex flex-wrap gap-2">
-                      <Link
-                        to={notification.to}
-                        onClick={() => setIsOpen(false)}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenNotification(notification)}
                         className="rounded-md bg-blue-50 px-2.5 py-1.5 text-[11px] font-black text-blue-700 transition hover:bg-blue-100"
                       >
                         Buka
-                      </Link>
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleMarkAsRead(notification)}
                         className="rounded-md bg-slate-100 px-2.5 py-1.5 text-[11px] font-black text-slate-700 transition hover:bg-slate-200"
                       >
-                        Tandai dibaca
+                        Hapus
                       </button>
                     </span>
                   </span>
