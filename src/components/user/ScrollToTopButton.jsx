@@ -19,14 +19,12 @@ function ArrowUpIcon({ className = "h-7 w-7" }) {
 }
 
 export default function ScrollToTopButton() {
-  const [isMounted, setIsMounted] = useState(false);
+  const [isMounted] = useState(() => typeof document !== "undefined");
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const animationTimer = useRef(null);
 
   useEffect(() => {
-    setIsMounted(true);
-
     const handleScroll = () => setIsVisible(window.scrollY > 420);
 
     handleScroll();

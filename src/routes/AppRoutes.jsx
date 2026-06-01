@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 
 // User
 import Home from "../features/user/pages/Home";
@@ -14,6 +15,7 @@ import Keranjang from "../features/qr/pages/Keranjang";
 
 // Admin
 import Login from "../features/admin/pages/Login";
+import StrukAdmin from "../features/admin/pages/StrukAdmin";
 import AdminLayout from "../layouts/admin/AdminLayout";
 import Dashboard from "../features/admin/pages/Dashboard";
 import Pesanan from "../features/admin/pages/Pesanan";
@@ -44,9 +46,11 @@ function DashboardShortcut() {
 function AppRoutes() {
   return (
     <BrowserRouter>
+      <Toaster position="top-right" />
       <Routes>
         {/* PUBLIC */}
         <Route path="/login" element={<Login />} />
+        <Route path="/struk/:id" element={<StrukAdmin />} />
         <Route path="/dashboard" element={<DashboardShortcut />} />
 
         {/* QR */}

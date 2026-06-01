@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ViewportPortal from "../../../components/common/ViewportPortal";
 import { getAdminDashboard } from "../../../services/api";
 
 const emptyDashboard = {
@@ -74,11 +75,6 @@ const getIndonesiaToday = () => {
   return new Date(getPart("year"), getPart("month") - 1, getPart("day"));
 };
 
-const yearOptions = Array.from(
-  { length: 7 },
-  (_, index) => getIndonesiaToday().getFullYear() - 3 + index,
-);
-
 const formatDateValue = (date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
     date.getDate(),
@@ -115,6 +111,30 @@ const mapTransaction = (order) => ({
   time: formatTime(order.tgl_pesanan || order.created_at),
   total: formatRupiah(order.total_harga),
 });
+
+const buildTrafficWavePath = (points) => {
+  if (points.length === 0) {
+    return "";
+  }
+
+  if (points.length === 1) {
+    return `M ${points[0].x} ${points[0].y}`;
+  }
+
+  return points.reduce((path, point, index) => {
+    if (index === 0) {
+      return `M ${point.x} ${point.y}`;
+    }
+
+    const previousPoint = points[index - 1];
+    const controlX = previousPoint.x;
+    const controlY = previousPoint.y;
+    const midX = (previousPoint.x + point.x) / 2;
+    const midY = (previousPoint.y + point.y) / 2;
+
+    return `${path} Q ${controlX} ${controlY} ${midX} ${midY}`;
+  }, "") + ` T ${points.at(-1).x} ${points.at(-1).y}`;
+};
 
 function CalendarPopup({ value, onClose, onSelect }) {
   const initialDate = parseDateValue(value);
@@ -153,7 +173,8 @@ function CalendarPopup({ value, onClose, onSelect }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/20 p-4 sm:p-6">
+    <ViewportPortal>
+      <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/20 p-4 sm:p-6">
       <div className="flex max-h-[calc(100dvh-32px)] h-[495px] w-full max-w-96 animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col overflow-y-auto rounded-lg bg-white shadow-[0_10px_30px_rgba(25,28,30,0.12)]">
         <div className="flex h-[427px] w-full flex-col gap-8 p-6">
           <div className="flex h-7 w-full items-center justify-between">
@@ -234,7 +255,8 @@ function CalendarPopup({ value, onClose, onSelect }) {
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </ViewportPortal>
   );
 }
 
@@ -244,8 +266,8 @@ const Dashboard = () => {
   const [incomePeriod, setIncomePeriod] = useState("day");
   const [selectedDate, setSelectedDate] = useState(formatDateValue(getIndonesiaToday()));
   const today = getIndonesiaToday();
-  const trafficMonth = today.getMonth() + 1;
-  const trafficYear = today.getFullYear();
+  const [trafficMonth, setTrafficMonth] = useState(today.getMonth() + 1);
+  const [trafficYear, setTrafficYear] = useState(today.getFullYear());
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   useEffect(() => {
@@ -301,15 +323,40 @@ const Dashboard = () => {
     (peak, item) => ((Number(item.total) || 0) > (Number(peak?.total) || 0) ? item : peak),
     null,
   );
-  const trafficBars = trafficData.map((item) => ({
-    ...item,
-    height:
-      highestTraffic === 0
-        ? "0%"
-        : `${Math.max(((Number(item.total) || 0) / highestTraffic) * 100, 8)}%`,
-    color: item.tanggal === busiestDay?.tanggal ? "bg-[#10B981]" : "bg-[#2563EB]",
-  }));
+  const trafficChart = {
+    width: 320,
+    height: 176,
+    paddingX: 10,
+    paddingY: 18,
+  };
+  const trafficWavePoints = trafficData.map((item, index) => {
+    const total = Number(item.total) || 0;
+    const chartWidth = trafficChart.width - trafficChart.paddingX * 2;
+    const chartHeight = trafficChart.height - trafficChart.paddingY * 2;
+    const x =
+      trafficChart.paddingX +
+      (trafficData.length <= 1 ? chartWidth / 2 : (index / (trafficData.length - 1)) * chartWidth);
+    const y =
+      trafficChart.height -
+      trafficChart.paddingY -
+      (highestTraffic === 0 ? 0 : (total / highestTraffic) * chartHeight);
 
+    return {
+      ...item,
+      total,
+      x,
+      y,
+      isPeak: item.tanggal === busiestDay?.tanggal,
+    };
+  });
+  const trafficWavePath = buildTrafficWavePath(trafficWavePoints);
+  const trafficAreaPath = trafficWavePath
+    ? `${trafficWavePath} L ${trafficWavePoints.at(-1).x} ${
+        trafficChart.height - trafficChart.paddingY
+      } L ${trafficWavePoints[0].x} ${trafficChart.height - trafficChart.paddingY} Z`
+    : "";
+  const trafficLabelItems = trafficWavePoints.filter((item) => item.hari === 1 || item.hari % 5 === 0);
+  const hasTrafficData = trafficWavePoints.some((item) => item.total > 0);
   return (
     <div className="bg-[#F7F9FB] font-['Inter',Arial,sans-serif]">
       <div className="mx-auto max-w-[1120px] space-y-6">
@@ -487,25 +534,104 @@ const Dashboard = () => {
                   Hari paling ramai berdasarkan pesanan.
                 </p>
               </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={trafficMonth}
+                  onChange={(e) => setTrafficMonth(Number(e.target.value))}
+                  className="h-8 rounded-lg border border-[#E6E8EA] bg-[#F2F4F6] px-2 text-xs font-bold text-[#191C1E] outline-none focus:border-[#2563EB]"
+                >
+                  {monthNames.map((name, index) => (
+                    <option key={index + 1} value={index + 1}>{name}</option>
+                  ))}
+                </select>
+                <select
+                  value={trafficYear}
+                  onChange={(e) => setTrafficYear(Number(e.target.value))}
+                  className="h-8 rounded-lg border border-[#E6E8EA] bg-[#F2F4F6] px-2 text-xs font-bold text-[#191C1E] outline-none focus:border-[#2563EB]"
+                >
+                  {Array.from({ length: 5 }, (_, i) => today.getFullYear() - i).map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div className="relative mt-8 flex h-56 shrink-0 items-end gap-1 overflow-hidden border-b border-l border-gray-200 px-1">
-              {trafficBars.map((item, index) => (
-                <div
-                  key={item.tanggal || index}
-                  className={`min-w-0 flex-1 rounded-t ${item.color}`}
-                  style={{ height: item.height }}
-                  title={`${item.label}: ${item.total} pesanan`}
-                />
-              ))}
+            <div className="relative mt-8 h-56 shrink-0 overflow-hidden rounded-xl border border-[#E6E8EA] bg-gradient-to-b from-[#F8FAFF] to-white px-2 py-3">
+              <svg
+                viewBox={`0 0 ${trafficChart.width} ${trafficChart.height}`}
+                className="h-full w-full"
+                role="img"
+                aria-label="Grafik gelombang traffic pesanan bulanan"
+                preserveAspectRatio="none"
+              >
+                <defs>
+                  <linearGradient id="trafficWaveFill" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#2563EB" stopOpacity="0.24" />
+                    <stop offset="100%" stopColor="#2563EB" stopOpacity="0.02" />
+                  </linearGradient>
+                  <linearGradient id="trafficWaveLine" x1="0" x2="1" y1="0" y2="0">
+                    <stop offset="0%" stopColor="#2563EB" />
+                    <stop offset="100%" stopColor="#10B981" />
+                  </linearGradient>
+                </defs>
+
+                {[0, 1, 2, 3].map((line) => {
+                  const y =
+                    trafficChart.paddingY +
+                    (line / 3) * (trafficChart.height - trafficChart.paddingY * 2);
+
+                  return (
+                    <line
+                      key={line}
+                      x1={trafficChart.paddingX}
+                      x2={trafficChart.width - trafficChart.paddingX}
+                      y1={y}
+                      y2={y}
+                      stroke="#E6E8EA"
+                      strokeWidth="1"
+                    />
+                  );
+                })}
+
+                {trafficAreaPath && (
+                  <path d={trafficAreaPath} fill="url(#trafficWaveFill)" />
+                )}
+                {trafficWavePath && (
+                  <path
+                    d={trafficWavePath}
+                    fill="none"
+                    stroke="url(#trafficWaveLine)"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="4"
+                  />
+                )}
+                {trafficWavePoints.map((item, index) => (
+                  <circle
+                    key={item.tanggal || index}
+                    cx={item.x}
+                    cy={item.y}
+                    r={item.isPeak ? 5.5 : 3.3}
+                    fill={item.isPeak ? "#10B981" : "#2563EB"}
+                    stroke="#FFFFFF"
+                    strokeWidth="2"
+                  >
+                    <title>{`${item.label}: ${item.total} pesanan`}</title>
+                  </circle>
+                ))}
+              </svg>
+
+              {!hasTrafficData && (
+                <div className="absolute inset-0 flex items-center justify-center text-center text-xs font-bold text-[#94A3B8]">
+                  Belum ada traffic pesanan.
+                </div>
+              )}
             </div>
 
             <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[9px] font-bold text-[#94A3B8]">
-              {trafficBars
-                .filter((item) => item.hari === 1 || item.hari % 5 === 0)
-                .map((item) => (
-                  <span key={item.tanggal}>{item.hari}</span>
-                ))}
+              {trafficLabelItems.map((item) => (
+                <span key={item.tanggal}>{item.hari}</span>
+              ))}
             </div>
 
             <div className="mt-6 space-y-3 text-sm">

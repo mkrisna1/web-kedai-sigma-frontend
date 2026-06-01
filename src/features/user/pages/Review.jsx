@@ -1,19 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import ViewportPortal from "../../../components/common/ViewportPortal";
 import logoSigma from "../../../assets/Logo Sigma.png";
 import ScrollToTopButton from "../../../components/user/ScrollToTopButton";
 import {
   createPublicReview,
   getPublicReviews,
-  likePublicReview,
   resolveApiAssetUrl,
 } from "../../../services/api";
 
-const LIKE_STORAGE_KEY = "kedai-sigma-liked-reviews";
 const REVIEW_PHOTO_MAX_COUNT = 5;
-const REVIEW_PHOTO_ALLOWED_TYPES = ["image/jpeg", "image/png"];
-const REVIEW_PHOTO_ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png"];
+const REVIEW_PHOTO_MAX_BYTES = 2 * 1024 * 1024;
+const REVIEW_PHOTO_SOURCE_MAX_BYTES = 12 * 1024 * 1024;
+const REVIEW_PHOTO_TOTAL_MAX_BYTES = 10 * 1024 * 1024;
+const REVIEW_PHOTO_ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const REVIEW_PHOTO_ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"];
 const REVIEW_PHOTO_TYPE_ERROR =
-  "Foto review hanya boleh berformat PNG atau JPG.";
+  "Foto review hanya boleh berupa file gambar.";
+const REVIEW_PHOTO_SIZE_ERROR =
+  "Ukuran foto terlalu besar. Maksimal file asli 12MB.";
 const REVIEW_PHOTO_MAX_DIMENSION = 1600;
 const REVIEW_PHOTO_TARGET_BYTES = 1200 * 1024;
 const REVIEW_PHOTO_MIN_QUALITY = 0.62;
@@ -76,29 +80,6 @@ const formatReviewTime = (value) => {
   return formatter.format(Math.round(diffInHours / 24), "day");
 };
 
-const readLikedReviews = () => {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
-  try {
-    const storedLikes = JSON.parse(window.localStorage.getItem(LIKE_STORAGE_KEY));
-
-    return Array.isArray(storedLikes) ? storedLikes.map(String) : [];
-  } catch (error) {
-    console.warn("Gagal membaca data like review:", error);
-    return [];
-  }
-};
-
-const saveLikedReviews = (reviewIds) => {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  window.localStorage.setItem(LIKE_STORAGE_KEY, JSON.stringify(reviewIds));
-};
-
 const loadPhotoImage = (file) =>
   new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
@@ -119,15 +100,35 @@ const loadPhotoImage = (file) =>
 
 const canvasToBlob = (canvas, type, quality) =>
   new Promise((resolve) => {
-    canvas.toBlob(resolve, type, quality);
+    if (canvas.toBlob) {
+      canvas.toBlob(resolve, type, quality);
+      return;
+    }
+
+    const dataUrl = canvas.toDataURL(type, quality);
+    const [header, data] = dataUrl.split(",");
+    const mimeType = header.match(/data:(.*?);/)?.[1] || type;
+    const bytes = atob(data);
+    const buffer = new Uint8Array(bytes.length);
+
+    for (let index = 0; index < bytes.length; index += 1) {
+      buffer[index] = bytes.charCodeAt(index);
+    }
+
+    resolve(new Blob([buffer], { type: mimeType }));
   });
 
 const isAllowedReviewPhoto = (file) =>
   file &&
-  REVIEW_PHOTO_ALLOWED_TYPES.includes(file.type) &&
-  REVIEW_PHOTO_ALLOWED_EXTENSIONS.some((extension) =>
-    file.name.toLowerCase().endsWith(extension),
-  );
+  !["image/svg+xml", "image/gif"].includes(file.type) &&
+  (REVIEW_PHOTO_ALLOWED_TYPES.includes(file.type) ||
+    file.type.startsWith("image/") ||
+    REVIEW_PHOTO_ALLOWED_EXTENSIONS.some((extension) =>
+      file.name.toLowerCase().endsWith(extension),
+    ));
+
+const isAllowedReviewPhotoSize = (file) =>
+  file && file.size <= REVIEW_PHOTO_SOURCE_MAX_BYTES;
 
 const compressReviewPhoto = async (file) => {
   if (!isAllowedReviewPhoto(file)) {
@@ -213,24 +214,6 @@ function StarIcon({ className = "h-5 w-5", filled = true }) {
       aria-hidden="true"
     >
       <path d="m12 2 3.09 6.26L22 9.27l-5 4.86 1.18 6.87L12 17.77 5.82 21 7 14.13l-5-4.86 6.91-1.01L12 2Z" />
-    </svg>
-  );
-}
-
-function LikeIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M7 10v11H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3Z" />
-      <path d="M7 10 12 2a3 3 0 0 1 3 3v4h5a2 2 0 0 1 2 2l-1 8a2 2 0 0 1-2 2H7V10Z" />
     </svg>
   );
 }
@@ -364,6 +347,7 @@ function RatingSummary({ reviews }) {
 
     return {
       star,
+      count: totalByStar,
       percent,
       color: star <= 2 ? "#DC2626" : "#00B954",
     };
@@ -383,7 +367,7 @@ function RatingSummary({ reviews }) {
               color="text-[#EEC200]"
             />
             <p className="mt-1 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#64748B]">
-              {totalReviews} total review
+              {totalReviews} orang memberi rating
             </p>
             <p className="mt-1 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#EEC200]">
               {getRatingLabel(averageRating, totalReviews)}
@@ -393,7 +377,7 @@ function RatingSummary({ reviews }) {
 
         <div className="mt-8 flex flex-col gap-4">
           {ratingBars.map((item) => (
-            <div key={item.star} className="grid grid-cols-[16px_1fr_42px] items-center gap-4">
+            <div key={item.star} className="grid grid-cols-[16px_1fr_42px] items-center gap-4" title={`${item.star} Bintang: ${item.count} orang`}>
               <span className="font-['Space_Grotesk',sans-serif] text-xs font-bold text-[#D9E3F6]">
                 {item.star}
               </span>
@@ -430,7 +414,7 @@ function RatingSummary({ reviews }) {
   );
 }
 
-function ReviewCard({ review, isLiked, onLike, onPhotoClick }) {
+function ReviewCard({ review, onPhotoClick }) {
   const [isReplyOpen, setIsReplyOpen] = useState(false);
 
   return (
@@ -449,7 +433,7 @@ function ReviewCard({ review, isLiked, onLike, onPhotoClick }) {
       <div className="min-w-0 flex-1">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h4 className="font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-7 text-[#D9E3F6]">
+            <h4 className="font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-7 text-[#D9E3F6] break-words break-all">
               {review.name}
             </h4>
             <p className="font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 text-[#64748B]">
@@ -459,7 +443,7 @@ function ReviewCard({ review, isLiked, onLike, onPhotoClick }) {
           <RatingStars rating={review.rating} />
         </div>
 
-        <p className="mt-4 font-['Be_Vietnam_Pro',sans-serif] text-base leading-8 text-[#E6BDB8] sm:text-lg">
+        <p className="mt-4 font-['Be_Vietnam_Pro',sans-serif] text-base leading-8 text-[#E6BDB8] sm:text-lg break-words break-all">
           {review.text}
         </p>
 
@@ -487,16 +471,6 @@ function ReviewCard({ review, isLiked, onLike, onPhotoClick }) {
         )}
 
         <div className="mt-5 flex flex-wrap items-center gap-4">
-          <button
-            type="button"
-            onClick={() => onLike(review)}
-            disabled={isLiked}
-            className="flex items-center gap-2 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 text-[#94A3B8] transition hover:text-[#D9E3F6] disabled:cursor-not-allowed disabled:text-[#EEC200]"
-            aria-pressed={isLiked}
-          >
-            <LikeIcon />
-            {isLiked ? `${review.likes} suka` : review.helpful}
-          </button>
           <button
             type="button"
             onClick={() =>
@@ -531,6 +505,7 @@ function PhotoPreviewModal({ photo, onClose }) {
   }
 
   return (
+    <ViewportPortal>
     <div
       className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80 p-4 [animation:review-backdrop-in_220ms_ease-out]"
       role="dialog"
@@ -563,11 +538,13 @@ function PhotoPreviewModal({ photo, onClose }) {
         </div>
       </section>
     </div>
+    </ViewportPortal>
   );
 }
 
 function ReviewSuccessPopup({ onClose }) {
   return (
+    <ViewportPortal>
     <div
       className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 px-4 py-6 [animation:review-backdrop-in_220ms_ease-out]"
       role="dialog"
@@ -615,6 +592,7 @@ function ReviewSuccessPopup({ onClose }) {
         </button>
       </div>
     </div>
+    </ViewportPortal>
   );
 }
 
@@ -626,12 +604,18 @@ function ReviewForm({ onReviewCreated }) {
   const [isPreparingPhotos, setIsPreparingPhotos] = useState(false);
   const [photoFiles, setPhotoFiles] = useState([]);
   const [photoPreviews, setPhotoPreviews] = useState([]);
+  const [previewPhoto, setPreviewPhoto] = useState(null);
+  const photoPreviewsRef = useRef([]);
+
+  useEffect(() => {
+    photoPreviewsRef.current = photoPreviews;
+  }, [photoPreviews]);
 
   useEffect(() => {
     return () => {
-      photoPreviews.forEach((photo) => URL.revokeObjectURL(photo.url));
+      photoPreviewsRef.current.forEach((photo) => URL.revokeObjectURL(photo.url));
     };
-  }, [photoPreviews]);
+  }, []);
 
   function clearSubmitWarning() {
     if (submitWarning) {
@@ -642,37 +626,72 @@ function ReviewForm({ onReviewCreated }) {
   async function handlePhotoChange(event) {
     clearSubmitWarning();
 
-    const files = Array.from(event.target.files || []).slice(0, REVIEW_PHOTO_MAX_COUNT);
-    const invalidFile = files.find((file) => !isAllowedReviewPhoto(file));
+    const newFiles = Array.from(event.target.files || []);
+    const availableSlots = REVIEW_PHOTO_MAX_COUNT - photoFiles.length;
+    
+    if (newFiles.length === 0) return;
+
+    if (availableSlots <= 0) {
+      setSubmitWarning(`Maksimal hanya bisa mengirim ${REVIEW_PHOTO_MAX_COUNT} foto.`);
+      event.target.value = "";
+      return;
+    }
+
+    const filesToProcess = newFiles.slice(0, availableSlots);
+    const invalidFile = filesToProcess.find((file) => !isAllowedReviewPhoto(file));
+    const oversizedFile = filesToProcess.find((file) => !isAllowedReviewPhotoSize(file));
 
     if (invalidFile) {
       event.target.value = "";
-      photoPreviews.forEach((photo) => URL.revokeObjectURL(photo.url));
-      setPhotoFiles([]);
-      setPhotoPreviews([]);
       setSubmitWarning(REVIEW_PHOTO_TYPE_ERROR);
+      return;
+    }
+
+    if (oversizedFile) {
+      event.target.value = "";
+      setSubmitWarning(REVIEW_PHOTO_SIZE_ERROR);
       return;
     }
 
     setIsPreparingPhotos(true);
 
     try {
-      const preparedFiles = await Promise.all(files.map(compressReviewPhoto));
-      const previews = preparedFiles.map((file) => ({
-        id: `${file.name}-${file.lastModified}-${file.size}`,
+      const preparedFiles = await Promise.all(filesToProcess.map(compressReviewPhoto));
+      const tooLargeAfterCompression = preparedFiles.find(
+        (file) => file.size > REVIEW_PHOTO_MAX_BYTES,
+      );
+      const currentTotalSize = photoFiles.reduce((total, file) => total + file.size, 0);
+      const nextTotalSize = preparedFiles.reduce(
+        (total, file) => total + file.size,
+        currentTotalSize,
+      );
+
+      if (tooLargeAfterCompression) {
+        setSubmitWarning(
+          "Foto masih terlalu besar setelah dikompres. Coba crop atau pilih foto lain.",
+        );
+        return;
+      }
+
+      if (nextTotalSize > REVIEW_PHOTO_TOTAL_MAX_BYTES) {
+        setSubmitWarning("Total ukuran foto maksimal 10MB untuk 5 foto.");
+        return;
+      }
+
+      const newPreviews = preparedFiles.map((file) => ({
+        id: `${file.name}-${file.lastModified}-${file.size}-${Date.now()}`,
         name: file.name,
         url: URL.createObjectURL(file),
       }));
 
-      photoPreviews.forEach((photo) => URL.revokeObjectURL(photo.url));
-      setPhotoFiles(preparedFiles);
-      setPhotoPreviews(previews);
+      setPhotoFiles((prev) => [...prev, ...preparedFiles]);
+      setPhotoPreviews((prev) => [...prev, ...newPreviews]);
     } catch (error) {
       console.error("Gagal memproses foto review:", error);
-      setPhotoFiles([]);
       setSubmitWarning("Foto belum bisa diproses. Coba pilih ulang fotonya ya.");
     } finally {
       setIsPreparingPhotos(false);
+      event.target.value = "";
     }
   }
 
@@ -808,13 +827,13 @@ function ReviewForm({ onReviewCreated }) {
                     type="file"
                     name="photos"
                     multiple
-                    accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+                    accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif"
                     onChange={handlePhotoChange}
                     className="sr-only"
                   />
                 </label>
                 <p className="max-w-[150px] font-['Be_Vietnam_Pro',sans-serif] text-[10px] font-bold uppercase leading-3 text-[#64748B]">
-                  PNG/JPG, maksimal 5 foto.
+                  Max 5 foto. Foto HP akan dikompres otomatis.
                 </p>
               </div>
 
@@ -831,16 +850,35 @@ function ReviewForm({ onReviewCreated }) {
 
             {photoPreviews.length > 0 && (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-                {photoPreviews.map((photo) => (
+                {photoPreviews.map((photo, index) => (
                   <figure
                     key={photo.id}
-                    className="overflow-hidden border-2 border-[#5C403C] bg-[#091421]"
+                    className="relative overflow-hidden border-2 border-[#5C403C] bg-[#091421]"
                   >
-                    <img
-                      src={photo.url}
-                      alt={photo.name}
-                      className="h-24 w-full object-cover"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => setPreviewPhoto({ src: photo.url, alt: photo.name })}
+                      className="block h-24 w-full focus:outline-none focus:ring-2 focus:ring-[#EEC200]"
+                      aria-label={`Preview ${photo.name}`}
+                    >
+                      <img
+                        src={photo.url}
+                        alt={photo.name}
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        URL.revokeObjectURL(photo.url);
+                        setPhotoFiles((prev) => prev.filter((_, i) => i !== index));
+                        setPhotoPreviews((prev) => prev.filter((_, i) => i !== index));
+                      }}
+                      className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#DC2626] text-white hover:bg-red-700"
+                      aria-label="Hapus foto"
+                    >
+                      &times;
+                    </button>
                   </figure>
                 ))}
               </div>
@@ -850,16 +888,16 @@ function ReviewForm({ onReviewCreated }) {
       </section>
 
       {showSuccessPopup && <ReviewSuccessPopup onClose={() => setShowSuccessPopup(false)} />}
+      <PhotoPreviewModal photo={previewPhoto} onClose={() => setPreviewPhoto(null)} />
     </>
   );
 }
 
 export default function Review() {
   const [reviews, setReviews] = useState([]);
-  const [likedReviews, setLikedReviews] = useState(readLikedReviews);
   const [previewPhoto, setPreviewPhoto] = useState(null);
   const [ratingSort, setRatingSort] = useState("latest");
-  const [visibleCount, setVisibleCount] = useState(4);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     let isMounted = true;
@@ -881,42 +919,6 @@ export default function Review() {
     };
   }, []);
 
-  const handleLikeReview = async (review) => {
-    const reviewId = String(review.id || "");
-
-    if (!reviewId || likedReviews.includes(reviewId)) {
-      return;
-    }
-
-    const nextLikedReviews = [...likedReviews, reviewId];
-    setLikedReviews(nextLikedReviews);
-    saveLikedReviews(nextLikedReviews);
-    setReviews((currentReviews) =>
-      currentReviews.map((item) =>
-        String(item.id) === reviewId
-          ? {
-              ...item,
-              likes: item.likes + 1,
-              helpful: `${item.likes + 1} suka`,
-            }
-          : item,
-      ),
-    );
-
-    try {
-      const response = await likePublicReview(review.id);
-      const updatedReview = mapReviewFromApi(response.data);
-
-      setReviews((currentReviews) =>
-        currentReviews.map((item) =>
-          String(item.id) === reviewId ? updatedReview : item,
-        ),
-      );
-    } catch (error) {
-      console.error("Gagal menyimpan like review:", error);
-    }
-  };
-
   const sortedReviews = useMemo(() => {
     const nextReviews = [...reviews];
 
@@ -930,16 +932,17 @@ export default function Review() {
 
     return nextReviews;
   }, [ratingSort, reviews]);
-  const visibleReviews = sortedReviews.slice(0, visibleCount);
+  const itemsPerPage = 4;
+  const totalPages = Math.ceil(sortedReviews.length / itemsPerPage);
+  const visibleReviews = sortedReviews.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
   const filterOptions = [
     { value: "latest", label: "Terbaru" },
     { value: "highest", label: "Rating Tertinggi" },
     { value: "lowest", label: "Rating Terendah" },
   ];
-
-  useEffect(() => {
-    setVisibleCount(4);
-  }, [ratingSort]);
 
   return (
     <div className="min-h-screen bg-[#091421] text-[#D9E3F6]">
@@ -948,17 +951,17 @@ export default function Review() {
       <section className="mx-auto flex w-full max-w-[900px] flex-col gap-8 px-6 py-8 sm:px-8 md:py-10 lg:px-10 lg:py-12 xl:px-10">
         <header className="mx-auto flex w-full max-w-[760px] flex-col gap-2">
           <h1 className="font-['Space_Grotesk',sans-serif] text-5xl font-bold uppercase leading-none text-[#D9E3F6] sm:text-6xl">
-            Reviews
+            Review
           </h1>
           <p className="font-['Be_Vietnam_Pro',sans-serif] text-sm font-bold uppercase leading-5 tracking-[0.1em] text-[#EEC200]">
             Kata-kata dari orang sigma
           </p>
         </header>
 
-        <div className="mx-auto grid w-full max-w-[900px] gap-8 lg:grid-cols-[minmax(260px,320px)_1fr]">
+        <div className="mx-auto grid w-full max-w-[900px] gap-8 lg:grid-cols-[minmax(260px,320px)_1fr] min-w-0">
           <RatingSummary reviews={sortedReviews} />
 
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-8 min-w-0">
             <div className="flex flex-wrap gap-3">
               {filterOptions.map((option) => {
                 const isActive = ratingSort === option.value;
@@ -967,7 +970,10 @@ export default function Review() {
                   <button
                     key={option.value}
                     type="button"
-                    onClick={() => setRatingSort(option.value)}
+                    onClick={() => {
+                      setRatingSort(option.value);
+                      setCurrentPage(1);
+                    }}
                     className={`border px-4 py-2 font-['Space_Grotesk',sans-serif] text-xs font-black uppercase tracking-[0.12em] transition ${
                       isActive
                         ? "border-[#EEC200] bg-[#EEC200] text-[#3C2F00]"
@@ -988,8 +994,6 @@ export default function Review() {
               >
                 <ReviewCard
                   review={review}
-                  isLiked={likedReviews.includes(String(review.id))}
-                  onLike={handleLikeReview}
                   onPhotoClick={setPreviewPhoto}
                 />
               </div>
@@ -999,18 +1003,41 @@ export default function Review() {
                 Belum ada review.
               </div>
             )}
-            {visibleReviews.length < sortedReviews.length && (
-              <div className="flex justify-center">
+            {totalPages > 1 && (
+              <div className="mt-8 flex justify-center items-center gap-2">
                 <button
                   type="button"
-                  onClick={() =>
-                    setVisibleCount((current) =>
-                      Math.min(current + 4, sortedReviews.length),
-                    )
-                  }
-                  className="bg-[#EEC200] px-8 py-4 font-['Space_Grotesk',sans-serif] text-sm font-black uppercase tracking-[0.16em] text-[#3C2F00] shadow-[6px_6px_0_#3C2F00] transition hover:-translate-y-1"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#2B3544] bg-[#091421] text-[#D9E3F6] transition hover:bg-[#16202E] disabled:pointer-events-none disabled:opacity-50"
+                  aria-label="Sebelumnya"
                 >
-                  Tampilkan Lagi
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => setCurrentPage(page)}
+                      className={`flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold transition ${
+                        page === currentPage
+                          ? "bg-[#EEC200] text-[#3C2F00] shadow-[4px_4px_0_#3C2F00]"
+                          : "bg-[#091421] border border-[#2B3544] text-[#D9E3F6] hover:bg-[#16202E]"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#2B3544] bg-[#091421] text-[#D9E3F6] transition hover:bg-[#16202E] disabled:pointer-events-none disabled:opacity-50"
+                  aria-label="Berikutnya"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="m9 18 6-6-6-6"/></svg>
                 </button>
               </div>
             )}
