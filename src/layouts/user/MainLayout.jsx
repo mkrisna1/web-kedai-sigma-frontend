@@ -6,7 +6,7 @@ export default function MainLayout() {
   const location = useLocation();
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col overflow-x-hidden">
       <Navbar />
 
       <main className="flex-1 bg-[#091421] pt-[95px]">

@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { toast } from "react-hot-toast";
 import ViewportPortal from "../../../components/common/ViewportPortal";
 import {
   deleteAdminReservation,
   getAdminReservations,
+  getAdminTables,
   updateAdminReservationStatus,
 } from "../../../services/api";
 
@@ -24,6 +26,7 @@ const uiStatusByApiStatus = {
 };
 
 const apiStatusByUiStatus = {
+  Menunggu: "menunggu_konfirmasi",
   Dikonfirmasi: "dikonfirmasi",
   Selesai: "selesai",
   Dibatalkan: "dibatalkan",
@@ -119,6 +122,13 @@ const mapReservationFromApi = (item) => ({
   status: uiStatusByApiStatus[item.status_reservasi] || "Menunggu",
 });
 
+const mapTableOptionFromApi = (item) => ({
+  id: item.id ?? item.id_meja,
+  label: item.nomor_meja || `Meja ${item.id ?? item.id_meja}`,
+  capacity: Number(item.capacity) || 0,
+  status: item.status_meja,
+});
+
 const chunkReservations = (items, size = 8) => {
   if (!items.length) {
     return emptyReservationPages;
@@ -137,14 +147,6 @@ function CalendarIcon({ className = "h-5 w-5" }) {
   );
 }
 
-function DotsIcon({ className = "h-4 w-4" }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M6 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" />
-    </svg>
-  );
-}
-
 function ChevronLeftIcon({ className = "h-3 w-2" }) {
   return (
     <svg viewBox="0 0 8 12" className={className} fill="currentColor" aria-hidden="true">
@@ -157,14 +159,6 @@ function ChevronRightIcon({ className = "h-3 w-2" }) {
   return (
     <svg viewBox="0 0 8 12" className={className} fill="currentColor" aria-hidden="true">
       <path d="M1.4 12 0 10.6 4.6 6 0 1.4 1.4 0 7.4 6 1.4 12Z" />
-    </svg>
-  );
-}
-
-function CheckIcon({ className = "h-4 w-4" }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M9.55 17.6 4.4 12.45 5.8 11.05 9.55 14.8 18.2 6.15 19.6 7.55 9.55 17.6Z" />
     </svg>
   );
 }
@@ -331,17 +325,20 @@ function CalendarPopup({ value, onClose, onSelect }) {
 
 function ConfirmActionModal({ action, item, onCancel, onConfirm }) {
   const isDelete = action === "delete";
-  const title = isDelete ? "Konfirmasi Hapus" : "Konfirmasi Batalkan";
+  const isReject = action === "cancel" && item?.status === "Menunggu";
+  const title = isDelete ? "Konfirmasi Hapus" : isReject ? "Konfirmasi Tolak" : "Konfirmasi Batalkan";
   const body = isDelete
     ? `Apakah Anda yakin ingin menghapus reservasi "${item?.name || "ini"}"? Tindakan ini tidak dapat dibatalkan.`
-    : `Apakah Anda yakin ingin membatalkan reservasi "${item?.name || "ini"}"? Meja akan dilepas jika tidak sedang dipakai.`;
-  const confirmLabel = isDelete ? "Hapus" : "Batalkan";
+    : isReject
+      ? `Apakah Anda yakin ingin menolak reservasi "${item?.name || "ini"}"? Statusnya akan menjadi dibatalkan.`
+      : `Apakah Anda yakin ingin membatalkan reservasi "${item?.name || "ini"}"? Meja akan dilepas jika tidak sedang dipakai.`;
+  const confirmLabel = isDelete ? "Hapus" : isReject ? "Tolak" : "Batalkan";
 
   return (
     <ViewportPortal>
     <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
-      <div className="relative box-border flex h-[321.8px] w-full max-w-96 animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start rounded-2xl border border-[#C3C6D7]/10 bg-white shadow-2xl shadow-black/25">
-        <div className="flex h-[319.8px] w-full flex-col items-start gap-[10.8px] p-8">
+      <div className="relative box-border flex w-full max-w-96 animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start rounded-2xl border border-[#C3C6D7]/10 bg-white shadow-2xl shadow-black/25">
+        <div className="flex w-full flex-col items-start gap-4 p-8">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#BA1A1A]/10 text-[#BA1A1A]">
             {isDelete ? (
               <TrashIcon className="h-[23.75px] w-[27.5px]" />
@@ -350,26 +347,26 @@ function ConfirmActionModal({ action, item, onCancel, onConfirm }) {
             )}
           </div>
 
-          <h3 className="flex h-[41.2px] w-full items-center pt-[13.2px] text-xl font-bold leading-7 tracking-[-0.5px] text-[#191C1E]">
+          <h3 className="w-full break-words text-xl font-bold leading-7 tracking-[-0.5px] text-[#191C1E] [overflow-wrap:anywhere]">
             {title}
           </h3>
 
-          <p className="flex h-[69px] w-full items-center text-sm font-normal leading-[23px] text-[#434655]">
+          <p className="w-full break-words text-sm font-normal leading-[23px] text-[#434655] [overflow-wrap:anywhere]">
             {body}
           </p>
 
-          <div className="relative h-[65.2px] w-full">
+          <div className="grid w-full grid-cols-2 gap-3 pt-2">
             <button
               type="button"
               onClick={onCancel}
-              className="absolute left-0 top-[21.2px] flex h-11 w-[153.75px] items-center justify-center rounded-lg bg-[#E6E8EA] text-sm font-bold leading-5 tracking-[0.35px] text-[#191C1E] transition hover:brightness-95"
+              className="flex h-11 items-center justify-center rounded-lg bg-[#E6E8EA] text-sm font-bold leading-5 tracking-[0.35px] text-[#191C1E] transition hover:brightness-95"
             >
               Batal
             </button>
             <button
               type="button"
               onClick={onConfirm}
-              className="absolute left-[165px] top-[21.2px] flex h-11 w-[162.34px] items-center justify-center rounded-lg bg-[#BA1A1A] text-sm font-bold leading-5 tracking-[0.35px] text-white shadow-[0_10px_15px_-3px_rgba(186,26,26,0.2),0_4px_6px_-4px_rgba(186,26,26,0.2)] transition hover:brightness-105"
+              className="flex h-11 items-center justify-center rounded-lg bg-[#BA1A1A] text-sm font-bold leading-5 tracking-[0.35px] text-white shadow-[0_10px_15px_-3px_rgba(186,26,26,0.2),0_4px_6px_-4px_rgba(186,26,26,0.2)] transition hover:brightness-105"
             >
               {confirmLabel}
             </button>
@@ -383,7 +380,15 @@ function ConfirmActionModal({ action, item, onCancel, onConfirm }) {
 
 export default function ReservasiAdmin() {
   const [pages, setPages] = useState(emptyReservationPages);
+  const [tableOptions, setTableOptions] = useState([]);
   const [currentPage, setCurrentPage] = useState(0);
+
+  const getVisiblePages = (current, total) => {
+    if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
+    if (current <= 3) return [1, 2, 3, 4, '...', total];
+    if (current >= total - 2) return [1, '...', total - 3, total - 2, total - 1, total];
+    return [1, '...', current - 1, current, current + 1, '...', total];
+  };
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("Semua Status");
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -399,10 +404,20 @@ export default function ReservasiAdmin() {
   useEffect(() => {
     let isMounted = true;
 
-    getAdminReservations()
-      .then((response) => {
+    Promise.allSettled([getAdminReservations(), getAdminTables()])
+      .then(([reservationsResult, tablesResult]) => {
         if (isMounted) {
-          setPages(chunkReservations((response.data || []).map(mapReservationFromApi)));
+          const reservations =
+            reservationsResult.status === "fulfilled"
+              ? reservationsResult.value.data || []
+              : [];
+          const tables =
+            tablesResult.status === "fulfilled"
+              ? tablesResult.value.data || []
+              : [];
+
+          setPages(chunkReservations(reservations.map(mapReservationFromApi)));
+          setTableOptions(tables.map(mapTableOptionFromApi));
           setCurrentPage(0);
         }
       })
@@ -442,12 +457,10 @@ export default function ReservasiAdmin() {
     return matchesDate && matchesStatus;
   };
 
-  const filteredPages = pages.map((pageItems) => pageItems.filter(matchesFilters));
+  const filteredItems = pages.flat().filter(matchesFilters);
+  const filteredPages = chunkReservations(filteredItems);
   const currentReservations = filteredPages[currentPage] ?? [];
-  const filteredTotal = filteredPages.reduce(
-    (total, pageItems) => total + pageItems.length,
-    0
-  );
+  const filteredTotal = filteredItems.length;
   const previousFilteredCount = filteredPages
     .slice(0, currentPage)
     .reduce((total, pageItems) => total + pageItems.length, 0);
@@ -455,7 +468,18 @@ export default function ReservasiAdmin() {
     currentReservations.length === 0 ? 0 : previousFilteredCount + 1;
   const lastShown = previousFilteredCount + currentReservations.length;
 
-  const updateReservationStatus = async (reservationId, status) => {
+  const isReservationComplete = (item) =>
+    item?.rawId &&
+    item?.name &&
+    item.name !== "-" &&
+    item?.phone &&
+    item.phone !== "-" &&
+    item?.dateValue &&
+    item?.time &&
+    item.time !== "-" &&
+    item?.tableId;
+
+  const updateReservationStatus = async (reservationId, status, mejaId) => {
     const previousPages = pages;
     const nextItems = pages
       .flat()
@@ -469,10 +493,17 @@ export default function ReservasiAdmin() {
       return;
     }
 
+    if (status === "Dikonfirmasi" && !isReservationComplete({ ...target, tableId: mejaId || target.tableId })) {
+      toast.error("Reservasi belum lengkap. Pilih meja dan pastikan data pelanggan, tanggal, dan jam sudah ada.");
+      setPages(previousPages);
+      return;
+    }
+
     try {
       const response = await updateAdminReservationStatus(
         target.rawId,
         apiStatusByUiStatus[status],
+        mejaId || target.tableId,
       );
       const updatedReservation = mapReservationFromApi(response.data);
 
@@ -483,9 +514,41 @@ export default function ReservasiAdmin() {
             item.rawId === updatedReservation.rawId ? updatedReservation : item
           ),
       );
+      toast.success(`Reservasi berhasil ${status.toLowerCase()}.`);
     } catch (error) {
       console.error("Gagal memperbarui status reservasi:", error);
-      window.alert(error.message || "Reservasi belum bisa diperbarui.");
+      toast.error(error.message || "Reservasi belum bisa diperbarui.");
+      setPages(previousPages);
+    }
+  };
+
+  const handleTableChange = async (item, tableId) => {
+    if (!item?.rawId) {
+      toast.error("Reservasi belum valid.");
+      return;
+    }
+
+    const previousPages = pages;
+
+    try {
+      const response = await updateAdminReservationStatus(
+        item.rawId,
+        apiStatusByUiStatus[item.status],
+        Number(tableId),
+      );
+      const updatedReservation = mapReservationFromApi(response.data);
+
+      setReservationItems(
+        pages
+          .flat()
+          .map((reservation) =>
+            reservation.rawId === updatedReservation.rawId ? updatedReservation : reservation
+          ),
+      );
+      toast.success("Meja reservasi berhasil diperbarui.");
+    } catch (error) {
+      console.error("Gagal memperbarui meja reservasi:", error);
+      toast.error(error.message || "Meja reservasi belum bisa diperbarui.");
       setPages(previousPages);
     }
   };
@@ -513,8 +576,10 @@ export default function ReservasiAdmin() {
     try {
       await deleteAdminReservation(item.rawId);
       setConfirmTarget(null);
+      toast.success("Reservasi berhasil dihapus.");
     } catch (error) {
       console.error("Gagal menghapus reservasi:", error);
+      toast.error(error.message || "Reservasi belum bisa dihapus.");
       setPages(previousPages);
     }
   };
@@ -622,21 +687,32 @@ export default function ReservasiAdmin() {
                       <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-xs font-bold text-slate-500">
                         {item.initials}
                       </div>
-                      <div>
-                        <p className="font-semibold text-[#191C1E]">{item.name}</p>
-                        <p className="text-[10px] text-[#434655]">{item.phone}</p>
+                      <div className="min-w-0">
+                        <p className="break-words font-semibold text-[#191C1E] [overflow-wrap:anywhere]">{item.name}</p>
+                        <p className="break-words text-[10px] text-[#434655] [overflow-wrap:anywhere]">{item.phone}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-5 font-medium">{item.guests}</td>
                   <td className="px-6 py-5">
-                    <p className="font-semibold">{item.table}</p>
+                    <select
+                      value={item.tableId || ""}
+                      onChange={(event) => handleTableChange(item, event.target.value)}
+                      className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-[#191C1E] outline-none focus:border-[#004AC6]"
+                    >
+                      <option value="">Pilih meja</option>
+                      {tableOptions.map((table) => (
+                        <option key={table.id} value={table.id}>
+                          {table.label}
+                        </option>
+                      ))}
+                    </select>
                     <p className="text-xs text-[#434655]">
                       {item.tableCapacity ? `${item.tableCapacity} kursi` : "-"}
                     </p>
                   </td>
                   <td className="max-w-[240px] px-6 py-5 text-xs font-medium leading-5 text-[#434655]">
-                    <p className="line-clamp-3">{item.note}</p>
+                    <p className="break-words line-clamp-3 [overflow-wrap:anywhere]">{item.note}</p>
                   </td>
                   <td className="px-6 py-5">
                     <p className="font-medium">{item.date}</p>
@@ -719,33 +795,39 @@ export default function ReservasiAdmin() {
               type="button"
               disabled={currentPage === 0}
               onClick={() => setCurrentPage((page) => Math.max(page - 1, 0))}
-              className="rounded border border-[#C3C6D7] px-3 py-1.5 disabled:opacity-40"
+              className="flex h-8 w-8 items-center justify-center rounded border border-[#C3C6D7] bg-white transition hover:bg-[#E6E8EA] disabled:pointer-events-none disabled:opacity-40"
+              aria-label="Sebelumnya"
             >
-              Sebelumnya
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m15 18-6-6 6-6"/></svg>
             </button>
-            {pages.map((_, pageIndex) => (
-              <button
-                key={pageIndex}
-                type="button"
-                onClick={() => setCurrentPage(pageIndex)}
-                className={`rounded px-3 py-1.5 ${
-                  currentPage === pageIndex
-                    ? "bg-[#004AC6] font-bold text-white shadow-sm"
-                    : "border border-[#C3C6D7]"
-                }`}
-              >
-                {pageIndex + 1}
-              </button>
+            {getVisiblePages(currentPage + 1, filteredPages.length).map((page, index) => (
+              page === '...' ? (
+                <span key={`ellipsis-${index}`} className="px-2 font-medium">...</span>
+              ) : (
+                <button
+                  key={`page-${page}`}
+                  type="button"
+                  onClick={() => setCurrentPage(page - 1)}
+                  className={`flex h-8 min-w-[32px] items-center justify-center rounded transition ${
+                    currentPage === page - 1
+                      ? "bg-[#004AC6] font-bold text-white shadow-sm"
+                      : "border border-[#C3C6D7] bg-white hover:bg-[#E6E8EA]"
+                  }`}
+                >
+                  {page}
+                </button>
+              )
             ))}
             <button
               type="button"
-              disabled={currentPage === pages.length - 1}
+              disabled={currentPage === filteredPages.length - 1}
               onClick={() =>
-                setCurrentPage((page) => Math.min(page + 1, pages.length - 1))
+                setCurrentPage((page) => Math.min(page + 1, filteredPages.length - 1))
               }
-              className="rounded border border-[#C3C6D7] px-3 py-1.5 disabled:opacity-40"
+              className="flex h-8 w-8 items-center justify-center rounded border border-[#C3C6D7] bg-white transition hover:bg-[#E6E8EA] disabled:pointer-events-none disabled:opacity-40"
+              aria-label="Berikutnya"
             >
-              Berikutnya
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m9 18 6-6-6-6"/></svg>
             </button>
           </div>
         </div>

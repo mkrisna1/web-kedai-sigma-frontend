@@ -9,18 +9,8 @@ import {
 } from "../../../services/api";
 
 const inputClass =
-  "h-[54px] w-full border-0 border-b-2 border-[#5C403C] bg-transparent px-1 py-3 font-['Space_Grotesk',sans-serif] text-lg font-bold uppercase leading-6 text-[#D9E3F6] outline-none transition placeholder:text-[#94A3B8]/75 focus:border-[#EEC200]";
+  "h-[54px] w-full border-0 border-b-2 border-[#5C403C] bg-transparent px-1 py-3 font-['Space_Grotesk',sans-serif] text-lg font-bold leading-6 text-[#D9E3F6] outline-none transition placeholder:text-[#94A3B8]/75 focus:border-[#EEC200]";
 const peopleOptions = [1, 2, 3, 4, 5, 6, 7, 8];
-
-function SkewBadge({ children, className = "bg-[#00B954] text-[#003915]" }) {
-  return (
-    <span
-      className={`inline-flex h-6 w-[166px] -skew-x-12 items-center justify-center font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 ${className}`}
-    >
-      <span className="skew-x-12">{children}</span>
-    </span>
-  );
-}
 
 function Field({ label, children }) {
   return (
@@ -145,6 +135,29 @@ function getIndonesiaToday() {
   return new Date(getPart("year"), getPart("month") - 1, getPart("day"));
 }
 
+function getIndonesiaNow() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: INDONESIA_TIME_ZONE,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const getPart = (type) => Number(parts.find((part) => part.type === type)?.value);
+
+  return new Date(
+    getPart("year"),
+    getPart("month") - 1,
+    getPart("day"),
+    getPart("hour"),
+    getPart("minute"),
+    getPart("second"),
+  );
+}
+
 function getDateFromValue(value) {
   if (!value) {
     return getIndonesiaToday();
@@ -174,6 +187,50 @@ function isSameDate(firstDate, secondDate) {
     firstDate.getMonth() === secondDate.getMonth() &&
     firstDate.getDate() === secondDate.getDate()
   );
+}
+
+function buildReservationDateTime(dateValue, timeValue) {
+  if (!dateValue || !timeValue) {
+    return null;
+  }
+
+  const date = getDateFromValue(dateValue);
+  const [hours, minutes] = timeValue.split(":").map(Number);
+
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return null;
+  }
+
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    hours,
+    minutes,
+    0,
+    0,
+  );
+}
+
+function getMinimumReservationDateTime() {
+  const minimumDateTime = getIndonesiaNow();
+  minimumDateTime.setHours(minimumDateTime.getHours() + 2, minimumDateTime.getMinutes(), 0, 0);
+
+  return minimumDateTime;
+}
+
+function isReservationTimeAllowed(dateValue, timeValue) {
+  const reservationDateTime = buildReservationDateTime(dateValue, timeValue);
+
+  if (!reservationDateTime) {
+    return true;
+  }
+
+  return reservationDateTime >= getMinimumReservationDateTime();
+}
+
+function hasReservableTimeForDate(dateValue) {
+  return timeOptions.some((time) => isReservationTimeAllowed(dateValue, time));
 }
 
 function CalendarPopup({ selectedDate, onClose, onSelect }) {
@@ -298,7 +355,8 @@ function CalendarPopup({ selectedDate, onClose, onSelect }) {
             const isToday = isSameDate(currentDate, today);
             const isOutsideReservationRange =
               currentDate < minReservationDate ||
-              currentDate > maxReservationDate;
+              currentDate > maxReservationDate ||
+              !hasReservableTimeForDate(value);
 
             return (
               <button
@@ -345,7 +403,7 @@ function CalendarPopup({ selectedDate, onClose, onSelect }) {
     </ViewportPortal>
   );
 }
-function TimePopup({ selectedTime, onClose, onSelect }) {
+function TimePopup({ selectedDate, selectedTime, onClose, onSelect }) {
   return (
     <ViewportPortal>
     <div className="fixed left-1/2 top-1/2 z-[60] max-h-[calc(100dvh-32px)] w-[min(384px,calc(100vw-48px))] -translate-x-1/2 -translate-y-1/2 animate-[picker-panel_180ms_ease-out] overflow-y-auto rounded-lg border border-[#2B3544] bg-[#212B39] shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
@@ -362,16 +420,24 @@ function TimePopup({ selectedTime, onClose, onSelect }) {
         <div className="grid grid-cols-4 gap-3">
           {timeOptions.map((time) => {
             const isSelected = selectedTime === time;
+            const isDisabled = !isReservationTimeAllowed(selectedDate, time);
 
             return (
               <button
                 key={time}
                 type="button"
-                onClick={() => onSelect(time)}
+                onClick={() => {
+                  if (!isDisabled) {
+                    onSelect(time);
+                  }
+                }}
+                disabled={isDisabled}
                 className={`h-10 rounded-lg font-['Inter',sans-serif] text-sm font-semibold transition ${
                   isSelected
                     ? "bg-[#DC2626] text-white shadow-[0_8px_18px_rgba(220,38,38,0.35)]"
-                    : "bg-[#121C2A] text-[#D9E3F6] hover:bg-[#2B3544]"
+                    : isDisabled
+                      ? "cursor-not-allowed bg-[#121C2A] text-[#64748B]/45 line-through"
+                      : "bg-[#121C2A] text-[#D9E3F6] hover:bg-[#2B3544]"
                 }`}
               >
                 {time}
@@ -611,7 +677,11 @@ export default function Reservasi() {
       ...(selectedTime ? { jam_reservasi: selectedTime } : {}),
     };
 
-    setIsLoadingTables(true);
+    queueMicrotask(() => {
+      if (isMounted) {
+        setIsLoadingTables(true);
+      }
+    });
     getPublicReservationTables(Object.keys(params).length ? params : undefined)
       .then((response) => {
         if (!isMounted) {
@@ -668,6 +738,10 @@ export default function Reservasi() {
   const handleDateSelect = (value) => {
     setSelectedDate(value);
     setSelectedTableId("");
+
+    if (selectedTime && !isReservationTimeAllowed(value, selectedTime)) {
+      setSelectedTime("");
+    }
   };
 
   const handleTimeSelect = (value) => {
@@ -693,7 +767,7 @@ export default function Reservasi() {
 
     if (hasNoAvailableTables) {
       setWarningMessage(
-        `Meja untuk ${formData.people} orang sedang penuh. Coba pilih tanggal/waktu lain atau hubungi admin.`,
+        `Meja untuk ${formData.people} orang sedang penuh. Coba pilih tanggal/waktu lain atau hubungi admin 081223728077.`,
       );
       setShowWarningPopup(true);
       return;
@@ -702,6 +776,14 @@ export default function Reservasi() {
     if (!isFormComplete) {
       setWarningMessage(
         "Lengkapi nama, nomor telepon, tanggal, waktu, jumlah orang, dan meja sebelum mengirim reservasi.",
+      );
+      setShowWarningPopup(true);
+      return;
+    }
+
+    if (!isReservationTimeAllowed(selectedDate, selectedTime)) {
+      setWarningMessage(
+        "Reservasi minimal H-2 jam dari waktu sekarang. Pilih tanggal atau jam yang lebih longgar ya.",
       );
       setShowWarningPopup(true);
       return;
@@ -754,10 +836,9 @@ export default function Reservasi() {
 
         <div className="mx-auto flex w-full max-w-[760px] flex-col items-center gap-8">
           <header className="flex max-w-[640px] flex-col items-center gap-4 text-center">
-            <div className="flex flex-col items-center gap-4 sm:flex-row">
-              <SkewBadge>Reservasi</SkewBadge>
-              <p className="font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 tracking-[0.1em] text-[#EEC200]">
-                Reservasi sekarang biar sigma
+            <div className="flex flex-col items-center gap-4">
+              <p className="text-center font-['Space_Grotesk',sans-serif] text-sm font-bold uppercase leading-5 tracking-[0.08em] text-[#EEC200]">
+                RESERVASI SEKARANG BIAR SIGMA
               </p>
             </div>
 
@@ -849,6 +930,7 @@ export default function Reservasi() {
                     </button>
                     {openPicker === "time" && (
                       <TimePopup
+                        selectedDate={selectedDate}
                         selectedTime={selectedTime}
                         onClose={() => setOpenPicker(null)}
                         onSelect={(value) => {
@@ -930,7 +1012,7 @@ export default function Reservasi() {
                       className="mt-2 rounded-lg border border-[#DC2626]/35 bg-[#DC2626]/15 px-3 py-2 font-['Be_Vietnam_Pro',sans-serif] text-xs font-semibold leading-5 text-[#FFD6D1]"
                       role="alert"
                     >
-                      Meja untuk {formData.people} orang sedang penuh. Coba pilih tanggal/waktu lain atau hubungi admin.
+                      Meja untuk {formData.people} orang sedang penuh. Coba pilih tanggal/waktu lain atau hubungi admin 081223728077.
                     </p>
                   )}
                 </Field>

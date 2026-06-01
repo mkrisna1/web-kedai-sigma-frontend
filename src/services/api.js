@@ -190,6 +190,23 @@ export const logoutAdmin = async () => {
   }
 };
 
+export const logoutAdminOnUnload = () => {
+  const token = getAdminToken();
+
+  if (!token) {
+    return;
+  }
+
+  fetch(buildUrl("/admin/logout"), {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    keepalive: true,
+  }).catch(() => {});
+};
+
 export const getAdminDashboard = (params) =>
   request("/admin/dashboard", { auth: true, params });
 
@@ -247,8 +264,11 @@ export const updateAdminOrderPayment = (orderId, statusPembayaran) =>
     body: { status_pembayaran: statusPembayaran },
   });
 
-export const getAdminOrderReceipt = (orderId) =>
-  request(`/admin/pesanan/${orderId}/receipt`, { auth: true });
+export const getAdminOrderReceipt = (orderId, receiptToken = "") =>
+  request(`/admin/pesanan/${orderId}/receipt`, {
+    auth: !receiptToken && Boolean(getAdminToken()),
+    params: receiptToken ? { token: receiptToken } : undefined,
+  });
 
 export const resolveAdminOrderStockIssue = (orderId, payload) =>
   request(`/admin/pesanan/${orderId}/stock-issue`, {

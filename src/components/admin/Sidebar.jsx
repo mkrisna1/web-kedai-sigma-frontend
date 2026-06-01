@@ -53,7 +53,7 @@ const navItems = [
     ),
   },
   {
-    label: "Review",
+    label: "Kelola Review",
     path: "/admin/review",
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 20 20" fill="none">

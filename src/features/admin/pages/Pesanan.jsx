@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "react-hot-toast";
 import ViewportPortal from "../../../components/common/ViewportPortal";
 import {
   getAdminMenu,
@@ -286,7 +287,8 @@ function OrderCard({
   const isDimmed = isCompleted || isCancelled;
   const total = formatRupiah(getOrderTotal(items));
   const isOnlinePayment = ["qris", "gopay"].includes(paymentMethod);
-  const isPaymentPending = isOnlinePayment && paymentStatus !== "lunas";
+  const isGatewayPayment = isOnlinePayment && Boolean(gatewayStatus);
+  const isPaymentPending = isGatewayPayment && paymentStatus !== "lunas";
   const paymentLabel = isOnlinePayment
     ? paymentStatus === "lunas"
       ? "QRIS Lunas"
@@ -338,7 +340,7 @@ function OrderCard({
                 <div className="flex flex-col">
                   <span
                     className={cn(
-                      "text-[#434655] text-sm leading-5",
+                      "min-w-0 overflow-hidden text-sm leading-5 text-[#434655] break-words [overflow-wrap:anywhere] line-clamp-2 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]",
                       (isDimmed || isStockOut) && "line-through",
                     )}
                   >
@@ -352,7 +354,7 @@ function OrderCard({
                 </div>
                 <span
                   className={cn(
-                    "text-[#191C1E] text-sm font-semibold leading-5 flex-shrink-0 ml-2",
+                    "ml-2 flex-shrink-0 text-right text-sm font-semibold leading-5 text-[#191C1E]",
                     isStockOut && "line-through",
                   )}
                 >
@@ -515,7 +517,7 @@ function StockIssuePopup({ order, replacementOptions, onClose, onResolve }) {
                         onChange={() => setSelectedIndex(index)}
                         className="h-4 w-4 accent-[#BA1A1A]"
                       />
-                      <span className="truncate text-sm font-bold leading-5 text-[#191C1E]">
+                      <span className="min-w-0 break-words text-sm font-bold leading-5 text-[#191C1E] [overflow-wrap:anywhere]">
                         {item.name}
                       </span>
                     </span>
@@ -573,7 +575,7 @@ function StockIssuePopup({ order, replacementOptions, onClose, onResolve }) {
               </label>
             )}
 
-            <div className="rounded-lg bg-[#F2F4F6] px-4 py-3 text-xs font-semibold leading-5 text-[#434655]">
+            <div className="rounded-lg bg-[#F2F4F6] px-4 py-3 text-xs font-semibold leading-5 text-[#434655] [overflow-wrap:anywhere]">
               {resolution === "replace"
                 ? `${selectedItem?.name ?? "Item"} akan ditandai stok habis dan diganti dengan ${selectedReplacement?.name ?? "menu pengganti"}.`
                 : `${selectedItem?.name ?? "Item"} akan ditandai stok habis dan tidak dihitung di total pesanan.`}
@@ -755,6 +757,8 @@ export default function Pesanan() {
   const [replacementMenuOptions, setReplacementMenuOptions] = useState(
     fallbackReplacementMenuOptions,
   );
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
   useEffect(() => {
     let isMounted = true;
@@ -814,6 +818,11 @@ export default function Pesanan() {
         : dateOrders.filter((order) => order.status === activeStatusFilter),
     [activeStatusFilter, dateOrders],
   );
+  const totalPages = Math.max(Math.ceil(visibleOrders.length / itemsPerPage), 1);
+  const paginatedOrders = visibleOrders.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
   const statusCounts = useMemo(
     () =>
       dateOrders.reduce(
@@ -854,9 +863,11 @@ export default function Pesanan() {
             : currentOrder,
         ),
       );
+      toast.success("Status pesanan berhasil diperbarui.");
     } catch (error) {
       console.error("Gagal memperbarui status pesanan:", error);
       setOrders(previousOrders);
+      toast.error(error.message || "Status pesanan belum bisa diperbarui.");
     }
   };
 
@@ -888,8 +899,10 @@ export default function Pesanan() {
         ),
       );
       setOrderToCancel(null);
+      toast.success("Stok pesanan berhasil diperbarui.");
     } catch (error) {
       console.error("Gagal menyimpan perubahan stok pesanan:", error);
+      toast.error(error.message || "Stok pesanan belum bisa diperbarui.");
     }
   };
 
@@ -921,7 +934,7 @@ export default function Pesanan() {
     const printWindow = window.open("", "_blank", "width=420,height=640");
 
     if (!printWindow) {
-      window.alert("Pop up print diblokir browser. Izinkan pop up lalu coba lagi.");
+      toast.error("Pop up print diblokir browser. Izinkan pop up lalu coba lagi.");
       return;
     }
 
@@ -1001,7 +1014,10 @@ export default function Pesanan() {
           activeColor="ring-[#004AC6]"
           activeBg="bg-[#EFF6FF]"
           active={activeStatusFilter === "pending"}
-          onClick={() => setActiveStatusFilter((current) => current === "pending" ? "all" : "pending")}
+          onClick={() => {
+            setActiveStatusFilter((current) => current === "pending" ? "all" : "pending");
+            setCurrentPage(1);
+          }}
           icon={<div className="w-10 h-10 rounded bg-[#DBE1FF] text-[#004AC6] flex items-center justify-center"><ClockIcon /></div>}
         />
         <StatCard
@@ -1012,7 +1028,10 @@ export default function Pesanan() {
           activeColor="ring-[#F59E0B]"
           activeBg="bg-[#FFF7ED]"
           active={activeStatusFilter === "processing"}
-          onClick={() => setActiveStatusFilter((current) => current === "processing" ? "all" : "processing")}
+          onClick={() => {
+            setActiveStatusFilter((current) => current === "processing" ? "all" : "processing");
+            setCurrentPage(1);
+          }}
           icon={<div className="w-10 h-10 rounded bg-[#FFDDB8] text-[#D97706] flex items-center justify-center"><ProcessingIcon /></div>}
         />
         <StatCard
@@ -1023,7 +1042,10 @@ export default function Pesanan() {
           activeColor="ring-[#006C49]"
           activeBg="bg-[#ECFDF5]"
           active={activeStatusFilter === "completed"}
-          onClick={() => setActiveStatusFilter((current) => current === "completed" ? "all" : "completed")}
+          onClick={() => {
+            setActiveStatusFilter((current) => current === "completed" ? "all" : "completed");
+            setCurrentPage(1);
+          }}
           icon={<div className="w-10 h-10 rounded bg-[#6CF8BB] text-[#006C49] flex items-center justify-center"><CheckIcon /></div>}
         />
         <StatCard
@@ -1034,13 +1056,16 @@ export default function Pesanan() {
           activeColor="ring-[#BA1A1A]"
           activeBg="bg-[#FFF1F2]"
           active={activeStatusFilter === "cancelled"}
-          onClick={() => setActiveStatusFilter((current) => current === "cancelled" ? "all" : "cancelled")}
+          onClick={() => {
+            setActiveStatusFilter((current) => current === "cancelled" ? "all" : "cancelled");
+            setCurrentPage(1);
+          }}
           icon={<div className="w-10 h-10 rounded bg-[#FFDAD6] text-[#BA1A1A] flex items-center justify-center"><XIcon /></div>}
         />
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {visibleOrders.map((order) => (
+        {paginatedOrders.map((order) => (
           <OrderCard
             key={order.orderId}
             {...order}
@@ -1057,6 +1082,30 @@ export default function Pesanan() {
         )}
       </div>
 
+      {visibleOrders.length > itemsPerPage && (
+        <div className="mt-6 flex items-center justify-center gap-2">
+          <button
+            type="button"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-[#434655] disabled:pointer-events-none disabled:opacity-50"
+          >
+            Sebelumnya
+          </button>
+          <span className="rounded-lg bg-white px-4 py-2 text-xs font-bold text-[#191C1E]">
+            {currentPage} / {totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-[#434655] disabled:pointer-events-none disabled:opacity-50"
+          >
+            Berikutnya
+          </button>
+        </div>
+      )}
+
       <StockIssuePopup
         key={orderToCancel?.orderId ?? "stock-issue"}
         order={orderToCancel}
@@ -1071,6 +1120,7 @@ export default function Pesanan() {
           onSelect={(value) => {
             setSelectedDate(value);
             setActiveStatusFilter("all");
+            setCurrentPage(1);
             setIsCalendarOpen(false);
           }}
         />

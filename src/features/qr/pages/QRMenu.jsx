@@ -36,7 +36,7 @@ import tehTarikImage from "../../../assets/Teh Tarik.jpg";
 import v6DripImage from "../../../assets/V6 Drip.jpg";
 import v6DripSusuImage from "../../../assets/V6 Drip Susu.jpg";
 
-const formatRupiah = (value) => `Rp${value.toLocaleString("id-ID")}`;
+const formatRupiah = (value) => `Rp ${Number(value || 0).toLocaleString("id-ID")}`;
 
 const toNullableNumber = (value) => {
   if (value === null || value === undefined || value === "") {
@@ -604,6 +604,96 @@ function CartIcon({ className = "h-8 w-7" }) {
   );
 }
 
+function FloatingCart({ cartCount, cartPath }) {
+  if (cartCount === 0) return null;
+  return (
+    <Link
+      to={cartPath}
+      aria-label="Buka keranjang"
+      className="fixed bottom-[92px] right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#3C2F00]/20 bg-[#EEC200] text-[#3C2F00] shadow-[0_10px_24px_rgba(238,194,0,0.28)] transition hover:scale-105 hover:brightness-105"
+    >
+      <CartIcon className="h-6 w-6" />
+      <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#091421] bg-[#DC2626] font-['Space_Grotesk'] text-xs font-bold text-white">
+        {cartCount}
+      </span>
+    </Link>
+  );
+}
+
+function ArrowUpIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
+      <path d="M12 4L4 12h5v8h6v-8h5L12 4z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function ScrollToTop() {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const toggleVisibility = () => {
+      if (window.scrollY > 300) {
+        setIsVisible(true);
+      } else {
+        setIsVisible(false);
+      }
+    };
+    window.addEventListener("scroll", toggleVisibility);
+    return () => window.removeEventListener("scroll", toggleVisibility);
+  }, []);
+
+  if (!isVisible) return null;
+
+  return (
+    <button
+      type="button"
+      aria-label="Kembali ke atas"
+      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+      className="fixed bottom-5 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#EEC200]/60 bg-[#212B39] text-[#EEC200] shadow-[0_10px_24px_rgba(0,0,0,0.34)] transition hover:scale-105 hover:border-[#EEC200] hover:bg-[#273446]"
+    >
+      <ArrowUpIcon />
+    </button>
+  );
+}
+
+function InitialOrderTypeModal({ onSelect }) {
+  return (
+    <ViewportPortal>
+      <div
+        className="fixed inset-0 z-50 flex animate-[qr-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/75 px-4 py-8 backdrop-blur-sm"
+        role="dialog"
+      >
+        <div className="flex w-[min(348px,calc(100vw-32px))] animate-[qr-modal-panel_260ms_cubic-bezier(0.16,1,0.3,1)] flex-col overflow-hidden rounded-xl bg-[#091421] shadow-[0_24px_70px_rgba(0,0,0,0.38)]">
+          <header className="border-b border-white/15 px-5 py-4 text-center">
+            <h2 className="font-['Space_Grotesk',Arial,sans-serif] text-xl font-bold leading-7 text-white">
+              Tipe Pesanan
+            </h2>
+            <p className="mt-1 text-xs font-normal text-[#E6BDB8]">
+              Pilih tipe pesanan untuk memulai
+            </p>
+          </header>
+          
+          <div className="flex flex-col gap-3 p-5">
+            <button
+              onClick={() => onSelect("dine_in")}
+              className="flex h-14 items-center justify-center rounded-lg bg-[#EEC200] font-['Space_Grotesk',Arial,sans-serif] text-sm font-black tracking-[0.4px] text-[#3C2F00] transition hover:brightness-105"
+            >
+              Makan di Sini
+            </button>
+            <button
+              onClick={() => onSelect("takeaway")}
+              className="flex h-14 items-center justify-center rounded-lg border-2 border-[#DC2626] bg-[#091421] font-['Space_Grotesk',Arial,sans-serif] text-sm font-black tracking-[0.4px] text-[#DC2626] transition hover:bg-[#DC2626]/10"
+            >
+              Bawa Pulang
+            </button>
+          </div>
+        </div>
+      </div>
+    </ViewportPortal>
+  );
+}
+
 function ArrowRightIcon() {
   return (
     <svg viewBox="0 0 20 12" fill="none" aria-hidden="true" className="h-[7.4px] w-3">
@@ -644,7 +734,7 @@ function BottomAction({ onShowMore }) {
     <button
       type="button"
       onClick={onShowMore}
-      className="flex h-[60px] w-full items-center justify-center gap-3 bg-[#EEC200] px-6 font-['Space_Grotesk',Arial,sans-serif] text-sm font-black uppercase leading-5 tracking-[2.8px] text-[#3C2F00] shadow-[8px_8px_0_#3C2F00] transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[6px_6px_0_#3C2F00]"
+      className="flex h-[60px] w-full items-center justify-center gap-3 rounded-xl bg-[#EEC200] px-6 font-['Space_Grotesk',Arial,sans-serif] text-sm font-black leading-5 tracking-[0.4px] text-[#3C2F00] shadow-[8px_8px_0_#3C2F00] transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[6px_6px_0_#3C2F00]"
     >
       <span>Lihat Menu Lain</span>
       <ArrowRightIcon />
@@ -690,7 +780,7 @@ function AddMenuModal({ item, onClose, onConfirm }) {
       <form
         onSubmit={handleSubmit}
         onMouseDown={(event) => event.stopPropagation()}
-        className="relative h-[360px] w-[min(348px,calc(100vw-32px))] animate-[qr-modal-panel_260ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-xl bg-[#091421] shadow-[0_1px_2px_rgba(0,0,0,0.05),0_24px_70px_rgba(0,0,0,0.32)]"
+        className="relative max-h-[calc(100dvh-32px)] w-[min(348px,calc(100vw-32px))] animate-[qr-modal-panel_260ms_cubic-bezier(0.16,1,0.3,1)] overflow-y-auto rounded-xl bg-[#091421] shadow-[0_1px_2px_rgba(0,0,0,0.05),0_24px_70px_rgba(0,0,0,0.32)]"
       >
         <header className="flex h-[52px] items-start justify-center border-b border-white/50 px-5 pt-4">
           <h2 className="text-center text-xs font-normal leading-5 text-white">
@@ -708,7 +798,7 @@ function AddMenuModal({ item, onClose, onConfirm }) {
 
             <div className="ml-[72px] pt-2">
               <div className="flex items-start justify-between gap-3 border-b border-white/15 pb-2">
-                <p className="min-w-0 flex-1 pr-1 font-['Source_Sans_3',Arial,sans-serif] text-[12px] font-bold uppercase leading-[14px] tracking-normal text-white">
+                <p className="min-w-0 flex-1 break-words pr-1 font-['Source_Sans_3',Arial,sans-serif] text-[12px] font-bold leading-[14px] tracking-normal text-white [overflow-wrap:anywhere]">
                   {item.name}
                 </p>
 
@@ -744,7 +834,7 @@ function AddMenuModal({ item, onClose, onConfirm }) {
                       key={option.id}
                       type="button"
                       onClick={() => setSelectedOptionId(option.id)}
-                      className="flex h-[21px] w-full items-center justify-between border-b border-white/15 text-left font-['Source_Sans_3',Arial,sans-serif] text-[10px] font-bold uppercase leading-[10px] tracking-[-1.2px] text-white"
+                      className="flex h-[21px] w-full items-center justify-between border-b border-white/15 text-left font-['Source_Sans_3',Arial,sans-serif] text-[10px] font-bold leading-[10px] tracking-normal text-white"
                     >
                       <span>
                         {option.label} Rp {Math.round(option.price / 1000)}k
@@ -765,7 +855,7 @@ function AddMenuModal({ item, onClose, onConfirm }) {
 
           <label className="mt-2 flex items-center gap-2 px-2 text-[13px] font-normal leading-5 text-white/50">
             <PencilIcon />
-            <span>Catatan untuk Menu:</span>
+            <span>Catatan untuk menu:</span>
           </label>
 
           <textarea
@@ -778,7 +868,7 @@ function AddMenuModal({ item, onClose, onConfirm }) {
 
         <button
           type="submit"
-          className="absolute bottom-0 left-0 flex h-[30px] w-full items-center justify-center gap-2 bg-[#DC2626] px-2 font-['Space_Grotesk',Arial,sans-serif] text-[10px] font-bold uppercase leading-6 tracking-[1.6px] text-white transition hover:bg-[#B91C1C]"
+          className="absolute bottom-0 left-0 flex h-[30px] w-full items-center justify-center gap-2 bg-[#DC2626] px-2 font-['Space_Grotesk',Arial,sans-serif] text-[10px] font-bold leading-6 tracking-[0.4px] text-white transition hover:bg-[#B91C1C]"
         >
           <PlusIcon className="h-3 w-3" />
           Tambah Pesanan - {formatRupiah(totalPrice)}
@@ -802,6 +892,7 @@ function FilterIcon() {
 
 const priceSortOptions = [
   { value: "default", label: "Default" },
+  { value: "newest", label: "Terbaru" },
   { value: "low", label: "Harga Terendah" },
   { value: "high", label: "Harga Tertinggi" },
 ];
@@ -816,7 +907,7 @@ function CartSuccessModal({ onClose }) {
         </header>
 
         <div className="flex h-[248px] items-center justify-center px-10">
-          <p className="w-[179px] text-center font-['Space_Grotesk',Arial,sans-serif] text-2xl font-bold uppercase leading-8 tracking-[-1.2px] text-white">
+          <p className="w-[210px] text-center font-['Space_Grotesk',Arial,sans-serif] text-2xl font-bold leading-8 tracking-[-0.4px] text-white">
             Pesanan telah masuk ke keranjang
           </p>
         </div>
@@ -824,7 +915,7 @@ function CartSuccessModal({ onClose }) {
         <button
           type="button"
           onClick={onClose}
-          className="absolute bottom-0 left-0 flex h-[46px] w-full items-center justify-center bg-[#DC2626] font-['Space_Grotesk',Arial,sans-serif] text-base font-bold uppercase leading-6 tracking-[1.6px] text-white transition hover:bg-[#B91C1C]"
+          className="absolute bottom-0 left-0 flex h-[46px] w-full items-center justify-center bg-[#DC2626] font-['Space_Grotesk',Arial,sans-serif] text-base font-bold leading-6 tracking-[0.4px] text-white transition hover:bg-[#B91C1C]"
         >
           Berhasil
         </button>
@@ -835,7 +926,7 @@ function CartSuccessModal({ onClose }) {
 }
 
 export default function QRMenu() {
-  const { addToCart, cartCount, setQrTable } = useOutletContext();
+  const { addToCart, cartCount, setQrTable, orderType, setOrderType } = useOutletContext();
   const [searchParams] = useSearchParams();
   const [activeCategory, setActiveCategory] = useState("all");
   const [query, setQuery] = useState("");
@@ -908,6 +999,10 @@ export default function QRMenu() {
       return [...matches].sort((a, b) => getSortPrice(b, "desc") - getSortPrice(a, "desc"));
     }
 
+    if (priceSort === "newest") {
+      return [...matches].reverse();
+    }
+
     return matches;
   }, [activeCategory, activeMenuItems, priceSort, query]);
 
@@ -929,17 +1024,20 @@ export default function QRMenu() {
   };
 
   return (
-    <main className="flex flex-1 flex-col gap-[29px] border-r-4 border-[#212B39] px-7 pb-12 pt-7">
-      <section className="box-border flex w-full max-w-[285px] flex-col border-l-8 border-[#DC2626] py-4 pl-2.5">
-        <h1 className="break-words font-['Space_Grotesk',Arial,sans-serif] text-[48px] font-bold uppercase leading-[52px] tracking-normal text-[#D9E3F6]">
+    <main className="flex flex-1 flex-col gap-6 border-r-4 border-[#212B39] px-6 pb-28 pt-6">
+      <section className="box-border flex w-full max-w-[334px] flex-col rounded-lg border border-[#273446] border-l-8 border-l-[#DC2626] bg-[#111C2A] px-4 py-5 shadow-[0_18px_48px_rgba(0,0,0,0.18)]">
+        <p className="mb-2 font-['Space_Grotesk',Arial,sans-serif] text-[10px] font-bold tracking-[0.8px] text-[#EEC200]">
+          QR Menu Kedai Sigma
+        </p>
+        <h1 className="break-words font-['Space_Grotesk',Arial,sans-serif] text-[42px] font-bold leading-[46px] tracking-normal text-[#D9E3F6] [overflow-wrap:anywhere]">
           {tableLabel}
         </h1>
-        <p className="w-full max-w-[267px] text-[10px] font-medium uppercase leading-5 tracking-[1.4px] text-[#E6BDB8]">
+        <p className="mt-2 w-full max-w-[286px] text-[11px] font-medium leading-5 tracking-normal text-[#E6BDB8]">
           Ngopi santai penuh makna, nongkrongnya ya di Kedai Sigma.
         </p>
       </section>
 
-      <nav className="flex w-full max-w-[372px] gap-4 overflow-x-auto border-b-2 border-[#2B3544] pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <nav className="flex w-full max-w-[372px] gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {categoryTabs.map((tab) => {
           const isActive = tab.value === activeCategory;
 
@@ -951,21 +1049,20 @@ export default function QRMenu() {
                 setActiveCategory(tab.value);
                 setVisibleCount(4);
               }}
-              className={`relative h-7 shrink-0 font-['Space_Grotesk',Arial,sans-serif] text-[17px] font-bold uppercase leading-7 tracking-[-0.45px] transition ${
-                isActive ? "text-[#FFB4AB]" : "text-[#E6BDB8] hover:text-[#FFB4AB]"
+              className={`relative h-10 shrink-0 rounded-full border px-4 font-['Space_Grotesk',Arial,sans-serif] text-[13px] font-bold leading-10 tracking-normal transition ${
+                isActive
+                  ? "border-[#EEC200] bg-[#EEC200] text-[#3C2F00] shadow-[0_8px_18px_rgba(238,194,0,0.18)]"
+                  : "border-[#273446] bg-[#121C2A] text-[#E6BDB8] hover:border-[#EEC200]/60 hover:text-white"
               }`}
             >
               {tab.label}
-              {isActive && (
-                <span className="absolute -bottom-[18px] left-0 right-0 h-1 animate-[qr-category-line_220ms_ease-out] bg-[#FFB4AB]" />
-              )}
             </button>
           );
         })}
       </nav>
 
       <section className="relative flex w-full max-w-[334px] items-center gap-2">
-        <label className="flex h-10 min-w-0 flex-1 items-center gap-1.5 border-l-4 border-[#EEC200] bg-[#212B39] px-3 text-[#EEC200]">
+        <label className="flex h-11 min-w-0 flex-1 items-center gap-1.5 rounded-lg border border-[#273446] border-l-4 border-l-[#EEC200] bg-[#212B39] px-3 text-[#EEC200]">
           <SearchIcon />
           <input
             value={query}
@@ -973,15 +1070,15 @@ export default function QRMenu() {
               setQuery(event.target.value);
               setVisibleCount(4);
             }}
-            placeholder="cari menu..."
-            className="h-7 min-w-0 flex-1 bg-transparent px-2 text-[11px] font-bold uppercase leading-[14px] tracking-[1px] text-[#E6BDB8] outline-none placeholder:text-[#E6BDB8]"
+            placeholder="Cari menu..."
+            className="h-7 min-w-0 flex-1 bg-transparent px-2 text-[12px] font-bold leading-[14px] tracking-normal text-[#E6BDB8] outline-none placeholder:text-[#E6BDB8]"
           />
         </label>
 
         <Link
           to={cartPath}
           aria-label="Buka keranjang"
-          className="relative flex h-10 w-10 shrink-0 items-center justify-center text-[#EEC200] transition hover:text-[#FFB4AB]"
+          className="relative flex h-10 w-10 shrink-0 items-center justify-center text-[#EEC200] transition hover:text-[#FFB4AB] hidden min-[420px]:flex"
         >
           <CartIcon className="h-8 w-7" />
           {cartCount > 0 && (
@@ -1019,7 +1116,7 @@ export default function QRMenu() {
                     setVisibleCount(4);
                     setIsPriceFilterOpen(false);
                   }}
-                  className={`flex h-11 w-full items-center justify-between px-4 text-left font-['Space_Grotesk',Arial,sans-serif] text-[11px] font-bold uppercase tracking-[1.1px] transition ${
+                  className={`flex h-11 w-full items-center justify-between px-4 text-left font-['Space_Grotesk',Arial,sans-serif] text-[11px] font-bold tracking-[0.4px] transition ${
                     isActive
                       ? "bg-[#EEC200] text-[#3C2F00]"
                       : "text-[#E6BDB8] hover:bg-[#212B39] hover:text-white"
@@ -1038,7 +1135,7 @@ export default function QRMenu() {
 
       <section
         key={`${activeCategory}-${query.trim().toLowerCase()}-${priceSort}`}
-        className="grid w-full max-w-[334px] grid-cols-2 gap-x-8 gap-y-8 animate-[qr-menu-grid-in_220ms_ease-out]"
+        className="grid w-full max-w-[334px] grid-cols-2 gap-x-5 gap-y-6 animate-[qr-menu-grid-in_220ms_ease-out]"
       >
         {visibleItems.map((item, index) => (
           <div
@@ -1052,7 +1149,7 @@ export default function QRMenu() {
       </section>
 
       {visibleItems.length === 0 && (
-        <div className="w-full max-w-[334px] border-l-4 border-[#EEC200] bg-[#212B39] p-5 text-xs font-bold uppercase leading-5 tracking-[1.2px] text-[#E6BDB8]">
+        <div className="w-full max-w-[334px] rounded-lg border-l-4 border-[#EEC200] bg-[#212B39] p-5 text-xs font-bold leading-5 tracking-normal text-[#E6BDB8]">
           Menu tidak ditemukan.
         </div>
       )}
@@ -1077,6 +1174,12 @@ export default function QRMenu() {
       {isSuccessModalOpen && (
         <CartSuccessModal onClose={() => setIsSuccessModalOpen(false)} />
       )}
+      {!orderType && (
+        <InitialOrderTypeModal onSelect={setOrderType} />
+      )}
+      
+      <FloatingCart cartCount={cartCount} cartPath={cartPath} />
+      <ScrollToTop />
     </main>
   );
 }

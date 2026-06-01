@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import ViewportPortal from "../../../components/common/ViewportPortal";
+import { toast } from "react-hot-toast";
 import { getAdminReport } from "../../../services/api";
 
 const emptyReport = {
@@ -19,12 +19,17 @@ const emptyReport = {
   export_period: "day",
 };
 
-const LOG_TRANSACTION_PREVIEW_COUNT = 6;
+const formatRupiah = (value) => {
+  const numValue = Number(value || 0);
+  // Bulatkan ke kelipatan 1000 terdekat
+  const rounded = Math.round(numValue / 1000) * 1000;
+  return `Rp ${rounded.toLocaleString("id-ID")}`;
+};
 
-const formatRupiah = (value) =>
-  `Rp ${Number(value || 0).toLocaleString("id-ID")}`;
-
-const formatOrderId = (id) => `#TRX-${String(id || 0).padStart(4, "0")}`;
+const formatOrderId = (id) => {
+  const numericId = Number(id || 0);
+  return `#TRX-${numericId > 9999 ? numericId : String(numericId).padStart(4, "0")}`;
+};
 
 const formatDate = (value) => {
   if (!value) {
@@ -51,64 +56,39 @@ const escapeHtml = (value) =>
     return entities[char];
   });
 
-const monthNames = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
-const dayNames = ["MIN", "SEN", "SEL", "RAB", "KAM", "JUM", "SAB"];
+const REPORT_DATE_SCOPE = "all";
+const REPORT_DATE_LABEL = "Semua Waktu";
 const INDONESIA_TIME_ZONE = "Asia/Jakarta";
+const EXPORT_PERIOD_OPTIONS = [
+  { value: "day", label: "Harian" },
+  { value: "week", label: "Mingguan" },
+  { value: "month", label: "Bulanan" },
+  { value: "year", label: "Tahunan" },
+  { value: "all", label: "Semua Waktu" },
+];
 
-const getIndonesiaToday = () => {
-  const parts = new Intl.DateTimeFormat("en-US", {
+const getIndonesiaTodayValue = () => {
+  const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: INDONESIA_TIME_ZONE,
     year: "numeric",
-    month: "numeric",
-    day: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   }).formatToParts(new Date());
-  const getPart = (type) => Number(parts.find((part) => part.type === type)?.value);
+  const getPart = (type) => parts.find((part) => part.type === type)?.value || "";
 
-  return new Date(getPart("year"), getPart("month") - 1, getPart("day"));
+  return `${getPart("year")}-${getPart("month")}-${getPart("day")}`;
 };
 
-const formatDateValue = (date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
-    date.getDate(),
-  ).padStart(2, "0")}`;
-
-const parseDateValue = (value) => {
+const formatDateLabel = (value) => {
   if (!value) {
-    return getIndonesiaToday();
+    return "-";
   }
 
-  const [year, month, day] = value.split("-").map(Number);
-
-  if (!year || !month || !day) {
-    return getIndonesiaToday();
-  }
-
-  return new Date(year, month - 1, day);
-};
-
-const formatCalendarLabel = (value) => {
-  const date = parseDateValue(value);
-
-  return `${date.getDate()} ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
-};
-
-const exportPeriodLabels = {
-  day: "Harian",
-  month: "Bulanan",
-  year: "Tahunan",
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${value}T00:00:00`));
 };
 
 const formatPercentChange = (value) => {
@@ -183,135 +163,6 @@ function ArrowIcon({ down = false }) {
   );
 }
 
-function CalendarPopup({ value, onClose, onSelect }) {
-  const initialDate = parseDateValue(value);
-  const [viewDate, setViewDate] = useState(
-    new Date(initialDate.getFullYear(), initialDate.getMonth(), 1),
-  );
-  const [draftDate, setDraftDate] = useState(value || formatDateValue(initialDate));
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const todayValue = formatDateValue(getIndonesiaToday());
-  const calendarDays = [
-    ...Array.from({ length: firstDay }, (_, index) => ({
-      key: `blank-${index}`,
-      day: "",
-      value: "",
-    })),
-    ...Array.from({ length: daysInMonth }, (_, index) => {
-      const day = index + 1;
-      const dateValue = formatDateValue(new Date(year, month, day));
-
-      return {
-        key: dateValue,
-        day,
-        value: dateValue,
-      };
-    }),
-  ];
-
-  const changeMonth = (offset) => {
-    setViewDate((currentDate) => {
-      return new Date(
-        currentDate.getFullYear(),
-        currentDate.getMonth() + offset,
-        1,
-      );
-    });
-  };
-
-  return (
-    <ViewportPortal>
-      <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/20 p-4 sm:p-6">
-      <div className="flex max-h-[calc(100dvh-32px)] h-[495px] w-full max-w-96 animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start overflow-y-auto rounded-lg bg-white shadow-[0_10px_30px_rgba(25,28,30,0.12)]">
-        <div className="flex h-[427px] w-full flex-col items-start gap-8 p-6">
-          <div className="flex h-7 w-full items-center justify-between">
-            <button
-              type="button"
-              onClick={() => changeMonth(-1)}
-              className="flex h-7 w-[23.4px] items-center justify-center rounded-xl text-[#434655] transition hover:bg-[#F2F4F6]"
-              aria-label="Bulan sebelumnya"
-            >
-              {"<"}
-            </button>
-
-            <h2 className="flex h-7 items-center text-lg font-bold leading-7 tracking-[-0.45px] text-[#191C1E]">
-              {monthNames[month]} {year}
-            </h2>
-
-            <button
-              type="button"
-              onClick={() => changeMonth(1)}
-              className="flex h-7 w-[23.4px] items-center justify-center rounded-xl text-[#434655] transition hover:bg-[#F2F4F6]"
-              aria-label="Bulan berikutnya"
-            >
-              {">"}
-            </button>
-          </div>
-
-          <div className="h-[319px] w-full">
-            <div className="grid grid-cols-7 gap-y-2">
-              {dayNames.map((dayName) => (
-                <div
-                  key={dayName}
-                  className="flex h-[31px] items-start justify-center pb-4 text-[10px] font-bold uppercase leading-[15px] tracking-[1px] text-[#434655]"
-                >
-                  {dayName}
-                </div>
-              ))}
-
-              {calendarDays.map((dateItem) => {
-                const isSelected = dateItem.value === draftDate;
-                const isToday = dateItem.value === todayValue;
-
-                return (
-                  <button
-                    key={dateItem.key}
-                    type="button"
-                    disabled={!dateItem.value}
-                    onClick={() => setDraftDate(dateItem.value)}
-                    className="relative flex h-10 items-center justify-center text-sm font-medium leading-5 text-[#191C1E] disabled:pointer-events-none"
-                  >
-                    {isToday && !isSelected && (
-                      <span className="absolute inset-1 rounded-xl border border-[#2563EB]/20" />
-                    )}
-                    {isSelected && (
-                      <span className="absolute inset-1 rounded-xl bg-gradient-to-br from-[#004AC6] to-[#2563EB] shadow-sm" />
-                    )}
-                    <span className={`relative z-10 ${isSelected ? "font-bold text-white" : ""}`}>
-                      {dateItem.day}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex h-[68px] w-full items-center justify-end gap-3 bg-[#F2F4F6] p-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-9 items-center justify-center px-5 text-sm font-semibold leading-5 text-[#434655] transition hover:text-[#191C1E]"
-          >
-            Keluar
-          </button>
-          <button
-            type="button"
-            onClick={() => onSelect(draftDate)}
-            className="flex h-9 items-center justify-center rounded-lg bg-gradient-to-r from-[#004AC6] to-[#2563EB] px-6 text-sm font-bold leading-5 text-white shadow-sm transition hover:brightness-105"
-          >
-            Pilih
-          </button>
-        </div>
-      </div>
-      </div>
-    </ViewportPortal>
-  );
-}
-
 function StatCard({ stat }) {
   const isDown = stat.change.startsWith("-");
 
@@ -335,15 +186,18 @@ function StatCard({ stat }) {
 }
 
 function ExportDataModal({
+  exportDate,
   exportPeriod,
-  selectedDate,
+  isLoading,
   totalRows,
+  onDateChange,
   onClose,
   onPeriodChange,
   onPrint,
 }) {
+  const isAllTime = exportPeriod === REPORT_DATE_SCOPE;
+
   return (
-    <ViewportPortal>
       <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
       <section className="max-h-[calc(100dvh-32px)] w-full max-w-[520px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-y-auto rounded-2xl bg-white shadow-2xl shadow-black/25">
         <header className="border-b border-[#E6E8EA] px-6 py-5">
@@ -351,32 +205,47 @@ function ExportDataModal({
             Ekspor Data Transaksi
           </h2>
           <p className="mt-1 text-xs font-semibold text-[#434655]">
-            {formatCalendarLabel(selectedDate)}
+            {isAllTime ? REPORT_DATE_LABEL : formatDateLabel(exportDate)}
           </p>
         </header>
 
         <div className="grid gap-5 p-6">
-          <label className="flex flex-col gap-2">
-            <span className="text-xs font-bold uppercase text-[#434655]">
-              Periode Ekspor
-            </span>
-            <select
-              value={exportPeriod}
-              onChange={(event) => onPeriodChange(event.target.value)}
-              className="h-11 rounded-lg border border-[#C3C6D7] bg-white px-3 text-sm font-semibold text-[#191C1E] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
-            >
-              <option value="day">Harian</option>
-              <option value="month">Bulanan</option>
-              <option value="year">Tahunan</option>
-            </select>
-          </label>
-
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="flex flex-col gap-2">
+              <span className="text-xs font-bold uppercase text-[#434655]">
+                Tanggal Acuan
+              </span>
+              <input
+                type="date"
+                value={exportDate}
+                onChange={(event) => onDateChange(event.target.value)}
+                disabled={isAllTime}
+                className="h-11 rounded-lg border border-[#C3C6D7] bg-white px-3 text-sm font-semibold text-[#191C1E] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15 disabled:bg-[#EEF0F3] disabled:text-[#8B8E99]"
+              />
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className="text-xs font-bold uppercase text-[#434655]">
+                Periode
+              </span>
+              <select
+                value={exportPeriod}
+                onChange={(event) => onPeriodChange(event.target.value)}
+                className="h-11 rounded-lg border border-[#C3C6D7] bg-white px-3 text-sm font-semibold text-[#191C1E] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+              >
+                {EXPORT_PERIOD_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
           <div className="rounded-xl bg-[#F2F4F6] p-4">
             <p className="text-xs font-bold uppercase text-[#434655]">
               Data Siap Ekspor
             </p>
             <p className="mt-2 text-2xl font-black text-[#191C1E]">
-              {totalRows.toLocaleString("id-ID")} transaksi
+              {isLoading ? "Memuat..." : `${totalRows.toLocaleString("id-ID")} transaksi`}
             </p>
           </div>
         </div>
@@ -392,6 +261,7 @@ function ExportDataModal({
           <button
             type="button"
             onClick={onPrint}
+            disabled={isLoading}
             className="h-11 rounded-lg bg-gradient-to-br from-[#004AC6] to-[#2563EB] px-6 text-sm font-bold text-white shadow-lg shadow-blue-700/20 transition hover:brightness-105"
           >
             Cetak Ekspor
@@ -399,22 +269,21 @@ function ExportDataModal({
         </footer>
       </section>
       </div>
-    </ViewportPortal>
   );
 }
 
 export default function Laporan() {
   const [report, setReport] = useState(emptyReport);
-  const [selectedDate, setSelectedDate] = useState(formatDateValue(getIndonesiaToday()));
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [exportPeriod, setExportPeriod] = useState("day");
-  const [showAllTransactions, setShowAllTransactions] = useState(false);
+  const [exportDate, setExportDate] = useState(getIndonesiaTodayValue);
+  const [exportPeriod, setExportPeriod] = useState(REPORT_DATE_SCOPE);
+  const [exportReport, setExportReport] = useState(emptyReport);
+  const [isExportLoading, setIsExportLoading] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
 
-    getAdminReport({ date: selectedDate, export_period: exportPeriod })
+    getAdminReport({ date: REPORT_DATE_SCOPE })
       .then((response) => {
         if (isMounted) {
           setReport({ ...emptyReport, ...(response.data || {}) });
@@ -429,17 +298,46 @@ export default function Laporan() {
     return () => {
       isMounted = false;
     };
-  }, [exportPeriod, selectedDate]);
+  }, []);
 
   useEffect(() => {
-    setShowAllTransactions(false);
-  }, [selectedDate]);
+    if (!isExportModalOpen) {
+      return undefined;
+    }
+
+    let isMounted = true;
+    const requestParams =
+      exportPeriod === REPORT_DATE_SCOPE
+        ? { date: REPORT_DATE_SCOPE }
+        : { date: exportDate, export_period: exportPeriod };
+
+    getAdminReport(requestParams)
+      .then((response) => {
+        if (isMounted) {
+          setExportReport({ ...emptyReport, ...(response.data || {}) });
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setExportReport(emptyReport);
+          toast.error("Data ekspor belum bisa dimuat.");
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsExportLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [exportDate, exportPeriod, isExportModalOpen]);
 
   const averageOrder =
     Number(report.total_order) > 0
       ? Number(report.total_penjualan || 0) / Number(report.total_order)
       : 0;
-  const reportYear = Number(report.analytics_year) || parseDateValue(selectedDate).getFullYear();
   const changes = { ...emptyReport.perubahan, ...(report.perubahan || {}) };
   const stats = [
     {
@@ -514,14 +412,55 @@ export default function Laporan() {
   const transactions = (report.transaksi || [])
     .filter((item) => ["diproses", "selesai"].includes(item.status_pesanan))
     .map(mapTransaction);
-  const visibleTransactions = showAllTransactions
-    ? transactions
-    : transactions.slice(0, LOG_TRANSACTION_PREVIEW_COUNT);
-  const hasHiddenTransactions = transactions.length > LOG_TRANSACTION_PREVIEW_COUNT;
-  const exportTransactions = (report.export_transaksi || [])
-    .filter((item) => ["diproses", "selesai"].includes(item.status_pesanan))
-    .map(mapTransaction);
-  const exportLabel = exportPeriodLabels[exportPeriod] || "Harian";
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(transactions.length / itemsPerPage);
+  const visibleTransactions = transactions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+  const getVisiblePages = (current, total) => {
+    if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
+    if (current <= 3) return [1, 2, 3, 4, '...', total];
+    if (current >= total - 2) return [1, '...', total - 3, total - 2, total - 1, total];
+    return [1, '...', current - 1, current, current + 1, '...', total];
+  };
+
+  const exportSourceTransactions = (exportReport.export_transaksi || [])
+    .filter((item) => ["diproses", "selesai"].includes(item.status_pesanan));
+  const exportTransactions = exportSourceTransactions.map(mapTransaction);
+  const exportTotalSales = exportSourceTransactions.reduce(
+    (total, item) => total + (Number(item.total_harga) || 0),
+    0,
+  );
+  const exportPeriodLabel =
+    EXPORT_PERIOD_OPTIONS.find((option) => option.value === exportPeriod)?.label ||
+    REPORT_DATE_LABEL;
+  const exportLabel =
+    exportPeriod === REPORT_DATE_SCOPE
+      ? REPORT_DATE_LABEL
+      : `${exportPeriodLabel} - ${formatDateLabel(exportDate)}`;
+
+  const openExportModal = () => {
+    setIsExportLoading(true);
+    setIsExportModalOpen(true);
+  };
+
+  const handleExportDateChange = (value) => {
+    if (value !== exportDate) {
+      setIsExportLoading(true);
+    }
+
+    setExportDate(value);
+  };
+
+  const handleExportPeriodChange = (value) => {
+    if (value !== exportPeriod) {
+      setIsExportLoading(true);
+    }
+
+    setExportPeriod(value);
+  };
 
   const printExportData = () => {
     const rows = exportTransactions
@@ -541,7 +480,7 @@ export default function Laporan() {
     const printWindow = window.open("", "_blank", "width=960,height=720");
 
     if (!printWindow) {
-      window.alert("Pop up export diblokir browser. Izinkan pop up lalu coba lagi.");
+      toast.error("Pop up export diblokir browser. Izinkan pop up lalu coba lagi.");
       return;
     }
 
@@ -574,11 +513,11 @@ export default function Laporan() {
             <h1>Kedai Sigma</h1>
             <div class="meta">
               <div>Ekspor ${escapeHtml(exportLabel)}</div>
-              <div>Tanggal acuan: ${escapeHtml(formatCalendarLabel(selectedDate))}</div>
+              <div>Periode: ${escapeHtml(exportLabel)}</div>
             </div>
             <section class="summary">
               <div class="box"><span>Total Transaksi</span><strong>${escapeHtml(exportTransactions.length.toLocaleString("id-ID"))}</strong></div>
-              <div class="box"><span>Total Penjualan Tahun</span><strong>${escapeHtml(formatRupiah(report.total_penjualan))}</strong></div>
+              <div class="box"><span>Total Penjualan ${escapeHtml(exportLabel)}</span><strong>${escapeHtml(formatRupiah(exportTotalSales))}</strong></div>
             </section>
             <table>
               <thead>
@@ -616,7 +555,7 @@ export default function Laporan() {
             Kelola Laporan
           </h2>
           <p className="mt-1 text-sm font-medium text-[#434655]">
-            Ringkasan menu terjual tahun {reportYear}, log transaksi per tanggal
+            Ringkasan transaksi semua waktu
           </p>
         </div>
       </header>
@@ -740,29 +679,13 @@ export default function Laporan() {
             <div>
               <h3 className="text-lg font-bold">Log Transaksi</h3>
               <p className="text-xs font-medium text-[#434655]">
-                Menampilkan {visibleTransactions.length.toLocaleString("id-ID")} dari {transactions.length.toLocaleString("id-ID")} transaksi pada {formatCalendarLabel(selectedDate)}
+                Menampilkan {visibleTransactions.length.toLocaleString("id-ID")} dari {transactions.length.toLocaleString("id-ID")} transaksi keseluruhan
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"
-                onClick={() => setIsCalendarOpen(true)}
-                className="rounded-lg bg-[#E6E8EA] px-4 py-2 text-xs font-bold text-[#191C1E] transition hover:bg-[#DDE1E6]"
-              >
-                {formatCalendarLabel(selectedDate)}
-              </button>
-              {hasHiddenTransactions && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllTransactions((value) => !value)}
-                  className="rounded-lg bg-[#E6E8EA] px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#191C1E] transition hover:bg-[#DDE1E6]"
-                >
-                  {showAllTransactions ? "Tampilkan 6" : "Lihat Semua"}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setIsExportModalOpen(true)}
+                onClick={openExportModal}
                 className="rounded-lg bg-gradient-to-br from-[#004AC6] to-[#2563EB] px-5 py-2 text-xs font-bold text-white shadow-[0_10px_15px_-3px_rgba(0,74,198,0.2)] transition hover:brightness-105"
               >
                 Ekspor Data
@@ -800,7 +723,7 @@ export default function Laporan() {
                 {transactions.length === 0 && (
                   <tr>
                     <td colSpan="6" className="px-8 py-10 text-center text-sm font-semibold text-[#434655]">
-                      Belum ada transaksi pada tanggal ini.
+                      Belum ada transaksi.
                     </td>
                   </tr>
                 )}
@@ -808,37 +731,60 @@ export default function Laporan() {
             </table>
           </div>
 
-          {hasHiddenTransactions && (
+          {totalPages > 1 && (
             <div className="flex justify-center border-t border-slate-100 bg-white px-6 py-5">
-              <button
-                type="button"
-                onClick={() => setShowAllTransactions((value) => !value)}
-                className="rounded-lg bg-[#E6E8EA] px-6 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#191C1E] transition hover:bg-[#DDE1E6]"
-              >
-                {showAllTransactions ? "Tampilkan 6" : "Lihat Semua"}
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#C3C6D7] bg-white text-[#434655] transition hover:bg-[#F6F7FB] disabled:pointer-events-none disabled:opacity-50"
+                  aria-label="Sebelumnya"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                {getVisiblePages(currentPage, totalPages).map((page, index) => (
+                  page === '...' ? (
+                    <span key={`ellipsis-${index}`} className="px-2 font-medium">...</span>
+                  ) : (
+                    <button
+                      key={`page-${page}`}
+                      type="button"
+                      onClick={() => setCurrentPage(page)}
+                      className={`flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold transition ${
+                        page === currentPage
+                          ? "bg-[#004AC6] text-white shadow-sm"
+                          : "border border-[#C3C6D7] bg-white text-[#434655] hover:bg-[#F6F7FB]"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                ))}
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#C3C6D7] bg-white text-[#434655] transition hover:bg-[#F6F7FB] disabled:pointer-events-none disabled:opacity-50"
+                  aria-label="Berikutnya"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+              </div>
             </div>
           )}
         </article>
       </div>
 
-      {isCalendarOpen && (
-        <CalendarPopup
-          value={selectedDate}
-          onClose={() => setIsCalendarOpen(false)}
-          onSelect={(value) => {
-            setSelectedDate(value);
-            setIsCalendarOpen(false);
-          }}
-        />
-      )}
       {isExportModalOpen && (
         <ExportDataModal
+          exportDate={exportDate}
           exportPeriod={exportPeriod}
-          selectedDate={selectedDate}
+          isLoading={isExportLoading}
           totalRows={exportTransactions.length}
+          onDateChange={handleExportDateChange}
           onClose={() => setIsExportModalOpen(false)}
-          onPeriodChange={setExportPeriod}
+          onPeriodChange={handleExportPeriodChange}
           onPrint={printExportData}
         />
       )}

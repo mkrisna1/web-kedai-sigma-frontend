@@ -425,7 +425,7 @@ const getCategoryLabel = (categoryValue, categoryName) =>
   "Menu";
 
 const formatRupiah = (value) =>
-  `Rp${Number(value || 0).toLocaleString("id-ID")}`;
+  `Rp ${Number(value || 0).toLocaleString("id-ID")}`;
 
 const formatPriceNumber = (value) =>
   Number(value || 0).toLocaleString("id-ID");
@@ -527,24 +527,6 @@ const mergeMenuItems = (apiItems) => {
   return Array.from(mergedBySlug.values());
 };
 
-function interleaveItemsByCategory(items) {
-  const groupedItems = categoryOrder.map((category) =>
-    items.filter((item) => item.category === category.value)
-  );
-  const maxCategoryLength = Math.max(...groupedItems.map((itemsByCategory) => itemsByCategory.length), 0);
-  const interleavedItems = [];
-
-  for (let index = 0; index < maxCategoryLength; index += 1) {
-    groupedItems.forEach((itemsByCategory) => {
-      if (itemsByCategory[index]) {
-        interleavedItems.push(itemsByCategory[index]);
-      }
-    });
-  }
-
-  return interleavedItems;
-}
-
 function SearchIcon() {
   return (
     <svg
@@ -585,7 +567,7 @@ function FilterButton({ item, active, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`-skew-x-12 border px-7 py-2 font-['Space_Grotesk',sans-serif] text-base font-black uppercase leading-6 tracking-[-0.05em] transition ${
+      className={`-skew-x-12 border px-5 py-2 font-['Space_Grotesk',sans-serif] text-sm font-black leading-6 tracking-normal transition sm:px-7 sm:text-base ${
         active
           ? "border-[#EEC200] bg-[#EEC200] text-[#3C2F00]"
           : "border-[#5C403C]/20 bg-[#212B39] text-[#D9E3F6] hover:border-[#5C403C]/60"
@@ -601,7 +583,7 @@ function MenuCard({ item, index }) {
 
   return (
     <article
-      className={`group flex min-h-[540px] flex-col border p-6 opacity-0 transition-[transform,background-color,box-shadow] duration-500 ease-out ${
+      className={`group flex min-h-[318px] min-w-0 flex-col overflow-hidden border p-3 opacity-0 transition-[transform,background-color,box-shadow] duration-500 ease-out sm:min-h-[500px] sm:p-6 ${
         isOutOfStock
           ? "border-[#DC2626]/70 bg-[#16202E] shadow-[0_0_0_3px_rgba(220,38,38,0.10)]"
           : "border-transparent bg-[#121C2A] shadow-[0_0_40px_rgba(220,38,38,0.1)] hover:-translate-y-1.5 hover:bg-[#16202E] hover:shadow-[0_18px_48px_rgba(220,38,38,0.16)]"
@@ -611,7 +593,7 @@ function MenuCard({ item, index }) {
         animationDelay: `${Math.min(index % LOAD_MORE_COUNT, 5) * 70}ms`,
       }}
     >
-      <div className="relative h-[336px] overflow-hidden bg-[#212B39]">
+      <div className="relative h-[150px] overflow-hidden bg-[#212B39] sm:h-[300px] lg:h-[336px]">
         {item.image && (
           <>
             <img
@@ -626,33 +608,33 @@ function MenuCard({ item, index }) {
         )}
 
         {!item.image && (
-          <div className="flex h-full w-full items-center justify-center bg-[#2B3544] px-6 text-center font-['Space_Grotesk',sans-serif] text-lg font-black uppercase text-[#D9E3F6]/50">
-            {item.name}
+          <div className="flex h-full min-w-0 w-full items-center justify-center bg-[#2B3544] px-3 text-center font-['Space_Grotesk',sans-serif] text-sm font-black text-[#D9E3F6]/50 sm:px-6 sm:text-lg">
+            <span className="min-w-0 break-words break-all [overflow-wrap:anywhere] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] overflow-hidden">{item.name}</span>
           </div>
         )}
 
         {isOutOfStock && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/35">
-            <span className="border border-[#DC2626] bg-[#091421]/90 px-5 py-3 font-['Space_Grotesk',sans-serif] text-lg font-black uppercase tracking-normal text-[#FF4D4D]">
+            <span className="border border-[#DC2626] bg-[#091421]/90 px-3 py-2 font-['Space_Grotesk',sans-serif] text-xs font-black tracking-normal text-[#FF4D4D] sm:px-5 sm:py-3 sm:text-lg">
               Stok Habis
             </span>
           </div>
         )}
       </div>
 
-      <div className="mt-6 flex flex-1 flex-col">
-        <div className="pb-6">
-          <h3 className="font-['Space_Grotesk',sans-serif] text-2xl font-bold uppercase leading-8 tracking-[-0.05em] text-[#D9E3F6]">
+      <div className="mt-3 flex min-w-0 flex-1 flex-col sm:mt-6">
+        <div className="min-w-0 pb-4 sm:pb-6">
+          <h3 className="min-w-0 overflow-hidden break-words break-all font-['Space_Grotesk',sans-serif] text-sm font-bold leading-5 tracking-normal text-[#D9E3F6] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [overflow-wrap:anywhere] sm:text-2xl sm:leading-8">
             {item.name}
           </h3>
-          <p className="mt-2 font-['Be_Vietnam_Pro',sans-serif] text-sm leading-5 text-[#E6BDB8]">
+          <p className="mt-1 min-w-0 break-words break-all font-['Be_Vietnam_Pro',sans-serif] text-xs leading-4 text-[#E6BDB8] [overflow-wrap:anywhere] sm:mt-2 sm:text-sm sm:leading-5">
             {item.description}
           </p>
         </div>
 
-        <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-auto flex min-w-0 flex-col items-start justify-between gap-2 sm:flex-row sm:items-center sm:gap-3">
           <p
-            className={`font-['Space_Grotesk',sans-serif] text-xl font-bold leading-7 ${
+            className={`min-w-0 max-w-full break-words font-['Space_Grotesk',sans-serif] text-base font-bold leading-6 [overflow-wrap:anywhere] sm:text-xl sm:leading-7 ${
               isOutOfStock ? "text-[#7B8798] line-through" : "text-[#4AE176]"
             }`}
           >
@@ -660,7 +642,7 @@ function MenuCard({ item, index }) {
           </p>
 
           {isOutOfStock && (
-            <span className="border border-[#DC2626] bg-[#091421] px-3 py-2 font-['Space_Grotesk',sans-serif] text-xs font-black uppercase tracking-[1.4px] text-[#FF4D4D]">
+            <span className="border border-[#DC2626] bg-[#091421] px-2 py-1 font-['Space_Grotesk',sans-serif] text-[10px] font-black tracking-[0.6px] text-[#FF4D4D] sm:px-3 sm:py-2 sm:text-xs">
               Stok Habis
             </span>
           )}
@@ -779,16 +761,16 @@ export default function Menu() {
               type="search"
               value={search}
               onChange={handleSearchChange}
-              placeholder="CARI MENU"
+              placeholder="Cari menu"
               className="h-[55px] w-full bg-[#121C2A] py-[17px] pl-12 pr-3 font-['Space_Grotesk',sans-serif] text-base font-bold leading-5 tracking-[-0.025em] text-[#D9E3F6] outline-none placeholder:text-[#5C403C] focus:ring-2 focus:ring-[#EEC200]"
             />
           </label>
 
           <div className="max-w-xl lg:text-right">
-            <p className="font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 tracking-[0.2em] text-[#EEC200]">
-              Kedai Sigma Menu
+            <p className="font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 tracking-[0.08em] text-[#EEC200]">
+              KEDAI SIGMA MENU
             </p>
-            <h1 className="mt-2 font-['Space_Grotesk',sans-serif] text-4xl font-black uppercase leading-none tracking-[-0.05em] text-[#D9E3F6] sm:text-5xl">
+            <h1 className="mt-2 font-['Space_Grotesk',sans-serif] text-4xl font-black leading-none tracking-normal text-[#D9E3F6] sm:text-5xl">
               Temukan menu favoritmu
             </h1>
           </div>
@@ -834,13 +816,13 @@ export default function Menu() {
           {visibleCategorySections.map((category) => (
             <div key={category.value} className="flex w-full flex-col gap-6">
               <div className="flex items-center gap-5">
-                <h2 className="font-['Space_Grotesk',sans-serif] text-2xl font-black uppercase leading-none tracking-[-0.05em] text-[#EEC200] sm:text-3xl">
+                <h2 className="font-['Space_Grotesk',sans-serif] text-2xl font-black leading-none tracking-[-0.02em] text-[#EEC200] sm:text-3xl">
                   {category.label}
                 </h2>
                 <div className="h-px flex-1 bg-[#2B3544]" />
               </div>
 
-              <div className="grid w-full gap-8 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid w-full grid-cols-2 gap-4 sm:gap-8 md:grid-cols-2 xl:grid-cols-3">
                 {category.items.map((item, index) => (
                   <MenuCard
                     key={`${item.category}-${item.name}`}

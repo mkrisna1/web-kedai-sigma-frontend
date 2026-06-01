@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "react-hot-toast";
 import ViewportPortal from "../../../components/common/ViewportPortal";
 import {
   deleteAdminReviewPhoto,
@@ -121,20 +122,6 @@ function CheckIcon({ className = "h-3 w-3" }) {
   );
 }
 
-function ChevronDownIcon({ className = "h-4 w-4" }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-      <path
-        d="m6 9 6 6 6-6"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function Stars({ size = "h-5 w-5", rating = 5 }) {
   return (
     <div className="flex items-center gap-1">
@@ -171,7 +158,7 @@ const getRatingLabel = (averageRating, totalReviews) => {
 function ReviewCard({ review, onDelete, onPhotoClick, onReply }) {
   return (
     <article className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-      <div className="flex gap-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#DBEAFE] text-sm font-extrabold text-[#004AC6] shadow-[0_0_0_4px_#ECEEF0]">
           {review.initials}
         </div>
@@ -179,7 +166,7 @@ function ReviewCard({ review, onDelete, onPhotoClick, onReply }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-wrap items-center gap-3">
-              <h3 className="text-base font-bold text-[#191C1E]">
+              <h3 className="max-w-full break-words text-base font-bold text-[#191C1E] [overflow-wrap:anywhere]">
                 {review.name}
               </h3>
               <span className="rounded-full bg-[#ECEEF0] px-2 py-1 text-xs text-[#434655]">
@@ -193,11 +180,11 @@ function ReviewCard({ review, onDelete, onPhotoClick, onReply }) {
             <Stars size="h-3 w-3" rating={review.rating} />
           </div>
 
-          <p className="mt-2 text-sm leading-[23px] text-[#191C1E]">
+          <p className="mt-2 overflow-hidden break-words text-sm leading-[23px] text-[#191C1E] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] [overflow-wrap:anywhere]">
             {review.comment}
           </p>
           {review.reply && (
-            <p className="mt-3 rounded-lg bg-[#EFF6FF] px-4 py-3 text-xs font-semibold leading-5 text-[#004AC6]">
+            <p className="mt-3 break-words rounded-lg bg-[#EFF6FF] px-4 py-3 text-xs font-semibold leading-5 text-[#004AC6] [overflow-wrap:anywhere]">
               Balasan admin: {review.reply}
             </p>
           )}
@@ -309,10 +296,6 @@ function PhotoPreviewModal({ target, onClose, onDelete }) {
 
 function ReplyModal({ review, onClose, onSave }) {
   const [reply, setReply] = useState("");
-
-  useEffect(() => {
-    setReply("");
-  }, [review?.rawId]);
 
   if (!review) {
     return null;
@@ -454,7 +437,6 @@ function DeletePhotoModal({ target, onClose, onConfirm }) {
 export default function ReviewAdmin() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOption, setSortOption] = useState("latest");
-  const [visibleCount, setVisibleCount] = useState(2);
   const [reviews, setReviews] = useState([]);
   const [replyTarget, setReplyTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -527,8 +509,14 @@ export default function ReviewAdmin() {
     return nextReviews.sort((a, b) => getReviewTimeValue(b) - getReviewTimeValue(a));
   }, [filteredReviews, sortOption]);
 
-  const visibleReviews = sortedReviews.slice(0, visibleCount);
-  const canLoadMore = visibleCount < sortedReviews.length;
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 4;
+  const totalPages = Math.ceil(sortedReviews.length / itemsPerPage);
+  const visibleReviews = sortedReviews.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+  
   const totalReviews = reviews.length;
   const averageRating =
     totalReviews === 0
@@ -542,6 +530,7 @@ export default function ReviewAdmin() {
 
     return {
       stars,
+      count: totalByStars,
       percent,
       color:
         stars >= 4
@@ -563,8 +552,10 @@ export default function ReviewAdmin() {
         ),
       );
       setReplyTarget(null);
+      toast.success("Balasan review berhasil dikirim.");
     } catch (error) {
       console.error("Gagal membalas review:", error);
+      toast.error(error.message || "Balasan review belum bisa dikirim.");
     }
   };
 
@@ -575,8 +566,10 @@ export default function ReviewAdmin() {
         currentReviews.filter((item) => item.rawId !== review.rawId),
       );
       setDeleteTarget(null);
+      toast.success("Review berhasil dihapus.");
     } catch (error) {
       console.error("Gagal menghapus review:", error);
+      toast.error(error.message || "Review belum bisa dihapus.");
     }
   };
 
@@ -591,8 +584,10 @@ export default function ReviewAdmin() {
         ),
       );
       setDeletePhotoTarget(null);
+      toast.success("Foto review berhasil dihapus.");
     } catch (error) {
       console.error("Gagal menghapus foto review:", error);
+      toast.error(error.message || "Foto review belum bisa dihapus.");
     }
   };
 
@@ -607,7 +602,7 @@ export default function ReviewAdmin() {
             value={searchQuery}
             onChange={(event) => {
               setSearchQuery(event.target.value);
-              setVisibleCount(2);
+              setCurrentPage(1);
             }}
             className="h-[38px] w-full border-0 border-b-2 border-[#C3C6D7] bg-white py-2 pl-10 pr-4 text-sm text-[#191C1E] outline-none placeholder:text-[#6B7280] focus:border-[#004AC6]"
           />
@@ -623,7 +618,7 @@ export default function ReviewAdmin() {
                 type="button"
                 onClick={() => {
                   setSortOption(option.value);
-                  setVisibleCount(2);
+                  setCurrentPage(1);
                 }}
                 className={`h-9 rounded-lg px-4 text-xs font-black uppercase tracking-[0.08em] transition ${
                   isActive
@@ -674,13 +669,13 @@ export default function ReviewAdmin() {
                 <span className="w-4 text-xs font-bold text-[#434655]">
                   {item.stars}
                 </span>
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#ECEEF0]">
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#ECEEF0]" title={`${item.count} orang`}>
                   <div
                     className={`h-full rounded-full ${item.color}`}
                     style={{ width: `${item.percent}%` }}
                   />
                 </div>
-                <span className="w-8 text-right text-xs font-medium text-[#434655]">
+                <span className="w-8 text-right text-xs font-medium text-[#434655]" title={`${item.count} orang`}>
                   {item.percent}%
                 </span>
               </div>
@@ -714,29 +709,56 @@ export default function ReviewAdmin() {
           )}
         </div>
 
-        {canLoadMore && (
+        {totalPages > 1 && (
           <div className="flex justify-center pt-4">
-            <button
-              type="button"
-              onClick={() =>
-                setVisibleCount((current) =>
-                  Math.min(current + 2, sortedReviews.length),
-                )
-              }
-              className="flex h-12 items-center gap-2 rounded-xl border-2 border-slate-200 px-8 text-sm font-bold text-[#434655] transition hover:border-slate-300 hover:bg-white"
-            >
-              Muat Review Lagi
-              <ChevronDownIcon />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#E6E8EA] bg-white text-[#434655] transition hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50"
+                aria-label="Sebelumnya"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={`flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold transition ${
+                      page === currentPage
+                        ? "bg-[#004AC6] text-white shadow-sm"
+                        : "bg-white text-[#434655] hover:bg-[#EFF6FF]"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#E6E8EA] bg-white text-[#434655] transition hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50"
+                aria-label="Berikutnya"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+            </div>
           </div>
         )}
       </div>
 
-      <ReplyModal
-        review={replyTarget}
-        onClose={() => setReplyTarget(null)}
-        onSave={handleReply}
-      />
+      {replyTarget && (
+        <ReplyModal
+          key={replyTarget.rawId}
+          review={replyTarget}
+          onClose={() => setReplyTarget(null)}
+          onSave={handleReply}
+        />
+      )}
       <PhotoPreviewModal
         target={previewPhotoTarget}
         onClose={() => setPreviewPhotoTarget(null)}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "react-hot-toast";
 import ViewportPortal from "../../../components/common/ViewportPortal";
 import {
   createAdminTable,
@@ -12,6 +13,7 @@ const QR_GENERATOR_URL = "https://id.qr-code-generator.com/";
 const QR_GENERATOR_API_TOKEN = import.meta.env.VITE_QR_CODE_GENERATOR_TOKEN;
 const PUBLIC_FRONTEND_URL = import.meta.env.VITE_FRONTEND_PUBLIC_URL;
 const TABLE_STORAGE_KEY = "kedai-sigma-admin-tables-v2";
+const MAX_TABLE_CAPACITY = 50;
 
 const defaultTables = [
   { id: "T-01", name: "Meja 01", capacity: 6, used: 0, status: "Aktif" },
@@ -42,7 +44,7 @@ const parseSeatCount = (value, fallback = 0) => {
     return fallback;
   }
 
-  return Math.max(Math.round(parsed), 0);
+  return Math.min(Math.max(Math.round(parsed), 0), MAX_TABLE_CAPACITY);
 };
 
 const getTableNumber = (value, fallback = "") => {
@@ -82,7 +84,7 @@ const getTableDisplayId = (name, id, fallbackNumber) => {
 
 const normalizeTable = (table, index = 0) => {
   const fallbackNumber = String(index + 1).padStart(2, "0");
-  const capacity = Math.max(parseSeatCount(table.capacity, 4), 1);
+  const capacity = Math.min(Math.max(parseSeatCount(table.capacity, 4), 1), MAX_TABLE_CAPACITY);
   const status = table.status === "Maintenance" ? "Maintenance" : "Aktif";
   const used = 
     status === "Maintenance"
@@ -123,8 +125,14 @@ const mapTableFromApi = (table, index = 0) => {
   );
 };
 
-const withTableDisplayIds = (tables) =>
-  tables.map((table, index) => normalizeTable(table, index));
+const withTableDisplayIds = (tables) => {
+  const normalized = tables.map((table, index) => normalizeTable(table, index));
+  return normalized.sort((a, b) => {
+    const numA = Number(getTableNumber(a.name));
+    const numB = Number(getTableNumber(b.name));
+    return numA - numB;
+  });
+};
 
 const loadStoredTables = () => {
   if (typeof window === "undefined") {
@@ -350,7 +358,8 @@ function AddTableModal({ suggestedId, existingTables, onClose, onSave }) {
   });
   const [errorMessage, setErrorMessage] = useState("");
   const rawCapacity = parseSeatCount(form.capacity, 0);
-  const capacity = Math.max(rawCapacity, 1);
+  const capacity = Math.min(Math.max(rawCapacity, 1), MAX_TABLE_CAPACITY);
+  const currentId = `T-${getTableNumber(form.name) || tableNumber}`;
 
   const handleChange = (field, value) => {
     setErrorMessage("");
@@ -405,7 +414,7 @@ function AddTableModal({ suggestedId, existingTables, onClose, onSave }) {
           <div>
             <h2 className="text-xl font-extrabold text-[#191C1E]">Tambah Meja</h2>
             <p className="mt-1 text-xs font-semibold text-[#434655]">
-              Unit baru akan memakai ID {suggestedId}.
+              Unit baru akan memakai ID {currentId}.
             </p>
           </div>
           <button
@@ -442,7 +451,8 @@ function AddTableModal({ suggestedId, existingTables, onClose, onSave }) {
             <input
               type="text"
               inputMode="numeric"
-              min="0"
+              min="1"
+              max={MAX_TABLE_CAPACITY}
               value={form.capacity}
               onChange={(event) => handleChange("capacity", event.target.value)}
               className={`mt-2 ${inputClass}`}
@@ -482,33 +492,6 @@ function AddTableModal({ suggestedId, existingTables, onClose, onSave }) {
           </button>
         </footer>
       </form>
-      </div>
-    </ViewportPortal>
-  );
-}
-
-function ActionSuccessModal({ message, onClose }) {
-  return (
-    <ViewportPortal>
-      <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
-      <section className="w-full max-w-sm animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-2xl bg-white shadow-2xl shadow-black/25">
-        <header className="border-b border-[#E6E8EA] px-6 py-5">
-          <p className="text-lg font-extrabold text-[#191C1E]">Sistem</p>
-        </header>
-        <div className="px-6 py-8 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-[#DFF8E8] text-sm font-black uppercase text-[#006C49]">
-            OK
-          </div>
-          <p className="mt-5 text-sm font-semibold leading-6 text-[#434655]">{message}</p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex h-12 w-full items-center justify-center bg-gradient-to-br from-[#004AC6] to-[#2563EB] text-sm font-bold text-white transition hover:brightness-105"
-        >
-          Oke
-        </button>
-      </section>
       </div>
     </ViewportPortal>
   );
@@ -689,7 +672,7 @@ function TableCard({ table, onDelete, onGenerateQr, onUpdate }) {
   };
 
   const handleCapacityBlur = () => {
-    const capacity = Math.max(parseSeatCount(capacityInput, table.capacity), 1);
+    const capacity = Math.min(Math.max(parseSeatCount(capacityInput, table.capacity), 1), MAX_TABLE_CAPACITY);
 
     setCapacityInput(String(capacity));
     onUpdate(table.id, {
@@ -767,7 +750,8 @@ function TableCard({ table, onDelete, onGenerateQr, onUpdate }) {
           <input
             type="text"
             inputMode="numeric"
-            min="0"
+            min="1"
+            max={MAX_TABLE_CAPACITY}
             value={capacityInput}
             onChange={handleCapacityChange}
             onBlur={handleCapacityBlur}
@@ -823,7 +807,6 @@ export default function MejaAdmin() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [qrTarget, setQrTarget] = useState(null);
-  const [successMessage, setSuccessMessage] = useState("");
   const suggestedTableId = useMemo(() => getNextTableId(tables), [tables]);
 
   useEffect(() => {
@@ -857,12 +840,22 @@ export default function MejaAdmin() {
     window.localStorage.setItem(TABLE_STORAGE_KEY, JSON.stringify(tables));
   }, [tables]);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+  const totalPages = Math.ceil(tables.length / itemsPerPage);
+  const visiblePaginatedTables = tables.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+  const getVisiblePages = (current, total) => {
+    if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
+    if (current <= 3) return [1, 2, 3, 4, '...', total];
+    if (current >= total - 2) return [1, '...', total - 3, total - 2, total - 1, total];
+    return [1, '...', current - 1, current, current + 1, '...', total];
+  };
+
   const stats = useMemo(() => {
     const activeTables = tables.filter((table) => table.status !== "Maintenance");
-    const totalCapacity = activeTables.reduce(
-      (total, table) => total + table.capacity,
-      0
-    );
     const occupiedTables = activeTables.filter((table) => table.used > 0).length;
     const availableTables = Math.max(activeTables.length - occupiedTables, 0);
     const maintenanceTables = tables.length - activeTables.length;
@@ -872,13 +865,14 @@ export default function MejaAdmin() {
         label: "Total Meja",
         value: tables.length,
         description: `${activeTables.length} aktif, ${maintenanceTables} maintenance`,
-        valueClass: "text-[#004AC6]",
+        valueClass: "text-[#191C1E]",
       },
       {
-        label: "Kapasitas Aktif",
-        value: totalCapacity,
-        description: "Total kursi siap dipakai",
-        valueClass: "text-[#191C1E]",
+        label: "Maintenance",
+        value: maintenanceTables,
+        description: "Meja yang sedang tidak dipakai",
+        valueClass: "text-[#BA1A1A]",
+        borderClass: "border-l-4 border-[#BA1A1A]",
       },
       {
         label: "Meja Tersedia",
@@ -891,8 +885,8 @@ export default function MejaAdmin() {
         label: "Meja Terpakai",
         value: occupiedTables,
         description: "Meja yang sedang dipakai",
-        valueClass: "text-[#BA1A1A]",
-        borderClass: "border-l-4 border-[#BA1A1A]",
+        valueClass: "text-[#004AC6]",
+        borderClass: "border-l-4 border-[#004AC6]",
       },
     ];
   }, [tables]);
@@ -907,7 +901,7 @@ export default function MejaAdmin() {
     );
 
     if (hasDuplicateTableNumber(tables, normalizedTable.name)) {
-      window.alert("Nomor meja sudah ada.");
+      toast.error("Nomor meja sudah ada.");
       return;
     }
 
@@ -925,10 +919,10 @@ export default function MejaAdmin() {
         withTableDisplayIds([...currentTables, createdTable]),
       );
       setIsAddModalOpen(false);
-      setSuccessMessage(`${createdTable.name} berhasil ditambahkan.`);
+      toast.success(`${createdTable.name} berhasil ditambahkan.`);
     } catch (error) {
       console.error("Gagal menambah meja:", error);
-      window.alert("Gagal menambah meja. Pastikan nomor meja belum digunakan.");
+      toast.error(error.message || "Gagal menambah meja. Pastikan nomor meja belum digunakan.");
     }
   };
 
@@ -966,6 +960,7 @@ export default function MejaAdmin() {
     if (Object.keys(payload).length) {
       updateAdminTable(targetTable.backendId, payload).catch((error) => {
         console.error("Gagal memperbarui meja:", error);
+        toast.error(error.message || "Meja belum bisa diperbarui.");
       });
     }
   };
@@ -990,7 +985,7 @@ export default function MejaAdmin() {
       }
     }
 
-    setSuccessMessage(`${target.name} berhasil dihapus.`);
+    toast.success(`${target.name} berhasil dihapus.`);
   };
 
   const handleGenerateQr = async (table) => {
@@ -1062,7 +1057,7 @@ export default function MejaAdmin() {
 
           {tables.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {tables.map((table) => (
+              {visiblePaginatedTables.map((table) => (
                 <TableCard
                   key={table.id}
                   table={table}
@@ -1083,6 +1078,49 @@ export default function MejaAdmin() {
             </div>
           )}
         </section>
+
+        {totalPages > 1 && (
+          <div className="mt-8 flex justify-center items-center gap-2">
+            <button
+              type="button"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#C3C6D7] bg-white text-[#434655] transition hover:bg-[#F6F7FB] disabled:pointer-events-none disabled:opacity-50"
+              aria-label="Sebelumnya"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <div className="flex items-center gap-1">
+              {getVisiblePages(currentPage, totalPages).map((page, index) => (
+                page === '...' ? (
+                  <span key={`ellipsis-${index}`} className="px-2 font-medium">...</span>
+                ) : (
+                  <button
+                    key={`page-${page}`}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={`flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold transition ${
+                      page === currentPage
+                        ? "bg-[#004AC6] text-white shadow-sm"
+                        : "border border-[#C3C6D7] bg-white text-[#434655] hover:bg-[#F6F7FB]"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
+              ))}
+            </div>
+            <button
+              type="button"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#C3C6D7] bg-white text-[#434655] transition hover:bg-[#F6F7FB] disabled:pointer-events-none disabled:opacity-50"
+              aria-label="Berikutnya"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+          </div>
+        )}
       </section>
 
       {isAddModalOpen && (
@@ -1104,13 +1142,6 @@ export default function MejaAdmin() {
 
       {qrTarget && (
         <QrPreviewModal table={qrTarget} onClose={() => setQrTarget(null)} />
-      )}
-
-      {successMessage && (
-        <ActionSuccessModal
-          message={successMessage}
-          onClose={() => setSuccessMessage("")}
-        />
       )}
     </main>
   );
