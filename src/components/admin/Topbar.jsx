@@ -6,7 +6,7 @@ import {
 } from "../../services/api";
 
 const MAX_VISIBLE_NOTIFICATIONS = 6;
-const NOTIFICATION_REFRESH_MS = 5000;
+const NOTIFICATION_REFRESH_MS = 15000;
 const ADMIN_DATA_REFRESH_EVENT = "kedai-sigma:admin-data-refreshed";
 const ACTIONABLE_NOTIFICATION_TYPES = ["Pesanan", "Reservasi"];
 
@@ -54,7 +54,7 @@ const getTableLabel = (order) =>
 
 const buildNotifications = ({ orders, reservations }) => {
   const orderNotifications = orders
-    .filter((order) => order.status_pesanan === "menunggu_konfirmasi")
+    .filter((order) => order.status_pesanan === "menunggu_konfirmasi" && order.is_notif_read !== true)
     .map((order) => ({
       id: `order-${order.id}`,
       type: "Pesanan",
@@ -66,7 +66,7 @@ const buildNotifications = ({ orders, reservations }) => {
     }));
 
   const reservationNotifications = reservations
-    .filter((reservation) => reservation.status_reservasi === "menunggu_konfirmasi")
+    .filter((reservation) => reservation.status_reservasi === "menunggu_konfirmasi" && reservation.is_notif_read !== true)
     .map((reservation) => ({
       id: `reservation-${reservation.id}`,
       type: "Reservasi",
@@ -97,7 +97,20 @@ function BellIcon({ className = "h-5 w-5" }) {
   );
 }
 
-export default function TopBar() {
+function MenuIcon({ className = "h-5 w-5" }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path
+        d="M4 7h16M4 12h16M4 17h16"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+export default function TopBar({ onMenuClick }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
@@ -227,7 +240,16 @@ export default function TopBar() {
   }, []);
 
   return (
-    <header className="flex items-center justify-end border-b border-slate-200 bg-[#F8FAFC] px-8 py-4">
+    <header className="flex items-center justify-between border-b border-slate-200 bg-[#F8FAFC] px-4 py-4 sm:px-8 md:justify-end">
+      <button
+        type="button"
+        onClick={onMenuClick}
+        className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 md:hidden"
+        aria-label="Buka menu admin"
+      >
+        <MenuIcon />
+      </button>
+
       <div ref={dropdownRef} className="relative">
         <button
           type="button"
@@ -248,7 +270,7 @@ export default function TopBar() {
         </button>
 
         {isOpen && (
-          <div className="absolute right-0 top-12 z-50 w-[360px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.18)]">
+          <div className="absolute right-0 top-12 z-50 w-[calc(100vw-32px)] max-w-[360px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.18)]">
             <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
               <div>
                 <p className="text-sm font-black text-slate-900">Notifikasi</p>
@@ -299,10 +321,10 @@ export default function TopBar() {
                         {notification.time}
                       </span>
                     </span>
-                    <span className="mt-1 block truncate text-sm font-bold text-slate-900">
+                    <span className="mt-1 block break-words text-sm font-bold text-slate-900 [overflow-wrap:anywhere]">
                       {notification.title}
                     </span>
-                    <span className="mt-0.5 block truncate text-xs text-slate-500">
+                    <span className="mt-0.5 block break-words text-xs text-slate-500 [overflow-wrap:anywhere]">
                       {notification.description}
                     </span>
                   </span>

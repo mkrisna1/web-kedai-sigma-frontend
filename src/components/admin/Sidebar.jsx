@@ -14,8 +14,11 @@ const navItems = [
     label: "Kelola Pesanan",
     path: "/admin/pesanan",
     icon: (
-      <svg className="w-5 h-5" viewBox="0 0 18 18" fill="none">
-        <path d="M0 18V16L2 14V18H0ZM4 18V12L6 10V18H4ZM8 18V10L10 12.025V18H8ZM12 18V12.025L14 10.025V18H12ZM16 18V8L18 6V18H16ZM0 12.825V10L7 3L11 7L18 0V2.825L11 9.825L7 5.825L0 12.825Z" fill="currentColor"/>
+      <svg className="w-5 h-5" viewBox="0 0 20 20" fill="none">
+        <path
+          d="M4 20C3.45 20 2.97917 19.8042 2.5875 19.4125C2.19583 19.0208 2 18.55 2 18V2C2 1.45 2.19583 0.979167 2.5875 0.5875C2.97917 0.195833 3.45 0 4 0H16C16.55 0 17.0208 0.195833 17.4125 0.5875C17.8042 0.979167 18 1.45 18 2V18C18 18.55 17.8042 19.0208 17.4125 19.4125C17.0208 19.8042 16.55 20 16 20H4ZM5 5H15V3H5V5ZM5 9H15V7H5V9ZM5 13H11V11H5V13ZM14.5 17L17 14.5L15.6 13.1L14.5 14.2L13.9 13.6L12.5 15L14.5 17Z"
+          fill="currentColor"
+        />
       </svg>
     ),
   },
@@ -50,7 +53,7 @@ const navItems = [
     ),
   },
   {
-    label: "Review",
+    label: "Kelola Review",
     path: "/admin/review",
     icon: (
       <svg className="w-5 h-5" viewBox="0 0 20 20" fill="none">
@@ -141,8 +144,10 @@ export default function Sidebar({ isCollapsed = false, onToggleCollapse }) {
       onClick={onToggleCollapse}
       aria-label={isCollapsed ? "Lebarkan sidebar" : "Minimize sidebar"}
       title={isCollapsed ? "Lebarkan sidebar" : "Minimize sidebar"}
-      className={`flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 ${
-        isCollapsed ? "absolute left-[58px] top-4 bg-white shadow-sm" : ""
+      className={`flex items-center justify-center text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 ${
+        isCollapsed
+          ? "absolute right-[-12px] top-[22px] h-7 w-7 rounded-full border border-slate-200 bg-white shadow-sm"
+          : "h-9 w-9 rounded-lg"
       }`}
     >
       <CollapseIcon isCollapsed={isCollapsed} />

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ViewportPortal from "../../../components/common/ViewportPortal";
 import { getAdminDashboard } from "../../../services/api";
 
 const emptyDashboard = {
@@ -74,11 +75,6 @@ const getIndonesiaToday = () => {
   return new Date(getPart("year"), getPart("month") - 1, getPart("day"));
 };
 
-const yearOptions = Array.from(
-  { length: 7 },
-  (_, index) => getIndonesiaToday().getFullYear() - 3 + index,
-);
-
 const formatDateValue = (date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
     date.getDate(),
@@ -153,7 +149,8 @@ function CalendarPopup({ value, onClose, onSelect }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/20 p-4 sm:p-6">
+    <ViewportPortal>
+      <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/20 p-4 sm:p-6">
       <div className="flex max-h-[calc(100dvh-32px)] h-[495px] w-full max-w-96 animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col overflow-y-auto rounded-lg bg-white shadow-[0_10px_30px_rgba(25,28,30,0.12)]">
         <div className="flex h-[427px] w-full flex-col gap-8 p-6">
           <div className="flex h-7 w-full items-center justify-between">
@@ -234,7 +231,8 @@ function CalendarPopup({ value, onClose, onSelect }) {
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </ViewportPortal>
   );
 }
 
@@ -244,8 +242,8 @@ const Dashboard = () => {
   const [incomePeriod, setIncomePeriod] = useState("day");
   const [selectedDate, setSelectedDate] = useState(formatDateValue(getIndonesiaToday()));
   const today = getIndonesiaToday();
-  const trafficMonth = today.getMonth() + 1;
-  const trafficYear = today.getFullYear();
+  const [trafficMonth, setTrafficMonth] = useState(today.getMonth() + 1);
+  const [trafficYear, setTrafficYear] = useState(today.getFullYear());
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   useEffect(() => {
@@ -486,6 +484,26 @@ const Dashboard = () => {
                 <p className="mt-1 text-sm text-gray-500">
                   Hari paling ramai berdasarkan pesanan.
                 </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={trafficMonth}
+                  onChange={(e) => setTrafficMonth(Number(e.target.value))}
+                  className="h-8 rounded-lg border border-[#E6E8EA] bg-[#F2F4F6] px-2 text-xs font-bold text-[#191C1E] outline-none focus:border-[#2563EB]"
+                >
+                  {monthNames.map((name, index) => (
+                    <option key={index + 1} value={index + 1}>{name}</option>
+                  ))}
+                </select>
+                <select
+                  value={trafficYear}
+                  onChange={(e) => setTrafficYear(Number(e.target.value))}
+                  className="h-8 rounded-lg border border-[#E6E8EA] bg-[#F2F4F6] px-2 text-xs font-bold text-[#191C1E] outline-none focus:border-[#2563EB]"
+                >
+                  {Array.from({ length: 5 }, (_, i) => today.getFullYear() - i).map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
               </div>
             </div>
 

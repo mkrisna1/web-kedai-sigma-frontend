@@ -129,6 +129,8 @@ const slugify = (value) =>
 const formatRupiah = (value) =>
   `Rp ${Number(value || 0).toLocaleString("id-ID")}`;
 
+const roundToNearestThousand = (value) => Math.round((Number(value) || 0) / 1000) * 1000;
+
 const formatCompactPrice = (value) => {
   const number = Number(value) || 0;
 
@@ -196,7 +198,7 @@ const buildStats = (menus, reviews) => {
   const averageMenuPrice =
     priceValues.length === 0
       ? 0
-      : Math.round(
+      : roundToNearestThousand(
           priceValues.reduce((total, price) => total + price, 0) /
             priceValues.length,
         );
@@ -279,25 +281,10 @@ function StatIcon({ type, className = "h-7 w-7" }) {
   );
 }
 
-function CoffeeIcon({ className = "h-12 w-10" }) {
+function FireIcon({ className = "h-12 w-12" }) {
   return (
-    <svg
-      viewBox="0 0 40 48"
-      className={className}
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M8 16h22v12c0 6.63-5.37 12-12 12S6 34.63 6 28V18c0-1.1.9-2 2-2Z"
-        fill="currentColor"
-      />
-      <path
-        d="M30 20h2a6 6 0 0 1 0 12h-2v-4h2a2 2 0 0 0 0-4h-2v-4ZM12 4c0 3-2 3-2 6M20 4c0 3-2 3-2 6M28 4c0 3-2 3-2 6"
-        stroke="currentColor"
-        strokeWidth="4"
-        strokeLinecap="round"
-      />
-      <path d="M4 42h28v4H4v-4Z" fill="currentColor" />
+    <svg viewBox="0 0 48 48" className={className} fill="currentColor" aria-hidden="true">
+      <path d="M24.7 44C15.8 44 9 38.1 9 29.6c0-4.7 2.2-8.6 5.4-11.8 2.6-2.7 4.7-6 4.4-10.8-.1-1.8 2-2.9 3.4-1.7 4.7 4 7.4 8.6 7.7 13.7 1.6-1.5 2.6-3.4 3.1-5.6.4-1.8 2.7-2.4 3.8-.9 2.2 3.1 3.2 6.4 3.2 10.2C40 35.5 34.1 44 24.7 44Zm-1.1-5.2c4.6 0 7.8-3.1 7.8-7.4 0-2.6-1.2-4.8-3.3-6.8-.5 2.1-1.8 4-3.7 5.4-.9.7-2.2.2-2.4-.9-.5-2.4-1.8-4.5-3.7-6.4.1 2.5-1 4.7-2.8 6.6-1.6 1.7-2.4 3.6-2.4 5.8 0 3.4 2.7 5.7 6.5 5.7Z" />
     </svg>
   );
 }
@@ -517,7 +504,7 @@ export default function Home() {
         </div>
 
         <div className="w-full max-w-[1088px]">
-          <SkewLabel>EST. 2025 // DESA BULUSARI</SkewLabel>
+          <SkewLabel>Est. 2025 // Desa Bulusari</SkewLabel>
 
           <h1 className="mt-6 font-['Space_Grotesk',sans-serif] text-7xl font-bold uppercase leading-[0.86] tracking-[-0.05em] text-[#D9E3F6] drop-shadow-[0_0_15px_rgba(220,38,38,0.8)] md:text-[150px]">
             Kedai
@@ -549,7 +536,7 @@ export default function Home() {
               <span className="location-scroll-pin flex h-8 w-8 items-center justify-center bg-[#EEC200] text-[#3C2F00] transition duration-300 ease-out group-hover:-translate-y-0.5 group-hover:bg-[#3C2F00] group-hover:text-[#EEC200]">
                 <MapPinIcon className="h-4 w-4" />
               </span>
-              <span>Our Location</span>
+              <span>Lokasi Kami</span>
               <span className="location-scroll-arrow transition duration-300 ease-out group-hover:translate-y-1">
                 <ArrowDownIcon />
               </span>
@@ -630,16 +617,21 @@ export default function Home() {
             </article>
 
             <article
-              className="favorite-card-motion group relative flex min-h-[500px] flex-col justify-between overflow-hidden border-t-8 border-[#DC2626] bg-[#212B39] p-8 opacity-0 shadow-[0_0_32px_rgba(220,38,38,0.1)] transition-[transform,box-shadow,background-color] duration-500 ease-out hover:-translate-y-2 hover:bg-[#263241] hover:shadow-[0_20px_52px_rgba(220,38,38,0.18)]"
+              className="favorite-card-motion group relative flex min-h-[500px] flex-col justify-between overflow-hidden border-t-8 border-[#DC2626] bg-[#212B39] p-8 opacity-0 shadow-[0_0_32px_rgba(220,38,38,0.1)] transition-[transform,box-shadow] duration-500 ease-out hover:-translate-y-2 hover:shadow-[0_20px_52px_rgba(220,38,38,0.18)]"
               style={{
                 animation:
                   "favorite-card-in 700ms 110ms cubic-bezier(0.16, 1, 0.3, 1) forwards",
               }}
             >
-              <div className="pointer-events-none absolute right-[-54px] top-[-54px] h-36 w-36 rounded-full border border-[#DC2626]/30 transition duration-700 group-hover:scale-125 group-hover:border-[#EEC200]/40" />
-              <div>
+              <img
+                src={sideFavorite.image}
+                alt={sideFavorite.name}
+                className="absolute inset-0 h-full w-full object-cover opacity-55 transition duration-700 ease-out group-hover:scale-105 group-hover:opacity-70"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#091421]/95 via-[#091421]/58 to-[#091421]/30" />
+              <div className="relative z-10">
                 <div className="text-[#DC2626] transition duration-500 ease-out group-hover:-translate-y-2 group-hover:text-[#EEC200]">
-                  <CoffeeIcon />
+                  <FireIcon />
                 </div>
                 <h3 className="mt-9 font-['Space_Grotesk',sans-serif] text-4xl font-bold uppercase leading-10 tracking-[-0.05em]">
                   {sideFavorite.name}
@@ -648,7 +640,7 @@ export default function Home() {
                   {sideFavorite.description}
                 </p>
               </div>
-              <p className="pt-8 font-['Space_Grotesk',sans-serif] text-5xl font-bold leading-[56px] text-[#EEC200]">
+              <p className="relative z-10 pt-8 font-['Space_Grotesk',sans-serif] text-5xl font-bold leading-[56px] text-[#EEC200]">
                 {sideFavorite.price}
               </p>
             </article>

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "react-hot-toast";
+import ViewportPortal from "../../../components/common/ViewportPortal";
 import americanoImage from "../../../assets/Americano.jpg";
 import ayamPopcornImage from "../../../assets/Ayam Popcorn.jpg";
 import coffeeBearImage from "../../../assets/Coffee Bear.jpg";
@@ -50,6 +52,10 @@ const MENU_PHOTO_TYPES = ["image/jpeg", "image/png"];
 const MENU_PHOTO_EXTENSIONS = [".jpg", ".jpeg", ".png"];
 const MENU_PHOTO_ERROR =
   "Foto menu hanya boleh berformat PNG atau JPG.";
+const MENU_NAME_MAX_LENGTH = 100;
+const MENU_DESCRIPTION_MAX_LENGTH = 255;
+const MENU_PRICE_MAX_VALUE = 100000000;
+const MENU_PRICE_MAX_MESSAGE = "Harga maksimal Rp 100.000.000.";
 
 const isAllowedMenuPhoto = (file) =>
   file &&
@@ -68,8 +74,15 @@ const parsePrice = (price) => {
   return values.reduce((total, value) => total + value, 0) / values.length;
 };
 
-const parseMoneyInput = (value) =>
-  Number(String(value || "").replace(/\D/g, "")) || 0;
+const parseMoneyInput = (value) => {
+  const amount = Number(String(value || "").replace(/\D/g, "")) || 0;
+  return Math.min(amount, MENU_PRICE_MAX_VALUE);
+};
+
+const getRawMoneyInput = (value) => Number(String(value || "").replace(/\D/g, "")) || 0;
+
+const hasPriceAboveLimit = (...values) =>
+  values.some((value) => getRawMoneyInput(value) > MENU_PRICE_MAX_VALUE);
 
 const formatShortPrice = (price) => `Rp ${Math.round(price / 1000)}rb`;
 
@@ -436,6 +449,15 @@ function EditIcon() {
   );
 }
 
+function EyeIcon({ className = "h-[18px] w-[18px]" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
 function TrashIcon({ className = "h-[18px] w-[18px]" }) {
   return (
     <svg className={className} viewBox="0 0 16 18" fill="none">
@@ -481,7 +503,7 @@ function AddMenuModal({ categories, onClose, onSave }) {
   const [previewImage, setPreviewImage] = useState("");
   const [previewObjectUrl, setPreviewObjectUrl] = useState("");
   const [temperatureOption, setTemperatureOption] = useState("none");
-  const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState(categories[0]?.id || "");
   const [photoError, setPhotoError] = useState("");
   const [formError, setFormError] = useState("");
   const selectedCategory = categories.find(
@@ -489,18 +511,6 @@ function AddMenuModal({ categories, onClose, onSave }) {
   );
   const isFoodCategory = selectedCategory?.name === "Makanan";
   const effectiveTemperatureOption = isFoodCategory ? "none" : temperatureOption;
-
-  useEffect(() => {
-    if (!selectedCategoryId && categories[0]?.id) {
-      setSelectedCategoryId(categories[0].id);
-    }
-  }, [categories, selectedCategoryId]);
-
-  useEffect(() => {
-    if (isFoodCategory && temperatureOption !== "none") {
-      setTemperatureOption("none");
-    }
-  }, [isFoodCategory, temperatureOption]);
 
   useEffect(
     () => () => {
@@ -550,6 +560,23 @@ function AddMenuModal({ categories, onClose, onSave }) {
     const price = parseMoneyInput(formData.get("price"));
     const hotPrice = parseMoneyInput(formData.get("hot_price"));
     const icePrice = parseMoneyInput(formData.get("ice_price"));
+    const description = formData.get("description")?.toString().trim() || "";
+
+    if (name.length > MENU_NAME_MAX_LENGTH) {
+      setFormError(`Nama menu maksimal ${MENU_NAME_MAX_LENGTH} karakter.`);
+      return;
+    }
+
+    if (description.length > MENU_DESCRIPTION_MAX_LENGTH) {
+      setFormError(`Deskripsi maksimal ${MENU_DESCRIPTION_MAX_LENGTH} karakter.`);
+      return;
+    }
+
+    if (hasPriceAboveLimit(formData.get("price"), formData.get("hot_price"), formData.get("ice_price"))) {
+      setFormError(MENU_PRICE_MAX_MESSAGE);
+      return;
+    }
+
     const basePrice = getBasePriceForTemperature(
       effectiveTemperatureOption,
       price,
@@ -568,7 +595,7 @@ function AddMenuModal({ categories, onClose, onSave }) {
     payload.append("nama_produk", name);
     payload.append("kategori_id", selectedCategoryId || categories[0]?.id || "");
     payload.append("harga_produk", String(basePrice));
-    payload.append("deskripsi_produk", formData.get("description")?.trim() || "");
+    payload.append("deskripsi_produk", description);
     payload.append("opsi_suhu", effectiveTemperatureOption);
     appendTemperaturePrices(payload, effectiveTemperatureOption, basePrice, formData);
     payload.append(
@@ -584,7 +611,8 @@ function AddMenuModal({ categories, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
+    <ViewportPortal>
+      <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
       <div className="relative flex max-h-[calc(100dvh-32px)] w-full max-w-[672px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start overflow-hidden rounded-3xl bg-white shadow-2xl shadow-black/25">
         <header className="flex h-[81px] w-full shrink-0 items-center justify-between border-b border-[#C3C6D7]/10 px-8 py-6">
           <h3 className="flex h-8 items-center text-2xl font-extrabold leading-8 text-[#191C1E]">
@@ -610,6 +638,7 @@ function AddMenuModal({ categories, onClose, onSave }) {
                 name="name"
                 type="text"
                 placeholder="nama menu..."
+                maxLength={MENU_NAME_MAX_LENGTH}
                 onChange={() => setFormError("")}
                 className="h-[38px] w-full border-0 border-b-2 border-[#C3C6D7] bg-transparent px-3 pb-2.5 pt-[9px] text-sm font-medium leading-[17px] text-[#191C1E] outline-none placeholder:text-[#434655]/40 focus:border-[#2563EB]"
               />
@@ -623,7 +652,18 @@ function AddMenuModal({ categories, onClose, onSave }) {
                 <select
                   name="category"
                   value={selectedCategoryId}
-                  onChange={(event) => setSelectedCategoryId(event.target.value)}
+                  onChange={(event) => {
+                    const nextCategoryId = event.target.value;
+                    const nextCategory = categories.find(
+                      (category) => String(category.id) === String(nextCategoryId),
+                    );
+
+                    setSelectedCategoryId(nextCategoryId);
+
+                    if (nextCategory?.name === "Makanan") {
+                      setTemperatureOption("none");
+                    }
+                  }}
                   className="h-[38px] w-full appearance-none border-0 border-b-2 border-[#C3C6D7] bg-transparent px-3 pr-10 text-sm font-medium leading-5 text-[#191C1E] outline-none focus:border-[#2563EB]"
                 >
                   <option value="">Pilih Kategori</option>
@@ -750,7 +790,8 @@ function AddMenuModal({ categories, onClose, onSave }) {
               <textarea
                 name="description"
                 placeholder="deskripsi dari menu..."
-                className="h-[78px] w-full resize-none border-0 border-b-2 border-[#C3C6D7] bg-transparent px-3 pb-12 pt-2 text-sm font-medium leading-5 text-[#191C1E] outline-none placeholder:text-[#434655]/40 focus:border-[#2563EB]"
+                maxLength={MENU_DESCRIPTION_MAX_LENGTH}
+                className="h-[78px] w-full resize-none border-0 border-b-2 border-[#C3C6D7] bg-transparent px-3 pb-12 pt-2 text-sm font-medium leading-5 text-[#191C1E] break-words outline-none placeholder:text-[#434655]/40 focus:border-[#2563EB]"
               />
             </label>
 
@@ -822,7 +863,8 @@ function AddMenuModal({ categories, onClose, onSave }) {
           </div>
         </form>
       </div>
-    </div>
+      </div>
+    </ViewportPortal>
   );
 }
 
@@ -834,22 +876,12 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
   );
   const [selectedCategoryId, setSelectedCategoryId] = useState(item?.categoryId || "");
   const [photoError, setPhotoError] = useState("");
+  const [formError, setFormError] = useState("");
   const selectedCategory = categories.find(
     (category) => String(category.id) === String(selectedCategoryId),
   );
   const isFoodCategory = selectedCategory?.name === "Makanan";
   const effectiveTemperatureOption = isFoodCategory ? "none" : temperatureOption;
-
-  useEffect(() => {
-    setPreviewImage(item?.image || "");
-    setPreviewObjectUrl((currentUrl) => {
-      if (currentUrl) {
-        URL.revokeObjectURL(currentUrl);
-      }
-
-      return "";
-    });
-  }, [item?.image, item?.rawId]);
 
   useEffect(
     () => () => {
@@ -859,17 +891,6 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
     },
     [previewObjectUrl],
   );
-
-  useEffect(() => {
-    setTemperatureOption(item?.temperatureOption || "none");
-    setSelectedCategoryId(item?.categoryId || "");
-  }, [item?.categoryId, item?.rawId, item?.temperatureOption]);
-
-  useEffect(() => {
-    if (isFoodCategory && temperatureOption !== "none") {
-      setTemperatureOption("none");
-    }
-  }, [isFoodCategory, temperatureOption]);
 
   if (!item) {
     return null;
@@ -907,6 +928,8 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
+    const name = formData.get("name")?.toString().trim() || item.name;
+    const description = formData.get("description")?.toString().trim() || "";
     const price = parseMoneyInput(formData.get("price"));
     const hotPrice = parseMoneyInput(formData.get("hot_price"));
     const icePrice = parseMoneyInput(formData.get("ice_price"));
@@ -924,10 +947,25 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
       return;
     }
 
-    payload.append("nama_produk", formData.get("name").trim() || item.name);
+    if (name.length > MENU_NAME_MAX_LENGTH) {
+      setFormError(`Nama menu maksimal ${MENU_NAME_MAX_LENGTH} karakter.`);
+      return;
+    }
+
+    if (description.length > MENU_DESCRIPTION_MAX_LENGTH) {
+      setFormError(`Deskripsi maksimal ${MENU_DESCRIPTION_MAX_LENGTH} karakter.`);
+      return;
+    }
+
+    if (hasPriceAboveLimit(formData.get("price"), formData.get("hot_price"), formData.get("ice_price"))) {
+      setFormError(MENU_PRICE_MAX_MESSAGE);
+      return;
+    }
+
+    payload.append("nama_produk", name);
     payload.append("kategori_id", selectedCategoryId || item.categoryId || "");
     payload.append("harga_produk", String(basePrice));
-    payload.append("deskripsi_produk", formData.get("description").trim());
+    payload.append("deskripsi_produk", description);
     payload.append("opsi_suhu", effectiveTemperatureOption);
     appendTemperaturePrices(payload, effectiveTemperatureOption, basePrice, formData);
     payload.append(
@@ -945,7 +983,8 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
+    <ViewportPortal>
+      <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
       <div className="relative flex max-h-[calc(100dvh-32px)] w-full max-w-[672px] animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-center gap-6 overflow-hidden rounded-[32px] bg-[#F7F9FB] pt-10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]">
         <header className="flex h-8 w-[calc(100%-80px)] max-w-[592px] items-center justify-between">
           <h2 className="text-2xl font-extrabold leading-8 tracking-[-0.025em] text-[#191C1E]">
@@ -1010,6 +1049,8 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
               <input
                 name="name"
                 defaultValue={item.name}
+                maxLength={MENU_NAME_MAX_LENGTH}
+                onChange={() => setFormError("")}
                 className="h-[42px] border-0 border-b-2 border-[#C3C6D7] bg-transparent py-2 text-base font-medium leading-6 text-[#191C1E] outline-none focus:border-[#2563EB]"
               />
             </label>
@@ -1022,7 +1063,18 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
                 <select
                   name="category"
                   value={selectedCategoryId}
-                  onChange={(event) => setSelectedCategoryId(event.target.value)}
+                  onChange={(event) => {
+                    const nextCategoryId = event.target.value;
+                    const nextCategory = categories.find(
+                      (category) => String(category.id) === String(nextCategoryId),
+                    );
+
+                    setSelectedCategoryId(nextCategoryId);
+
+                    if (nextCategory?.name === "Makanan") {
+                      setTemperatureOption("none");
+                    }
+                  }}
                   className="h-[42px] w-full appearance-none border-0 border-b-2 border-[#C3C6D7] bg-transparent pr-8 text-base font-medium leading-6 text-[#191C1E] outline-none focus:border-[#2563EB]"
                 >
                   {categories.map((category) => (
@@ -1044,7 +1096,9 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
               <textarea
                 name="description"
                 defaultValue={item.description || `${item.name} tersedia di Kedai Sigma.`}
-                className="h-[66px] resize-none border-0 border-b-2 border-[#C3C6D7] bg-transparent py-2 text-base font-medium leading-6 text-[#191C1E] outline-none focus:border-[#2563EB]"
+                maxLength={MENU_DESCRIPTION_MAX_LENGTH}
+                onChange={() => setFormError("")}
+                className="h-[66px] resize-none border-0 border-b-2 border-[#C3C6D7] bg-transparent py-2 text-base font-medium leading-6 text-[#191C1E] break-words outline-none focus:border-[#2563EB]"
               />
             </label>
 
@@ -1151,6 +1205,12 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
                 </span>
               </div>
             </label>
+
+            {formError && (
+              <p className="col-span-2 rounded-lg border border-[#BA1A1A]/20 bg-[#FFDAD6] px-4 py-3 text-xs font-bold leading-4 text-[#BA1A1A]">
+                {formError}
+              </p>
+            )}
           </div>
         </form>
 
@@ -1171,71 +1231,49 @@ function EditMenuModal({ categories, item, onClose, onSave }) {
           </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-function ActionSuccessModal({ message, onClose }) {
-  return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
-      <section className="w-full max-w-sm animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-2xl bg-white shadow-2xl shadow-black/25">
-        <header className="border-b border-[#E6E8EA] px-6 py-5">
-          <p className="text-lg font-extrabold text-[#191C1E]">Sistem</p>
-        </header>
-        <div className="px-6 py-8 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-[#DFF8E8] text-sm font-black uppercase text-[#006C49]">
-            OK
-          </div>
-          <p className="mt-5 text-sm font-semibold leading-6 text-[#434655]">{message}</p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex h-12 w-full items-center justify-center bg-gradient-to-br from-[#004AC6] to-[#2563EB] text-sm font-bold text-white transition hover:brightness-105"
-        >
-          Oke
-        </button>
-      </section>
-    </div>
+      </div>
+    </ViewportPortal>
   );
 }
 
 function DeleteConfirmModal({ itemName, onCancel, onConfirm }) {
   return (
-    <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
-      <div className="relative box-border flex h-[321.8px] w-full max-w-96 animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start rounded-2xl border border-[#C3C6D7]/10 bg-white shadow-2xl shadow-black/25">
-        <div className="flex h-[319.8px] w-full flex-col items-start gap-[10.8px] p-8">
+    <ViewportPortal>
+      <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:p-6">
+      <div className="relative box-border flex w-full max-w-96 animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] flex-col items-start rounded-2xl border border-[#C3C6D7]/10 bg-white shadow-2xl shadow-black/25">
+        <div className="flex w-full flex-col items-start gap-4 p-8">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#BA1A1A]/10 text-[#BA1A1A]">
             <TrashIcon className="h-[23.75px] w-[27.5px]" />
           </div>
 
-          <h3 className="flex h-[41.2px] w-full items-center pt-[13.2px] text-xl font-bold leading-7 tracking-[-0.5px] text-[#191C1E]">
+          <h3 className="w-full break-words text-xl font-bold leading-7 tracking-[-0.5px] text-[#191C1E] [overflow-wrap:anywhere]">
             Konfirmasi Hapus
           </h3>
 
-          <p className="flex h-[69px] w-full items-center text-sm font-normal leading-[23px] text-[#434655]">
+          <p className="w-full break-words text-sm font-normal leading-[23px] text-[#434655] [overflow-wrap:anywhere]">
             Apakah Anda yakin ingin menghapus {itemName ? `"${itemName}"` : "menu ini"}? Tindakan ini tidak dapat dibatalkan dan item akan dihapus dari semua daftar menu.
           </p>
 
-          <div className="relative h-[65.2px] w-full">
+          <div className="grid w-full grid-cols-2 gap-3 pt-2">
             <button
               type="button"
               onClick={onCancel}
-              className="absolute left-0 top-[21.2px] flex h-11 w-[153.75px] items-center justify-center rounded-lg bg-[#E6E8EA] text-sm font-bold leading-5 tracking-[0.35px] text-[#191C1E] transition hover:brightness-95"
+              className="flex h-11 items-center justify-center rounded-lg bg-[#E6E8EA] text-sm font-bold leading-5 tracking-[0.35px] text-[#191C1E] transition hover:brightness-95"
             >
               Batal
             </button>
             <button
               type="button"
               onClick={onConfirm}
-              className="absolute left-[165px] top-[21.2px] flex h-11 w-[162.34px] items-center justify-center rounded-lg bg-[#BA1A1A] text-sm font-bold leading-5 tracking-[0.35px] text-white shadow-[0_10px_15px_-3px_rgba(186,26,26,0.2),0_4px_6px_-4px_rgba(186,26,26,0.2)] transition hover:brightness-105"
+              className="flex h-11 items-center justify-center rounded-lg bg-[#BA1A1A] text-sm font-bold leading-5 tracking-[0.35px] text-white shadow-[0_10px_15px_-3px_rgba(186,26,26,0.2),0_4px_6px_-4px_rgba(186,26,26,0.2)] transition hover:brightness-105"
             >
               Hapus
             </button>
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </ViewportPortal>
   );
 }
 
@@ -1295,7 +1333,7 @@ function MenuThumbnail({ gradient, image, name = "Menu", className = "h-12 w-12"
   );
 }
 
-function MenuRow({ item, index, onDeleteClick, onEditClick }) {
+function MenuRow({ item, index, onDeleteClick, onEditClick, onReadClick }) {
   return (
     <tr className={index > 1 ? "border-t border-[#E6E8EA]" : ""}>
       <td className="h-[81px] px-6">
@@ -1306,16 +1344,16 @@ function MenuRow({ item, index, onDeleteClick, onEditClick }) {
             name={item.name}
           />
           <div className="min-w-0">
-            <p className="truncate text-base font-bold leading-5 text-[#191C1E]">
+            <p className="overflow-hidden text-base font-bold leading-5 text-[#191C1E] break-words line-clamp-2 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
               {item.name}
             </p>
-            <p className="truncate text-xs leading-4 text-[#434655]">
+            <p className="break-words text-xs leading-4 text-[#434655] [overflow-wrap:anywhere]">
               {item.sku} - {item.temperatureLabel || "Tanpa Opsi"}
             </p>
           </div>
         </div>
       </td>
-      <td className="h-[81px] px-6 pl-12 text-sm leading-5 text-[#434655]">
+      <td className="h-[81px] max-w-[150px] px-6 pl-12 text-sm leading-5 text-[#434655] break-words [overflow-wrap:anywhere]">
         {item.category}
       </td>
       <td className="h-[81px] whitespace-nowrap px-6 text-base font-semibold leading-5 text-[#191C1E]">
@@ -1326,6 +1364,14 @@ function MenuRow({ item, index, onDeleteClick, onEditClick }) {
       </td>
       <td className="h-[81px] px-6">
         <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            aria-label={`Lihat ${item.name}`}
+            onClick={() => onReadClick(item)}
+            className="flex h-[34px] w-[34px] items-center justify-center rounded text-[#191C1E] transition hover:bg-slate-100"
+          >
+            <EyeIcon />
+          </button>
           <button
             type="button"
             aria-label={`Edit ${item.name}`}
@@ -1348,6 +1394,61 @@ function MenuRow({ item, index, onDeleteClick, onEditClick }) {
   );
 }
 
+function ReadMenuModal({ item, onClose }) {
+  if (!item) return null;
+
+  return (
+    <ViewportPortal>
+      <div className="fixed inset-0 z-50 flex animate-[admin-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/40 p-4 backdrop-blur-sm sm:p-6" onClick={onClose}>
+        <div className="relative w-full max-w-md animate-[admin-modal-panel_240ms_cubic-bezier(0.16,1,0.3,1)] rounded-2xl bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+          <header className="flex items-center justify-between border-b border-[#E6E8EA] pb-4">
+            <h2 className="text-xl font-bold text-[#191C1E]">Detail Menu</h2>
+            <button onClick={onClose} className="text-gray-500 hover:text-[#191C1E]">
+              <CloseIcon />
+            </button>
+          </header>
+          <div className="mt-4 flex flex-col gap-4">
+            <div className="flex justify-center">
+              <MenuThumbnail
+                gradient={item.thumbnail}
+                image={item.image}
+                name={item.name}
+                className="h-32 w-32"
+              />
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase text-gray-500">Nama Menu</p>
+              <p className="font-semibold text-lg text-gray-900 break-words">{item.name}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase text-gray-500">Kategori</p>
+              <p className="break-words text-gray-900 [overflow-wrap:anywhere]">{item.category}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase text-gray-500">SKU</p>
+              <p className="break-words text-gray-900 [overflow-wrap:anywhere]">{item.sku}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase text-gray-500">Harga</p>
+              <p className="font-semibold text-blue-600">{item.price}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase text-gray-500">Deskripsi</p>
+              <p className="break-words text-gray-900 [overflow-wrap:anywhere]">{item.description}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase text-gray-500">Status Stok</p>
+              <div className="mt-1">
+                <StatusBadge status={item.status} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ViewportPortal>
+  );
+}
+
 export default function MenuAdmin() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [flatMenuItems, setFlatMenuItems] = useState(() =>
@@ -1361,7 +1462,7 @@ export default function MenuAdmin() {
   const [currentPage, setCurrentPage] = useState(0);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
-  const [successMessage, setSuccessMessage] = useState("");
+  const [readTarget, setReadTarget] = useState(null);
   const categoryOptions = sanitizeCategoryOptions(
     categories.length > 0
       ? categories
@@ -1463,10 +1564,6 @@ export default function MenuAdmin() {
     };
   }, []);
 
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [categoryFilter, searchQuery, sortOption, statusFilter]);
-
   const handleAddMenu = async (payload) => {
     try {
       const response = await createAdminMenuItem(payload);
@@ -1477,9 +1574,10 @@ export default function MenuAdmin() {
       );
       setCurrentPage(0);
       setIsAddModalOpen(false);
-      setSuccessMessage("Menu berhasil ditambahkan.");
+      toast.success("Menu berhasil ditambahkan.");
     } catch (error) {
       console.error("Gagal menambah menu:", error);
+      toast.error(error.message || "Menu belum bisa ditambahkan.");
     }
   };
 
@@ -1503,9 +1601,10 @@ export default function MenuAdmin() {
         ),
       );
       setDeleteTarget(null);
-      setSuccessMessage("Menu berhasil dihapus.");
+      toast.success("Menu berhasil dihapus.");
     } catch (error) {
       console.error("Gagal menghapus menu:", error);
+      toast.error(error.message || "Menu belum bisa dihapus.");
     }
   };
 
@@ -1530,9 +1629,10 @@ export default function MenuAdmin() {
         ),
       );
       setEditTarget(null);
-      setSuccessMessage("Menu berhasil diperbarui.");
+      toast.success("Menu berhasil diperbarui.");
     } catch (error) {
       console.error("Gagal menyimpan menu:", error);
+      toast.error(error.message || "Menu belum bisa diperbarui.");
     }
   };
 
@@ -1573,7 +1673,10 @@ export default function MenuAdmin() {
             <input
               type="search"
               value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
+                setCurrentPage(0);
+              }}
               placeholder="Nama, SKU, deskripsi..."
               className="h-11 rounded-lg border border-[#C3C6D7] bg-white px-3 text-sm font-semibold text-[#191C1E] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
             />
@@ -1585,7 +1688,10 @@ export default function MenuAdmin() {
             </span>
             <select
               value={categoryFilter}
-              onChange={(event) => setCategoryFilter(event.target.value)}
+              onChange={(event) => {
+                setCategoryFilter(event.target.value);
+                setCurrentPage(0);
+              }}
               className="h-11 rounded-lg border border-[#C3C6D7] bg-white px-3 text-sm font-semibold text-[#191C1E] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
             >
               <option value="all">Semua Kategori</option>
@@ -1603,7 +1709,10 @@ export default function MenuAdmin() {
             </span>
             <select
               value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
+              onChange={(event) => {
+                setStatusFilter(event.target.value);
+                setCurrentPage(0);
+              }}
               className="h-11 rounded-lg border border-[#C3C6D7] bg-white px-3 text-sm font-semibold text-[#191C1E] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
             >
               <option value="all">Semua Status</option>
@@ -1618,7 +1727,10 @@ export default function MenuAdmin() {
             </span>
             <select
               value={sortOption}
-              onChange={(event) => setSortOption(event.target.value)}
+              onChange={(event) => {
+                setSortOption(event.target.value);
+                setCurrentPage(0);
+              }}
               className="h-11 rounded-lg border border-[#C3C6D7] bg-white px-3 text-sm font-semibold text-[#191C1E] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
             >
               <option value="name-asc">Nama A-Z</option>
@@ -1638,6 +1750,7 @@ export default function MenuAdmin() {
               setCategoryFilter("all");
               setStatusFilter("all");
               setSortOption("name-asc");
+              setCurrentPage(0);
             }}
             className="h-11 rounded-lg px-5 text-sm font-bold text-[#434655] transition hover:bg-[#F2F4F6]"
           >
@@ -1675,6 +1788,7 @@ export default function MenuAdmin() {
                       index={index}
                       onDeleteClick={setDeleteTarget}
                       onEditClick={setEditTarget}
+                      onReadClick={setReadTarget}
                     />
                   ))
                 ) : (
@@ -1752,6 +1866,7 @@ export default function MenuAdmin() {
 
       {editTarget && (
         <EditMenuModal
+          key={editTarget.rawId || editTarget.sku}
           categories={categoryOptions}
           item={editTarget}
           onClose={() => setEditTarget(null)}
@@ -1759,10 +1874,10 @@ export default function MenuAdmin() {
         />
       )}
 
-      {successMessage && (
-        <ActionSuccessModal
-          message={successMessage}
-          onClose={() => setSuccessMessage("")}
+      {readTarget && (
+        <ReadMenuModal
+          item={readTarget}
+          onClose={() => setReadTarget(null)}
         />
       )}
     </div>
