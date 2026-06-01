@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import ViewportPortal from "../../../components/common/ViewportPortal";
 import {
@@ -9,7 +9,7 @@ import {
 } from "../../../services/api";
 
 const emptyReservationPages = [[]];
-const ADMIN_DATA_REFRESH_EVENT = "kedai-sigma:admin-data-refreshed";
+const RESERVATION_REFRESH_MS = 8000;
 
 const statusStyles = {
   Menunggu: "bg-yellow-100 text-yellow-700",
@@ -401,30 +401,34 @@ export default function ReservasiAdmin() {
     setCurrentPage((page) => Math.min(page, nextPages.length - 1));
   };
 
+  const loadReservations = useCallback(async (silent = false) => {
+    try {
+      const result = await getAdminReservations({
+        ...(selectedDate ? { date: selectedDate } : {}),
+        ...(selectedStatus !== "Semua Status"
+          ? { status: apiStatusByUiStatus[selectedStatus] }
+          : {}),
+      });
+      setReservationItems((result.data || []).map(mapReservationFromApi));
+    } catch (error) {
+      if (!silent) {
+        toast.error(error.message || "Reservasi belum bisa dimuat.");
+      }
+    }
+  }, [selectedDate, selectedStatus]);
+
   useEffect(() => {
     let isMounted = true;
 
-    Promise.allSettled([getAdminReservations(), getAdminTables()])
-      .then(([reservationsResult, tablesResult]) => {
+    getAdminTables()
+      .then((tablesResult) => {
         if (isMounted) {
-          const reservations =
-            reservationsResult.status === "fulfilled"
-              ? reservationsResult.value.data || []
-              : [];
-          const tables =
-            tablesResult.status === "fulfilled"
-              ? tablesResult.value.data || []
-              : [];
-
-          setPages(chunkReservations(reservations.map(mapReservationFromApi)));
-          setTableOptions(tables.map(mapTableOptionFromApi));
-          setCurrentPage(0);
+          setTableOptions((tablesResult.data || []).map(mapTableOptionFromApi));
         }
       })
       .catch(() => {
         if (isMounted) {
-          setPages(emptyReservationPages);
-          setCurrentPage(0);
+          setTableOptions([]);
         }
       });
 
@@ -434,20 +438,24 @@ export default function ReservasiAdmin() {
   }, []);
 
   useEffect(() => {
-    const handleAdminDataRefresh = (event) => {
-      const refreshedReservations = event.detail?.reservations;
+    let isMounted = true;
 
-      if (Array.isArray(refreshedReservations)) {
-        setReservationItems(refreshedReservations.map(mapReservationFromApi));
+    const refresh = (silent = true) => {
+      if (isMounted) {
+        loadReservations(silent);
       }
     };
 
-    window.addEventListener(ADMIN_DATA_REFRESH_EVENT, handleAdminDataRefresh);
+    refresh(false);
+    const intervalId = window.setInterval(() => refresh(true), RESERVATION_REFRESH_MS);
+    window.addEventListener("focus", refresh);
 
     return () => {
-      window.removeEventListener(ADMIN_DATA_REFRESH_EVENT, handleAdminDataRefresh);
+      isMounted = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refresh);
     };
-  }, []);
+  }, [loadReservations]);
 
   const matchesFilters = (item) => {
     const matchesDate = selectedDate ? item.dateValue === selectedDate : true;

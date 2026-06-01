@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import ViewportPortal from "../../../components/common/ViewportPortal";
 import {
@@ -10,11 +10,10 @@ import {
 } from "../../../services/api";
 
 const cn = (...classes) => classes.filter(Boolean).join(" ");
-const ADMIN_DATA_REFRESH_EVENT = "kedai-sigma:admin-data-refreshed";
-
 const formatRupiah = (value) => `Rp ${value.toLocaleString("id-ID")}`;
 
 const STOCK_OUT_NOTE = "Stok habis";
+const ORDER_REFRESH_MS = 8000;
 
 const isStockOutItem = (item) => item.note === STOCK_OUT_NOTE;
 
@@ -760,29 +759,37 @@ export default function Pesanan() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
+  const loadOrders = useCallback(async (silent = false) => {
+    try {
+      const result = await getAdminOrders({ date: selectedDate });
+      setOrders((result.data || []).map(mapOrderFromApi));
+    } catch (error) {
+      if (!silent) {
+        toast.error(error.message || "Pesanan belum bisa dimuat.");
+      }
+    }
+  }, [selectedDate]);
+
   useEffect(() => {
     let isMounted = true;
 
-    Promise.allSettled([getAdminOrders(), getAdminMenu()])
-      .then(([ordersResult, menuResult]) => {
+    getAdminMenu()
+      .then((menuResult) => {
         if (!isMounted) {
           return;
         }
 
-        if (ordersResult.status === "fulfilled") {
-          setOrders((ordersResult.value.data || []).map(mapOrderFromApi));
-        } else {
-          setOrders([]);
+        const availableMenu = (menuResult.data || [])
+          .filter((item) => item.ketersediaan_produk === "tersedia")
+          .map(mapReplacementMenuFromApi);
+
+        if (availableMenu.length) {
+          setReplacementMenuOptions(availableMenu);
         }
-
-        if (menuResult.status === "fulfilled") {
-          const availableMenu = (menuResult.value.data || [])
-            .filter((item) => item.ketersediaan_produk === "tersedia")
-            .map(mapReplacementMenuFromApi);
-
-          if (availableMenu.length) {
-            setReplacementMenuOptions(availableMenu);
-          }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setReplacementMenuOptions(fallbackReplacementMenuOptions);
         }
       });
 
@@ -792,20 +799,24 @@ export default function Pesanan() {
   }, []);
 
   useEffect(() => {
-    const handleAdminDataRefresh = (event) => {
-      const refreshedOrders = event.detail?.orders;
+    let isMounted = true;
 
-      if (Array.isArray(refreshedOrders)) {
-        setOrders(refreshedOrders.map(mapOrderFromApi));
+    const refresh = (silent = true) => {
+      if (isMounted) {
+        loadOrders(silent);
       }
     };
 
-    window.addEventListener(ADMIN_DATA_REFRESH_EVENT, handleAdminDataRefresh);
+    refresh(false);
+    const intervalId = window.setInterval(() => refresh(true), ORDER_REFRESH_MS);
+    window.addEventListener("focus", refresh);
 
     return () => {
-      window.removeEventListener(ADMIN_DATA_REFRESH_EVENT, handleAdminDataRefresh);
+      isMounted = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refresh);
     };
-  }, []);
+  }, [loadOrders]);
 
   const dateOrders = useMemo(
     () => orders.filter((order) => order.dateValue === selectedDate),

@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  getAdminOrders,
-  getAdminReservations,
+  getAdminNotifications,
+  markAdminNotificationRead,
+  markAllAdminNotificationsRead,
 } from "../../services/api";
 
 const MAX_VISIBLE_NOTIFICATIONS = 6;
 const NOTIFICATION_REFRESH_MS = 15000;
-const ADMIN_DATA_REFRESH_EVENT = "kedai-sigma:admin-data-refreshed";
 const ACTIONABLE_NOTIFICATION_TYPES = ["Pesanan", "Reservasi"];
 
 const cn = (...classes) => classes.filter(Boolean).join(" ");
@@ -57,9 +57,10 @@ const buildNotifications = ({ orders, reservations }) => {
     .filter((order) => order.status_pesanan === "menunggu_konfirmasi" && order.is_notif_read !== true)
     .map((order) => ({
       id: `order-${order.id}`,
+      entityId: order.id,
       type: "Pesanan",
       title: `Pesanan baru ${getTableLabel(order)}`,
-      description: `${order.detail_pesanans?.length || 0} item menunggu diterima`,
+      description: `${order.detail_pesanans_count ?? order.detail_pesanans?.length ?? 0} item menunggu diterima`,
       time: formatShortTime(order.tgl_pesanan || order.created_at),
       to: "/admin/pesanan",
       tone: "blue",
@@ -69,6 +70,7 @@ const buildNotifications = ({ orders, reservations }) => {
     .filter((reservation) => reservation.status_reservasi === "menunggu_konfirmasi" && reservation.is_notif_read !== true)
     .map((reservation) => ({
       id: `reservation-${reservation.id}`,
+      entityId: reservation.id,
       type: "Reservasi",
       title: reservation.nama_reservasi || "Reservasi baru",
       description: `${reservation.jml_orang || 0} orang, ${formatReservationTime(
@@ -158,32 +160,59 @@ export default function TopBar({ onMenuClick }) {
     }
   };
 
+  const removeNotification = (notificationId) => {
+    setNotifications((currentNotifications) =>
+      currentNotifications.filter((notification) => notification.id !== notificationId),
+    );
+    setSeenNotificationIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      nextIds.delete(notificationId);
+      return nextIds;
+    });
+  };
+
+  const handleMarkAsRead = async (notification) => {
+    removeNotification(notification.id);
+
+    try {
+      await markAdminNotificationRead(notification.type, notification.entityId);
+    } catch (error) {
+      setErrorMessage(error.message || "Notifikasi belum bisa ditandai dibaca.");
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    const previousNotifications = notifications;
+
+    setNotifications([]);
+    setSeenNotificationIds(new Set());
+
+    try {
+      await markAllAdminNotificationsRead();
+    } catch (error) {
+      setNotifications(previousNotifications);
+      setErrorMessage(error.message || "Notifikasi belum bisa ditandai semua.");
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
 
     const loadNotifications = async () => {
       try {
-        const [ordersResult, reservationsResult] = await Promise.all([
-          getAdminOrders(),
-          getAdminReservations(),
-        ]);
+        const notificationsResult = await getAdminNotifications();
 
         if (!isMounted) {
           return;
         }
 
-        const orders = ordersResult?.data || [];
-        const reservations = reservationsResult?.data || [];
+        const orders = notificationsResult?.data?.orders || [];
+        const reservations = notificationsResult?.data?.reservations || [];
 
         setNotifications(
           buildNotifications({
             orders,
             reservations,
-          }),
-        );
-        window.dispatchEvent(
-          new CustomEvent(ADMIN_DATA_REFRESH_EVENT, {
-            detail: { orders, reservations },
           }),
         );
         setErrorMessage("");
@@ -280,9 +309,20 @@ export default function TopBar({ onMenuClick }) {
                     : "Tidak ada pesanan atau reservasi baru"}
                 </p>
               </div>
-              {isLoading && (
-                <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
-              )}
+              <div className="ml-3 flex flex-shrink-0 items-center gap-2">
+                {isLoading && (
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
+                )}
+                {totalNotifications > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleMarkAllAsRead}
+                    className="rounded-md bg-slate-100 px-2.5 py-1.5 text-[11px] font-black text-slate-700 transition hover:bg-slate-200"
+                  >
+                    Tandai semua
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="max-h-[420px] overflow-y-auto py-2">
@@ -299,10 +339,8 @@ export default function TopBar({ onMenuClick }) {
               )}
 
               {visibleNotifications.map((notification) => (
-                <Link
+                <div
                   key={notification.id}
-                  to={notification.to}
-                  onClick={() => setIsOpen(false)}
                   className="mx-2 flex gap-3 rounded-md px-3 py-3 transition-colors hover:bg-slate-50"
                 >
                   <span
@@ -327,8 +365,24 @@ export default function TopBar({ onMenuClick }) {
                     <span className="mt-0.5 block break-words text-xs text-slate-500 [overflow-wrap:anywhere]">
                       {notification.description}
                     </span>
+                    <span className="mt-3 flex flex-wrap gap-2">
+                      <Link
+                        to={notification.to}
+                        onClick={() => setIsOpen(false)}
+                        className="rounded-md bg-blue-50 px-2.5 py-1.5 text-[11px] font-black text-blue-700 transition hover:bg-blue-100"
+                      >
+                        Buka
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleMarkAsRead(notification)}
+                        className="rounded-md bg-slate-100 px-2.5 py-1.5 text-[11px] font-black text-slate-700 transition hover:bg-slate-200"
+                      >
+                        Tandai dibaca
+                      </button>
+                    </span>
                   </span>
-                </Link>
+                </div>
               ))}
             </div>
 

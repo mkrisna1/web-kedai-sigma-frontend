@@ -1,25 +1,12 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Sidebar from "../../components/admin/Sidebar";
 import TopBar from "../../components/admin/Topbar";
 import { Outlet, useLocation } from "react-router-dom";
-import { logoutAdminOnUnload } from "../../services/api";
 
 export default function AdminLayout() {
   const location = useLocation();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-
-  useEffect(() => {
-    const handlePageHide = () => {
-      logoutAdminOnUnload();
-    };
-
-    window.addEventListener("pagehide", handlePageHide);
-
-    return () => {
-      window.removeEventListener("pagehide", handlePageHide);
-    };
-  }, []);
 
   return (
     <div className="flex min-w-0 overflow-x-hidden">
