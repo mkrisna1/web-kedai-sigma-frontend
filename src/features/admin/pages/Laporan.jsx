@@ -274,6 +274,9 @@ function ExportDataModal({
 
 export default function Laporan() {
   const [report, setReport] = useState(emptyReport);
+  const [reportDate, setReportDate] = useState(getIndonesiaTodayValue);
+  const [reportPeriod, setReportPeriod] = useState(REPORT_DATE_SCOPE);
+  const [isReportLoading, setIsReportLoading] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportDate, setExportDate] = useState(getIndonesiaTodayValue);
   const [exportPeriod, setExportPeriod] = useState(REPORT_DATE_SCOPE);
@@ -282,23 +285,35 @@ export default function Laporan() {
 
   useEffect(() => {
     let isMounted = true;
+    const requestParams =
+      reportPeriod === REPORT_DATE_SCOPE
+        ? { date: REPORT_DATE_SCOPE }
+        : { date: reportDate, period: reportPeriod };
 
-    getAdminReport({ date: REPORT_DATE_SCOPE })
+    setIsReportLoading(true);
+    getAdminReport(requestParams)
       .then((response) => {
         if (isMounted) {
           setReport({ ...emptyReport, ...(response.data || {}) });
+          setCurrentPage(1);
         }
       })
       .catch(() => {
         if (isMounted) {
           setReport(emptyReport);
+          toast.error("Data laporan belum bisa dimuat.");
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsReportLoading(false);
         }
       });
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [reportDate, reportPeriod]);
 
   useEffect(() => {
     if (!isExportModalOpen) {
@@ -440,6 +455,13 @@ export default function Laporan() {
     exportPeriod === REPORT_DATE_SCOPE
       ? REPORT_DATE_LABEL
       : `${exportPeriodLabel} - ${formatDateLabel(exportDate)}`;
+  const reportPeriodLabel =
+    EXPORT_PERIOD_OPTIONS.find((option) => option.value === reportPeriod)?.label ||
+    REPORT_DATE_LABEL;
+  const reportLabel =
+    reportPeriod === REPORT_DATE_SCOPE
+      ? REPORT_DATE_LABEL
+      : `${reportPeriodLabel} - ${formatDateLabel(reportDate)}`;
 
   const openExportModal = () => {
     setIsExportLoading(true);
@@ -555,8 +577,48 @@ export default function Laporan() {
             Kelola Laporan
           </h2>
           <p className="mt-1 text-sm font-medium text-[#434655]">
-            Ringkasan transaksi semua waktu
+            Ringkasan transaksi {reportLabel.toLowerCase()}
           </p>
+        </div>
+        <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-[160px_180px_auto] sm:items-end">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-black uppercase tracking-[0.08em] text-[#434655]">
+              Periode
+            </span>
+            <select
+              value={reportPeriod}
+              onChange={(event) => setReportPeriod(event.target.value)}
+              className="h-10 rounded-lg border border-[#C3C6D7] bg-white px-3 text-sm font-bold text-[#191C1E] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            >
+              {EXPORT_PERIOD_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-black uppercase tracking-[0.08em] text-[#434655]">
+              Tanggal
+            </span>
+            <input
+              type="date"
+              value={reportDate}
+              onChange={(event) => setReportDate(event.target.value)}
+              disabled={reportPeriod === REPORT_DATE_SCOPE}
+              className="h-10 rounded-lg border border-[#C3C6D7] bg-white px-3 text-sm font-bold text-[#191C1E] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15 disabled:bg-[#EEF0F3] disabled:text-[#8B8E99]"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              setReportPeriod(REPORT_DATE_SCOPE);
+              setReportDate(getIndonesiaTodayValue());
+            }}
+            className="h-10 rounded-lg bg-slate-100 px-4 text-xs font-black text-slate-700 transition hover:bg-slate-200"
+          >
+            Reset
+          </button>
         </div>
       </header>
 
@@ -679,7 +741,9 @@ export default function Laporan() {
             <div>
               <h3 className="text-lg font-bold">Log Transaksi</h3>
               <p className="text-xs font-medium text-[#434655]">
-                Menampilkan {visibleTransactions.length.toLocaleString("id-ID")} dari {transactions.length.toLocaleString("id-ID")} transaksi keseluruhan
+                {isReportLoading
+                  ? "Memuat transaksi..."
+                  : `Menampilkan ${visibleTransactions.length.toLocaleString("id-ID")} dari ${transactions.length.toLocaleString("id-ID")} transaksi ${reportLabel.toLowerCase()}`}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
