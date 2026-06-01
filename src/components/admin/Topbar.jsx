@@ -313,7 +313,7 @@ export default function TopBar({ onMenuClick }) {
 
         {isOpen && (
           <div className="absolute right-0 top-12 z-50 w-[calc(100vw-32px)] max-w-[360px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.18)]">
-            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
               <div>
                 <p className="text-sm font-black text-slate-900">Notifikasi</p>
                 <p className="text-xs text-slate-500">
@@ -332,7 +332,7 @@ export default function TopBar({ onMenuClick }) {
                     onClick={handleMarkAllAsRead}
                     className="rounded-md bg-slate-100 px-2.5 py-1.5 text-[11px] font-black text-slate-700 transition hover:bg-slate-200"
                   >
-                    Tandai semua
+                    Bersihkan
                   </button>
                 )}
               </div>
@@ -354,7 +354,7 @@ export default function TopBar({ onMenuClick }) {
               {visibleNotifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className="mx-2 flex gap-3 rounded-md px-3 py-3 transition-colors hover:bg-slate-50"
+                  className="group relative mx-2 flex gap-3 rounded-md px-3 py-3 pr-10 transition-colors hover:bg-slate-50"
                 >
                   <span
                     className={cn(
@@ -364,6 +364,19 @@ export default function TopBar({ onMenuClick }) {
                     )}
                   />
                   <span className="min-w-0 flex-1">
+                    <button
+                      type="button"
+                      onClick={() => handleMarkAsRead(notification)}
+                      className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-800"
+                      aria-label={`Hapus notifikasi ${notification.title}`}
+                    >
+                      x
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenNotification(notification)}
+                      className="block w-full min-w-0 text-left"
+                    >
                     <span className="flex items-center justify-between gap-3">
                       <span className="truncate text-xs font-black uppercase tracking-wide text-slate-500">
                         {notification.type}
@@ -378,22 +391,10 @@ export default function TopBar({ onMenuClick }) {
                     <span className="mt-0.5 block break-words text-xs text-slate-500 [overflow-wrap:anywhere]">
                       {notification.description}
                     </span>
-                    <span className="mt-3 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenNotification(notification)}
-                        className="rounded-md bg-blue-50 px-2.5 py-1.5 text-[11px] font-black text-blue-700 transition hover:bg-blue-100"
-                      >
-                        Buka
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleMarkAsRead(notification)}
-                        className="rounded-md bg-slate-100 px-2.5 py-1.5 text-[11px] font-black text-slate-700 transition hover:bg-slate-200"
-                      >
-                        Hapus
-                      </button>
+                    <span className="mt-2 block text-[11px] font-black text-blue-700">
+                      Buka dan tandai dilihat
                     </span>
+                    </button>
                   </span>
                 </div>
               ))}
