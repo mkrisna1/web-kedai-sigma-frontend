@@ -13,7 +13,7 @@ const cn = (...classes) => classes.filter(Boolean).join(" ");
 const formatRupiah = (value) => `Rp ${value.toLocaleString("id-ID")}`;
 
 const STOCK_OUT_NOTE = "Stok habis";
-const ORDER_REFRESH_MS = 8000;
+const ORDER_REFRESH_MS = 20000;
 
 const isStockOutItem = (item) => item.note === STOCK_OUT_NOTE;
 
@@ -152,6 +152,14 @@ const formatCalendarLabel = (value) => {
   return `${date.getDate()} ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
 };
 
+const formatShortDateLabel = (value) => {
+  const date = parseDateValue(value);
+
+  return `${String(date.getDate()).padStart(2, "0")}/${String(
+    date.getMonth() + 1,
+  ).padStart(2, "0")}/${date.getFullYear()}`;
+};
+
 const getDateValueFromApi = (value) => {
   const date = value ? new Date(value) : getIndonesiaToday();
 
@@ -241,6 +249,7 @@ function StatCard({
   icon,
   accentColor,
   valueColor,
+  activeColor,
   activeBg = "bg-[#EFF6FF]",
   active = false,
   onClick,
@@ -252,16 +261,21 @@ function StatCard({
       type={onClick ? "button" : undefined}
       onClick={onClick}
       className={cn(
-        "flex flex-col gap-1 rounded-lg p-5 shadow-sm border-b-4 text-left transition",
+        "group flex flex-col gap-1 rounded-2xl border border-slate-200 border-b-4 p-5 text-left shadow-sm transition",
         active ? activeBg : "bg-white",
-        onClick && "hover:-translate-y-0.5 hover:shadow-md",
-        active && "shadow-md",
+        onClick && "cursor-pointer hover:-translate-y-1 hover:border-blue-200 hover:shadow-lg hover:shadow-blue-900/10",
+        active && cn("shadow-md ring-2 ring-offset-2 ring-offset-slate-100", activeColor),
         accentColor,
       )}
     >
       <div className="flex justify-between items-start">{icon}</div>
       <p className="text-[#434655] text-xs font-bold leading-4 tracking-[0.6px] uppercase mt-3">{label}</p>
       <p className={cn("text-2xl font-black leading-8", valueColor)}>{value}</p>
+      {onClick && (
+        <p className="mt-2 text-[11px] font-bold text-slate-400 transition group-hover:text-blue-600">
+          Klik untuk filter
+        </p>
+      )}
     </Component>
   );
 }
@@ -270,6 +284,7 @@ function OrderCard({
   tableNumber,
   orderId,
   timeLabel,
+  dateValue,
   status,
   paymentStatus,
   paymentMethod,
@@ -306,7 +321,9 @@ function OrderCard({
 
           <div className="flex flex-col">
             <span className="text-[#191C1E] text-sm font-bold leading-5">{orderId}</span>
-            <span className="text-[#434655] text-[10px] font-medium leading-[15px]">{timeLabel}</span>
+            <span className="text-[#434655] text-[10px] font-semibold leading-[15px]">
+              {formatCalendarLabel(dateValue)} - {timeLabel}
+            </span>
           </div>
         </div>
 
@@ -432,7 +449,7 @@ function OrderCard({
   );
 }
 
-function StockIssuePopup({ order, replacementOptions, onClose, onResolve }) {
+function StockIssuePopup({ order, replacementOptions, onCancelOrder, onClose, onResolve }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [resolution, setResolution] = useState("replace");
   const [replacementName, setReplacementName] = useState(
@@ -482,7 +499,7 @@ function StockIssuePopup({ order, replacementOptions, onClose, onResolve }) {
                 Stok menu habis
               </h2>
               <p className="mt-2 text-sm leading-6 text-[#434655]">
-                Pilih item dari pesanan {order.orderId}, lalu ganti dengan menu lain atau hapus dari pesanan.
+                Pilih item dari pesanan {order.orderId}. Kalau pelanggan tidak jadi pesan, batalkan pesanan dari tombol di bawah.
               </p>
             </div>
 
@@ -579,6 +596,14 @@ function StockIssuePopup({ order, replacementOptions, onClose, onResolve }) {
                 ? `${selectedItem?.name ?? "Item"} akan ditandai stok habis dan diganti dengan ${selectedReplacement?.name ?? "menu pengganti"}.`
                 : `${selectedItem?.name ?? "Item"} akan ditandai stok habis dan tidak dihitung di total pesanan.`}
             </div>
+
+            <button
+              type="button"
+              onClick={onCancelOrder}
+              className="rounded-lg border border-[#BA1A1A] bg-white px-4 py-3 text-sm font-bold text-[#BA1A1A] transition hover:bg-[#FFF4F2]"
+            >
+              Batalkan pesanan
+            </button>
 
             <div className="grid grid-cols-2 gap-3 pt-1">
               <button
@@ -751,6 +776,7 @@ export default function Pesanan() {
   const [orders, setOrders] = useState([]);
   const [orderToCancel, setOrderToCancel] = useState(null);
   const [selectedDate, setSelectedDate] = useState(formatDateValue(getIndonesiaToday()));
+  const [orderPeriod, setOrderPeriod] = useState("day");
   const [activeStatusFilter, setActiveStatusFilter] = useState("all");
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [replacementMenuOptions, setReplacementMenuOptions] = useState(
@@ -761,14 +787,14 @@ export default function Pesanan() {
 
   const loadOrders = useCallback(async (silent = false) => {
     try {
-      const result = await getAdminOrders({ date: selectedDate });
+      const result = await getAdminOrders(orderPeriod === "all" ? {} : { date: selectedDate });
       setOrders((result.data || []).map(mapOrderFromApi));
     } catch (error) {
       if (!silent) {
         toast.error(error.message || "Pesanan belum bisa dimuat.");
       }
     }
-  }, [selectedDate]);
+  }, [orderPeriod, selectedDate]);
 
   useEffect(() => {
     let isMounted = true;
@@ -819,8 +845,8 @@ export default function Pesanan() {
   }, [loadOrders]);
 
   const dateOrders = useMemo(
-    () => orders.filter((order) => order.dateValue === selectedDate),
-    [orders, selectedDate],
+    () => (orderPeriod === "all" ? orders : orders.filter((order) => order.dateValue === selectedDate)),
+    [orderPeriod, orders, selectedDate],
   );
   const visibleOrders = useMemo(
     () =>
@@ -917,6 +943,15 @@ export default function Pesanan() {
     }
   };
 
+  const cancelStockIssueOrder = async () => {
+    if (!orderToCancel) {
+      return;
+    }
+
+    await updateOrderStatus(orderToCancel, "cancelled");
+    setOrderToCancel(null);
+  };
+
   const printOrderReceipt = async (order) => {
     let printableOrder = order;
 
@@ -997,26 +1032,66 @@ export default function Pesanan() {
   };
 
   return (
-    <main className="bg-[#F6F7FB] font-['Inter',sans-serif]">
-      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+    <main className="mx-auto max-w-[1280px] bg-transparent font-['Inter',sans-serif]">
+      <header className="mb-5 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex min-h-[76px] flex-col justify-center">
           <h1 className="text-2xl font-extrabold leading-8 text-[#191C1E]">
             Kelola Pesanan
           </h1>
           <p className="mt-1 text-sm font-semibold text-[#434655]">
-            Pesanan tanggal {formatCalendarLabel(selectedDate)}
+            {orderPeriod === "all" ? "Menampilkan semua pesanan." : `Pesanan tanggal ${formatCalendarLabel(selectedDate)}`}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsCalendarOpen(true)}
-          className="h-10 rounded-lg bg-white px-5 text-sm font-bold text-[#191C1E] shadow-sm transition hover:bg-[#DBE1FF]"
-        >
-          {formatCalendarLabel(selectedDate)}
-        </button>
+        <div className="grid w-full gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 sm:grid-cols-[220px_1fr_auto] xl:max-w-[660px]">
+          <label className="flex flex-col gap-2">
+            <span className="text-xs font-black uppercase tracking-[0.08em] text-slate-600">
+              Periode
+            </span>
+            <select
+              value={orderPeriod}
+              onChange={(event) => {
+                setOrderPeriod(event.target.value);
+                setActiveStatusFilter("all");
+                setCurrentPage(1);
+              }}
+              className="h-12 rounded-xl border border-slate-300 bg-white px-4 text-sm font-extrabold text-[#191C1E] outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            >
+              <option value="all">Semua Waktu</option>
+              <option value="day">Tanggal Dipilih</option>
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-2">
+            <span className="text-xs font-black uppercase tracking-[0.08em] text-slate-600">
+              Tanggal
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsCalendarOpen(true)}
+              disabled={orderPeriod === "all"}
+              className="flex h-12 items-center justify-between rounded-xl border border-slate-300 bg-white px-4 text-left text-base font-extrabold text-slate-500 outline-none transition hover:border-blue-400 hover:text-blue-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            >
+              <span>{formatShortDateLabel(selectedDate)}</span>
+              <ClockIcon />
+            </button>
+          </label>
+
+          <button
+            type="button"
+            onClick={() => {
+              setOrderPeriod("all");
+              setSelectedDate(formatDateValue(getIndonesiaToday()));
+              setActiveStatusFilter("all");
+              setCurrentPage(1);
+            }}
+            className="h-12 self-end rounded-xl bg-slate-100 px-5 text-sm font-extrabold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
+          >
+            Reset
+          </button>
+        </div>
       </header>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Menunggu"
           value={statusCounts.pending}
@@ -1087,7 +1162,7 @@ export default function Pesanan() {
           />
         ))}
         {visibleOrders.length === 0 && (
-          <div className="md:col-span-2 xl:col-span-3 rounded-lg border border-dashed border-[#C3C6D7] bg-white p-10 text-center text-sm font-semibold text-[#434655]">
+          <div className="rounded-2xl border border-dashed border-[#C3C6D7] bg-white p-10 text-center text-sm font-semibold text-[#434655] md:col-span-2 xl:col-span-3">
             Belum ada pesanan pada tanggal ini.
           </div>
         )}
@@ -1121,6 +1196,7 @@ export default function Pesanan() {
         key={orderToCancel?.orderId ?? "stock-issue"}
         order={orderToCancel}
         replacementOptions={replacementMenuOptions}
+        onCancelOrder={cancelStockIssueOrder}
         onClose={() => setOrderToCancel(null)}
         onResolve={resolveStockIssue}
       />
@@ -1130,6 +1206,7 @@ export default function Pesanan() {
           onClose={() => setIsCalendarOpen(false)}
           onSelect={(value) => {
             setSelectedDate(value);
+            setOrderPeriod("day");
             setActiveStatusFilter("all");
             setCurrentPage(1);
             setIsCalendarOpen(false);

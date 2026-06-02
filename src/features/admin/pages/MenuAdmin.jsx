@@ -52,8 +52,8 @@ const MENU_PHOTO_TYPES = ["image/jpeg", "image/png"];
 const MENU_PHOTO_EXTENSIONS = [".jpg", ".jpeg", ".png"];
 const MENU_PHOTO_ERROR =
   "Foto menu hanya boleh berformat PNG atau JPG.";
-const MENU_NAME_MAX_LENGTH = 100;
-const MENU_DESCRIPTION_MAX_LENGTH = 255;
+const MENU_NAME_MAX_LENGTH = 40;
+const MENU_DESCRIPTION_MAX_LENGTH = 120;
 const MENU_PRICE_MAX_VALUE = 100000000;
 const MENU_PRICE_MAX_MESSAGE = "Harga maksimal Rp 100.000.000.";
 
@@ -812,6 +812,8 @@ function AddMenuModal({ categories, onClose, onSave }) {
                     <img
                       src={previewImage}
                       alt="Preview menu"
+                      loading="lazy"
+                      decoding="async"
                       className="absolute inset-0 h-full w-full object-cover"
                     />
                     <span className="relative rounded-lg bg-black/60 px-4 py-2 text-xs font-bold uppercase tracking-[0.08em] text-white">
@@ -1279,7 +1281,7 @@ function DeleteConfirmModal({ itemName, onCancel, onConfirm }) {
 
 function StatCard({ label, value, danger }) {
   return (
-    <div className="h-[96px] rounded-lg bg-white p-5 shadow-[0_0_0_1px_rgba(0,0,0,0.05)]">
+    <div className="h-[96px] rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <p className="text-xs font-bold uppercase leading-4 tracking-[0.6px] text-[#434655]">
         {label}
       </p>
@@ -1322,6 +1324,8 @@ function MenuThumbnail({ gradient, image, name = "Menu", className = "h-12 w-12"
         <img
           src={image}
           alt={name}
+          loading="lazy"
+          decoding="async"
           className="h-full w-full object-cover"
         />
       ) : (
@@ -1425,7 +1429,7 @@ function ReadMenuModal({ item, onClose }) {
               <p className="break-words text-gray-900 [overflow-wrap:anywhere]">{item.category}</p>
             </div>
             <div>
-              <p className="text-xs font-bold uppercase text-gray-500">SKU</p>
+              <p className="text-xs font-bold uppercase text-gray-500">ID</p>
               <p className="break-words text-gray-900 [overflow-wrap:anywhere]">{item.sku}</p>
             </div>
             <div>
@@ -1637,9 +1641,9 @@ export default function MenuAdmin() {
   };
 
   return (
-    <div className="min-h-full bg-[#F7F9FB]">
-      <div className="mx-auto max-w-[960px] space-y-6">
-        <section className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
+    <div className="min-h-full bg-transparent">
+      <div className="mx-auto max-w-[1280px] space-y-5">
+        <section className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm sm:flex-row sm:items-end">
           <div>
             <h1 className="text-2xl font-extrabold leading-8 text-[#191C1E]">
               Kelola Menu
@@ -1665,7 +1669,7 @@ export default function MenuAdmin() {
           ))}
         </section>
 
-        <section className="grid gap-4 rounded-lg bg-white p-5 shadow-sm md:grid-cols-[1fr_170px_150px_170px_auto] md:items-end">
+        <section className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-[1fr_170px_150px_170px_auto] md:items-end">
           <label className="flex flex-col gap-2">
             <span className="text-xs font-bold uppercase tracking-[0.08em] text-[#434655]">
               Cari Menu
@@ -1677,7 +1681,7 @@ export default function MenuAdmin() {
                 setSearchQuery(event.target.value);
                 setCurrentPage(0);
               }}
-              placeholder="Nama, SKU, deskripsi..."
+              placeholder="Nama, ID, deskripsi..."
               className="h-11 rounded-lg border border-[#C3C6D7] bg-white px-3 text-sm font-semibold text-[#191C1E] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
             />
           </label>
@@ -1758,7 +1762,7 @@ export default function MenuAdmin() {
           </button>
         </section>
 
-        <section className="overflow-hidden rounded-lg bg-white shadow-sm">
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[940px] table-fixed border-collapse">
               <colgroup>

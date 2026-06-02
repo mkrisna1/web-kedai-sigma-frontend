@@ -355,7 +355,7 @@ function RatingSummary({ reviews }) {
 
   return (
     <aside className="flex flex-col gap-8 lg:sticky lg:top-[127px]">
-      <section className="border-l-8 border-[#EEC200] bg-[#121C2A] p-6 sm:p-8">
+      <section className="rounded-3xl border border-white/10 bg-[#121C2A] p-6 shadow-[0_18px_54px_rgba(0,0,0,0.20)] sm:p-8">
         <div className="flex flex-wrap items-end gap-4">
           <p className="font-['Space_Grotesk',sans-serif] text-7xl font-bold leading-none text-[#D9E3F6]">
             {averageRating.toFixed(1)}
@@ -395,7 +395,7 @@ function RatingSummary({ reviews }) {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-[#2B3544] p-6">
+      <section className="relative overflow-hidden rounded-3xl bg-[#2B3544] p-6 shadow-[0_16px_44px_rgba(0,0,0,0.18)]">
         <div className="relative z-10">
           <h3 className="font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-7 text-[#D9E3F6]">
             Keunggulan
@@ -418,13 +418,13 @@ function ReviewCard({ review, onPhotoClick }) {
   const [isReplyOpen, setIsReplyOpen] = useState(false);
 
   return (
-    <article className="relative isolate flex flex-col gap-6 bg-[#121C2A] p-6 transition duration-500 ease-out hover:-translate-y-1 hover:bg-[#16202E] hover:shadow-[0_18px_42px_rgba(220,38,38,0.16)] sm:flex-row sm:p-8">
+    <article className="relative isolate flex flex-col gap-6 overflow-hidden rounded-3xl border border-white/10 bg-[#121C2A] p-6 transition duration-500 ease-out hover:-translate-y-1 hover:bg-[#16202E] hover:shadow-[0_18px_42px_rgba(220,38,38,0.12)] sm:flex-row sm:p-8">
       <div
         className="absolute bottom-0 left-0 top-0 w-1"
         style={{ backgroundColor: review.accent }}
       />
       <div
-        className="flex h-16 w-16 shrink-0 items-center justify-center border-2 bg-[#212B39] font-['Space_Grotesk',sans-serif] text-2xl font-black text-[#D9E3F6]"
+        className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border bg-[#212B39] font-['Space_Grotesk',sans-serif] text-2xl font-black text-[#D9E3F6]"
         style={{ borderColor: review.avatarAccent }}
       >
         {review.initials}
@@ -433,7 +433,7 @@ function ReviewCard({ review, onPhotoClick }) {
       <div className="min-w-0 flex-1">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h4 className="font-['Space_Grotesk',sans-serif] text-xl font-bold uppercase leading-7 text-[#D9E3F6] break-words break-all">
+            <h4 className="font-['Space_Grotesk',sans-serif] text-xl font-bold leading-7 text-[#D9E3F6] break-words break-all">
               {review.name}
             </h4>
             <p className="font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 text-[#64748B]">
@@ -745,30 +745,30 @@ function ReviewForm({ onReviewCreated }) {
 
   return (
     <>
-      <section className="relative mx-auto w-full max-w-[760px] overflow-hidden bg-[#16202E] p-5 sm:p-6 lg:p-8">
+      <section className="relative mx-auto w-full max-w-[760px] overflow-hidden rounded-3xl border border-white/10 bg-[#16202E] p-5 shadow-[0_22px_70px_rgba(0,0,0,0.24)] sm:p-6 lg:p-8">
         <div className="relative z-10">
-          <h2 className="font-['Space_Grotesk',sans-serif] text-2xl font-bold uppercase leading-8 text-[#D9E3F6] sm:text-3xl">
-            Tinggalkan jejak anda
+          <h2 className="font-['Space_Grotesk',sans-serif] text-2xl font-bold leading-8 text-[#D9E3F6] sm:text-3xl">
+            Tinggalkan Jejak Anda
           </h2>
 
           <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-6">
             <div className="grid gap-6 md:grid-cols-2">
               <label className="relative block pt-2">
-                <span className="absolute left-4 top-0 bg-[#16202E] px-2 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 text-[#EEC200]">
+                <span className="absolute left-4 top-0 bg-[#16202E] px-2 font-['Space_Grotesk',sans-serif] text-xs font-bold leading-4 text-[#EEC200]">
                   Identitas
                 </span>
                 <input
                   type="text"
                   name="name"
-                  placeholder="NAMA PANGGILAN..."
+                  placeholder="Nama panggilan..."
                   onChange={clearSubmitWarning}
                   aria-invalid={Boolean(submitWarning)}
-                  className="h-16 w-full border-2 border-[#5C403C] bg-transparent px-4 pt-1 font-['Space_Grotesk',sans-serif] text-lg uppercase tracking-[0.08em] text-[#D9E3F6] outline-none transition placeholder:text-[#475569] focus:border-[#EEC200]"
+                  className="h-16 w-full rounded-2xl border border-[#5C403C] bg-[#091421]/50 px-4 pt-1 font-['Space_Grotesk',sans-serif] text-lg tracking-normal text-[#D9E3F6] outline-none transition placeholder:text-[#64748B] focus:border-[#EEC200]"
                 />
               </label>
 
               <div>
-                <p className="mb-2 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 text-[#EEC200]">
+                <p className="mb-2 font-['Space_Grotesk',sans-serif] text-xs font-bold leading-4 text-[#EEC200]">
                   Rating
                 </p>
                 <div className="flex items-center gap-2">
@@ -796,15 +796,15 @@ function ReviewForm({ onReviewCreated }) {
             </div>
 
             <label className="relative block pt-2">
-              <span className="absolute left-4 top-0 bg-[#16202E] px-2 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 text-[#EEC200]">
+              <span className="absolute left-4 top-0 bg-[#16202E] px-2 font-['Space_Grotesk',sans-serif] text-xs font-bold leading-4 text-[#EEC200]">
                 Komentar
               </span>
               <textarea
                 name="comment"
-                placeholder="TULIS KESANMU DI SINI..."
+                placeholder="Tulis kesanmu di sini..."
                 onChange={clearSubmitWarning}
                 aria-invalid={Boolean(submitWarning)}
-                className="min-h-36 w-full resize-y border-2 border-[#5C403C] bg-transparent px-4 py-5 font-['Space_Grotesk',sans-serif] text-lg text-[#D9E3F6] outline-none transition placeholder:text-[#475569] focus:border-[#EEC200]"
+                className="min-h-36 w-full resize-y rounded-2xl border border-[#5C403C] bg-[#091421]/50 px-4 py-5 font-['Space_Grotesk',sans-serif] text-lg text-[#D9E3F6] outline-none transition placeholder:text-[#64748B] focus:border-[#EEC200]"
               />
             </label>
 
@@ -820,7 +820,7 @@ function ReviewForm({ onReviewCreated }) {
 
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                <label className="flex h-14 cursor-pointer items-center gap-2 border-2 border-dashed border-[#5C403C] px-4 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase text-[#94A3B8] transition hover:border-[#AC8884] hover:text-[#D9E3F6]">
+                <label className="flex h-14 cursor-pointer items-center gap-2 rounded-2xl border border-dashed border-[#5C403C] px-4 font-['Space_Grotesk',sans-serif] text-xs font-bold text-[#94A3B8] transition hover:border-[#AC8884] hover:text-[#D9E3F6]">
                   <CameraIcon />
                   Tambah foto
                   <input
@@ -832,17 +832,17 @@ function ReviewForm({ onReviewCreated }) {
                     className="sr-only"
                   />
                 </label>
-                <p className="max-w-[150px] font-['Be_Vietnam_Pro',sans-serif] text-[10px] font-bold uppercase leading-3 text-[#64748B]">
-                  Max 5 foto. Foto HP akan dikompres otomatis.
+                <p className="max-w-[150px] font-['Be_Vietnam_Pro',sans-serif] text-[10px] font-bold leading-3 text-[#64748B]">
+                  Max 5 foto.
                 </p>
               </div>
 
               <button
                 type="submit"
                 disabled={isSubmitting || isPreparingPhotos}
-                className="-skew-x-12 bg-[#DC2626] px-10 py-5 font-['Space_Grotesk',sans-serif] text-2xl font-black uppercase leading-8 text-[#FFF6F5] shadow-[8px_8px_0_#EEC200] transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-[#EEC200] focus:ring-offset-2 focus:ring-offset-[#16202E] disabled:cursor-not-allowed disabled:opacity-70"
+                className="rounded-full bg-[#DC2626] px-10 py-4 font-['Space_Grotesk',sans-serif] text-xl font-bold leading-8 text-[#FFF6F5] shadow-[0_16px_34px_rgba(220,38,38,0.24)] transition hover:-translate-y-1 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-[#EEC200] focus:ring-offset-2 focus:ring-offset-[#16202E] disabled:cursor-not-allowed disabled:opacity-70"
               >
-                <span className="block skew-x-12">
+                <span className="block">
                   {isPreparingPhotos ? "Proses Foto..." : isSubmitting ? "Kirim..." : "Kirim"}
                 </span>
               </button>
@@ -950,10 +950,10 @@ export default function Review() {
 
       <section className="mx-auto flex w-full max-w-[900px] flex-col gap-8 px-6 py-8 sm:px-8 md:py-10 lg:px-10 lg:py-12 xl:px-10">
         <header className="mx-auto flex w-full max-w-[760px] flex-col gap-2">
-          <h1 className="font-['Space_Grotesk',sans-serif] text-5xl font-bold uppercase leading-none text-[#D9E3F6] sm:text-6xl">
-            Review
+          <h1 className="font-['Space_Grotesk',sans-serif] text-5xl font-bold leading-none text-[#D9E3F6] sm:text-6xl">
+            REVIEW
           </h1>
-          <p className="font-['Be_Vietnam_Pro',sans-serif] text-sm font-bold uppercase leading-5 tracking-[0.1em] text-[#EEC200]">
+          <p className="font-['Be_Vietnam_Pro',sans-serif] text-sm font-bold leading-5 tracking-normal text-[#EEC200]">
             Kata-kata dari orang sigma
           </p>
         </header>
@@ -974,7 +974,7 @@ export default function Review() {
                       setRatingSort(option.value);
                       setCurrentPage(1);
                     }}
-                    className={`border px-4 py-2 font-['Space_Grotesk',sans-serif] text-xs font-black uppercase tracking-[0.12em] transition ${
+                    className={`rounded-full border px-4 py-2 font-['Space_Grotesk',sans-serif] text-xs font-bold tracking-normal transition ${
                       isActive
                         ? "border-[#EEC200] bg-[#EEC200] text-[#3C2F00]"
                         : "border-[#5C403C] bg-[#121C2A] text-[#D9E3F6] hover:border-[#EEC200]"

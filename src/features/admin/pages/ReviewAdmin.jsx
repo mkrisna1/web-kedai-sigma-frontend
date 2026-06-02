@@ -592,8 +592,17 @@ export default function ReviewAdmin() {
   };
 
   return (
-    <section className="flex w-full flex-col gap-6 bg-[#F7F9FB] font-['Inter',Arial,sans-serif] text-[#191C1E]">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <section className="mx-auto flex w-full max-w-[1280px] flex-col gap-5 bg-transparent font-['Inter',Arial,sans-serif] text-[#191C1E]">
+      <header className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        <h1 className="text-2xl font-black tracking-[-0.025em] text-slate-950">
+          Kelola Review
+        </h1>
+        <p className="mt-1 text-sm font-medium text-slate-500">
+          Baca, balas, dan moderasi review pelanggan Kedai Sigma.
+        </p>
+      </header>
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:flex-row lg:items-end lg:justify-between">
         <div className="relative w-full max-w-md">
           <SearchIcon className="absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#94A3B8]" />
           <input
@@ -604,7 +613,7 @@ export default function ReviewAdmin() {
               setSearchQuery(event.target.value);
               setCurrentPage(1);
             }}
-            className="h-[38px] w-full border-0 border-b-2 border-[#C3C6D7] bg-white py-2 pl-10 pr-4 text-sm text-[#191C1E] outline-none placeholder:text-[#6B7280] focus:border-[#004AC6]"
+                className="h-10 w-full rounded-xl border border-[#C3C6D7] bg-white py-2 pl-10 pr-4 text-sm text-[#191C1E] outline-none placeholder:text-[#6B7280] focus:border-[#004AC6] focus:ring-2 focus:ring-blue-600/10"
           />
         </div>
 
@@ -634,7 +643,7 @@ export default function ReviewAdmin() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-        <article className="flex min-h-[210px] flex-col justify-between rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
+        <article className="flex min-h-[210px] flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div>
             <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-[#434655]">
               Rating Keseluruhan
@@ -659,7 +668,7 @@ export default function ReviewAdmin() {
           </div>
         </article>
 
-        <article className="rounded-xl border border-slate-100 bg-white px-6 py-8 shadow-sm">
+        <article className="rounded-2xl border border-slate-200 bg-white px-5 py-6 shadow-sm">
           <h2 className="pb-6 text-sm font-bold uppercase tracking-[0.1em] text-[#434655]">
             Rincian Rating
           </h2>

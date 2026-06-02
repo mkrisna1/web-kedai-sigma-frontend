@@ -109,16 +109,16 @@ export default function Sidebar({ isCollapsed = false, onToggleCollapse }) {
 
   return (
     <aside
-      className={`relative flex min-h-screen flex-col border-r bg-slate-50 transition-[width] duration-300 ease-out ${
+      className={`relative flex min-h-screen flex-col border-r border-slate-200 bg-white shadow-[12px_0_34px_rgba(15,23,42,0.04)] transition-[width] duration-300 ease-out ${
         isCollapsed ? "w-20" : "w-64"
       }`}
     >
 
-      <div className="px-4 pb-8 pt-4">
+      <div className="px-4 pb-6 pt-4">
   <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
 
     {/* Logo */}
-    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-blue-600 shadow-md">
+    <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-700 to-blue-500 shadow-lg shadow-blue-700/20">
       <svg width="15" height="20" viewBox="0 0 15 20" fill="none">
         <path
           d="M3 20V10.85C2.15 10.6167 1.4375 10.15 0.8625 9.45C0.2875 8.75 0 7.93333 0 7V0H2V7H3V0H5V7H6V0H8V7C8 7.93333 7.7125 8.75 7.1375 9.45C6.5625 10.15 5.85 10.6167 5 10.85V20H3ZM13 20V12H10V5C10 3.61667 10.4875 2.4375 11.4625 1.4625C12.4375 0.4875 13.6167 0 15 0V20H13Z"
@@ -130,10 +130,10 @@ export default function Sidebar({ isCollapsed = false, onToggleCollapse }) {
     {/* Text */}
     {!isCollapsed && (
     <div className="flex min-w-0 flex-1 flex-col">
-      <span className="text-slate-900 font-bold text-base">
+      <span className="text-base font-black text-slate-950">
         Kedai Sigma
       </span>
-      <span className="text-slate-500 text-[10px] uppercase tracking-wider">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
         Admin Console
       </span>
     </div>
@@ -156,7 +156,7 @@ export default function Sidebar({ isCollapsed = false, onToggleCollapse }) {
   </div>
 </div>
 
-      <nav className={`flex flex-1 flex-col gap-1 ${isCollapsed ? "px-3" : "px-4"}`}>
+      <nav className={`flex flex-1 flex-col gap-1.5 ${isCollapsed ? "px-3" : "px-4"}`}>
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
 
@@ -165,12 +165,12 @@ export default function Sidebar({ isCollapsed = false, onToggleCollapse }) {
               key={item.path}
               to={item.path}
               title={item.label}
-              className={`flex items-center rounded py-2 text-sm transition ${
+              className={`group flex items-center rounded-xl py-2.5 text-sm font-bold transition ${
                 isCollapsed ? "justify-center px-0" : "gap-3 px-3"
               } ${
                 isActive
-                  ? "bg-blue-50 text-blue-600"
-                  : "text-slate-600 hover:bg-slate-100"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-700/15"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
               }`}
             >
               <span className="h-5 w-5 shrink-0">{item.icon}</span>
@@ -180,11 +180,11 @@ export default function Sidebar({ isCollapsed = false, onToggleCollapse }) {
         })}
       </nav>
 
-      <div className="p-4 border-t">
+      <div className="border-t border-slate-200 p-4">
         <button
           onClick={handleLogout}
           title="Logout"
-          className={`flex w-full items-center rounded py-2 text-sm text-slate-600 hover:bg-red-100 hover:text-red-600 ${
+          className={`flex w-full items-center rounded-xl py-2.5 text-sm font-bold text-slate-600 transition hover:bg-red-50 hover:text-red-600 ${
             isCollapsed ? "justify-center px-0" : "gap-3 px-3"
           }`}
         >

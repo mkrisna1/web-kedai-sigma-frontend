@@ -23,6 +23,18 @@ body {
   }
 }
 
+@keyframes loading-bar {
+  0% {
+    transform: translateX(-125%);
+  }
+  50% {
+    transform: translateX(25%);
+  }
+  100% {
+    transform: translateX(175%);
+  }
+}
+
 @keyframes menu-card-in {
   from {
     opacity: 0;

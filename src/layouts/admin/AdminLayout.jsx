@@ -9,7 +9,7 @@ export default function AdminLayout() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-w-0 overflow-x-hidden">
+    <div className="flex min-w-0 overflow-x-hidden bg-slate-100">
       
       {/* Sidebar */}
       <Sidebar
@@ -26,7 +26,7 @@ export default function AdminLayout() {
         <TopBar onMenuClick={() => setIsMobileSidebarOpen(true)} />
 
         {/* Content */}
-        <main className="min-w-0 flex-1 bg-slate-100 p-4 sm:p-6">
+        <main className="min-w-0 flex-1 bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50/40 p-4 sm:p-5 xl:p-6">
           <div key={location.pathname} className="page-route-transition h-full">
             <Outlet />
           </div>

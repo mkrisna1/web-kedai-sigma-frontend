@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import ViewportPortal from "../../../components/common/ViewportPortal";
-import fotoKedai1 from "../../../assets/Foto Kedai 1.png";
-import fotoKedai2 from "../../../assets/Foto Kedai 2.PNG";
 import logoSigma from "../../../assets/Logo Sigma.png";
 import {
   createPublicReservation,
@@ -9,13 +7,13 @@ import {
 } from "../../../services/api";
 
 const inputClass =
-  "h-[54px] w-full border-0 border-b-2 border-[#5C403C] bg-transparent px-1 py-3 font-['Space_Grotesk',sans-serif] text-lg font-bold leading-6 text-[#D9E3F6] outline-none transition placeholder:text-[#94A3B8]/75 focus:border-[#EEC200]";
+  "h-[54px] w-full rounded-2xl border border-[#5C403C]/80 bg-[#091421]/55 px-4 py-3 font-['Space_Grotesk',sans-serif] text-base font-bold leading-6 text-[#D9E3F6] outline-none transition placeholder:text-[#94A3B8]/75 focus:border-[#EEC200] focus:bg-[#091421]";
 const peopleOptions = [1, 2, 3, 4, 5, 6, 7, 8];
 
 function Field({ label, children }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="font-['Be_Vietnam_Pro',sans-serif] text-[10px] font-bold uppercase leading-[15px] tracking-[0.2em] text-[#EEC200]">
+      <span className="font-['Be_Vietnam_Pro',sans-serif] text-xs font-bold leading-5 text-[#EEC200]">
         {label}
       </span>
       {children}
@@ -27,36 +25,6 @@ function FormIcon({ className = "h-5 w-6" }) {
   return (
     <svg viewBox="0 0 24 20" className={className} fill="currentColor" aria-hidden="true">
       <path d="M2 4h10v2H2V4Zm0 5h8v2H2V9Zm0 5h6v2H2v-2Zm12.7 3.2-1.8-1.8 5.8-5.8 1.8 1.8-5.8 5.8Zm6.4-6.4L19.3 9l.9-.9a1.3 1.3 0 0 1 1.8 1.8l-.9.9Z" />
-    </svg>
-  );
-}
-
-function NoticeIcon({ className = "h-6 w-7" }) {
-  return (
-    <svg viewBox="0 0 28 24" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M14 0 28 24H0L14 0Zm-1.5 8v7h3V8h-3Zm0 9v3h3v-3h-3Z" />
-    </svg>
-  );
-}
-
-function WifiIcon({ className = "h-7 w-7" }) {
-  return (
-    <svg viewBox="3 7 18 16" className={className} fill="none" aria-hidden="true">
-      <path
-        d="M3.5 9.5a13 13 0 0 1 17 0M7 13a7.7 7.7 0 0 1 10 0M10.5 16.5a2.3 2.3 0 0 1 3 0"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="2.6"
-      />
-      <path d="M16.5 17.5h4v4h-4v-4Z" fill="currentColor" />
-    </svg>
-  );
-}
-
-function ChargeIcon({ className = "h-7 w-7" }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M9 2h6v5h3l-6 15V13H7l2-11Z" />
     </svg>
   );
 }
@@ -556,33 +524,33 @@ function ReservationSuccessPopup({ onClose }) {
       aria-modal="true"
       aria-labelledby="reservation-success-title"
     >
-      <div className="relative flex h-auto w-full max-w-[850px] animate-[popup-panel_220ms_cubic-bezier(0.16,1,0.3,1)] flex-col overflow-hidden rounded-xl bg-[#091421] shadow-[0_24px_70px_rgba(0,0,0,0.55)] sm:min-h-[415px]">
-        <div className="relative flex min-h-[330px] flex-col border-b border-white/40 px-6 py-8 sm:min-h-[359px] sm:px-10 md:px-16">
-          <div className="flex items-center justify-center border-b border-white/40 pb-8 sm:justify-start">
-            <p className="font-['Be_Vietnam_Pro',sans-serif] text-xl leading-5 text-white">
+      <div className="relative flex h-auto w-full max-w-[780px] animate-[popup-panel_220ms_cubic-bezier(0.16,1,0.3,1)] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#091421] shadow-[0_24px_70px_rgba(0,0,0,0.55)]">
+        <div className="relative flex min-h-[320px] flex-col border-b border-white/10 px-6 py-8 sm:px-10 md:px-14">
+          <div className="flex items-center justify-center border-b border-white/10 pb-6 sm:justify-start">
+            <p className="font-['Be_Vietnam_Pro',sans-serif] text-base font-semibold leading-5 text-white">
               Sistem
             </p>
           </div>
 
-          <div className="grid flex-1 items-center gap-8 pt-8 md:grid-cols-[220px_1fr] md:gap-10 md:pt-0">
+          <div className="grid flex-1 items-center gap-7 pt-8 md:grid-cols-[180px_1fr] md:gap-10 md:pt-0">
             <div className="flex justify-center md:justify-start">
               <img
                 src={logoSigma}
                 alt="Logo Kedai Sigma"
-                className="h-[170px] w-[170px] object-contain sm:h-[210px] sm:w-[210px] md:h-[235px] md:w-[234px]"
+                className="h-[150px] w-[150px] object-contain sm:h-[180px] sm:w-[180px]"
               />
             </div>
 
-            <div className="relative flex flex-col gap-8 text-center md:text-left">
-              <CheckBadgeIcon className="pointer-events-none mx-auto h-11 w-11 animate-[check-pop_360ms_120ms_ease-out_both] md:absolute md:-left-12 md:top-[52px] md:mx-0 md:h-9 md:w-9" />
+            <div className="relative flex flex-col gap-6 text-center md:text-left">
+              <CheckBadgeIcon className="pointer-events-none mx-auto h-11 w-11 animate-[check-pop_360ms_120ms_ease-out_both] md:absolute md:-left-11 md:top-[44px] md:mx-0 md:h-9 md:w-9" />
               <h2
                 id="reservation-success-title"
-                className="font-['Space_Grotesk',sans-serif] text-2xl font-bold uppercase leading-8 tracking-[-0.05em] text-white"
+                className="font-['Space_Grotesk',sans-serif] text-2xl font-bold leading-8 text-white sm:text-3xl"
               >
                 Terima kasih sudah reservasi!
               </h2>
               <div className="h-px w-full bg-white/15" />
-              <p className="max-w-[439px] font-['Be_Vietnam_Pro',sans-serif] text-xl leading-6 text-white/70">
+              <p className="max-w-[439px] font-['Be_Vietnam_Pro',sans-serif] text-base leading-7 text-white/70 sm:text-lg">
                 Terima kasih telah melakukan reservasi.
                 <br />
                 Kami akan menyiapkan yang terbaik untuk menyambut kedatangan Anda.
@@ -594,7 +562,7 @@ function ReservationSuccessPopup({ onClose }) {
         <button
           type="button"
           onClick={onClose}
-          className="flex h-14 w-full items-center justify-center bg-[#DC2626] px-4 font-['Space_Grotesk',sans-serif] text-base font-bold uppercase leading-6 tracking-[0.1em] text-white transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-white/70 focus:ring-offset-2 focus:ring-offset-[#091421]"
+          className="flex h-14 w-full items-center justify-center bg-[#DC2626] px-4 font-['Space_Grotesk',sans-serif] text-base font-bold leading-6 text-white transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-white/70 focus:ring-offset-2 focus:ring-offset-[#091421]"
         >
           Reservasi Berhasil
         </button>
@@ -613,9 +581,9 @@ function ReservationWarningPopup({ message, onClose }) {
       aria-modal="true"
       aria-labelledby="reservation-warning-title"
     >
-      <div className="w-full max-w-[520px] animate-[popup-panel_220ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-xl border border-[#EEC200]/30 bg-[#091421] shadow-[0_24px_70px_rgba(0,0,0,0.55)]">
-        <div className="border-b border-white/25 px-6 py-5 sm:px-8">
-          <p className="font-['Be_Vietnam_Pro',sans-serif] text-xl leading-5 text-white">
+      <div className="w-full max-w-[520px] animate-[popup-panel_220ms_cubic-bezier(0.16,1,0.3,1)] overflow-hidden rounded-3xl border border-[#EEC200]/25 bg-[#091421] shadow-[0_24px_70px_rgba(0,0,0,0.55)]">
+        <div className="border-b border-white/10 px-6 py-5 sm:px-8">
+          <p className="font-['Be_Vietnam_Pro',sans-serif] text-base font-semibold leading-5 text-white">
             Sistem
           </p>
         </div>
@@ -626,7 +594,7 @@ function ReservationWarningPopup({ message, onClose }) {
           </div>
           <h2
             id="reservation-warning-title"
-            className="mt-6 font-['Space_Grotesk',sans-serif] text-2xl font-bold uppercase leading-8 tracking-[-0.04em] text-white"
+            className="mt-6 font-['Space_Grotesk',sans-serif] text-2xl font-bold leading-8 text-white"
           >
             Mohon isi yang lengkap
           </h2>
@@ -638,7 +606,7 @@ function ReservationWarningPopup({ message, onClose }) {
         <button
           type="button"
           onClick={onClose}
-          className="flex h-14 w-full items-center justify-center bg-[#DC2626] px-4 font-['Space_Grotesk',sans-serif] text-base font-bold uppercase leading-6 tracking-[0.1em] text-white transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-white/70 focus:ring-offset-2 focus:ring-offset-[#091421]"
+          className="flex h-14 w-full items-center justify-center bg-[#DC2626] px-4 font-['Space_Grotesk',sans-serif] text-base font-bold leading-6 text-white transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-white/70 focus:ring-offset-2 focus:ring-offset-[#091421]"
         >
           Lengkapi Form
         </button>
@@ -824,7 +792,7 @@ export default function Reservasi() {
     <div className="min-h-screen overflow-hidden bg-[#091421] text-[#D9E3F6]">
       <div className="h-1 bg-[#050F1C]" />
 
-      <section className="relative isolate bg-[#091421] px-6 pb-16 pt-8 md:px-8 md:pt-10">
+      <section className="relative isolate bg-[#091421] px-5 pb-16 pt-8 md:px-8 md:pt-10">
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[#091421] opacity-[0.02]">
           <svg viewBox="0 0 1280 1280" className="h-[1280px] w-full min-w-[1280px]" aria-hidden="true">
             <path
@@ -837,25 +805,25 @@ export default function Reservasi() {
         <div className="mx-auto flex w-full max-w-[760px] flex-col items-center gap-8">
           <header className="flex max-w-[640px] flex-col items-center gap-4 text-center">
             <div className="flex flex-col items-center gap-4">
-              <p className="text-center font-['Space_Grotesk',sans-serif] text-sm font-bold uppercase leading-5 tracking-[0.08em] text-[#EEC200]">
+              <p className="text-center font-['Space_Grotesk',sans-serif] text-sm font-bold leading-5 text-[#EEC200]">
                 RESERVASI SEKARANG BIAR SIGMA
               </p>
             </div>
 
-            <h1 className="font-['Space_Grotesk',sans-serif] text-5xl font-black uppercase leading-[0.98] tracking-[-0.05em] md:text-7xl">
-              <span className="block text-[#D9E3F6]">Pesan</span>
-              <span className="block text-[#DC2626]">Tempatmu</span>
+            <h1 className="font-['Space_Grotesk',sans-serif] text-5xl font-black leading-[0.98] tracking-[-0.03em] md:text-7xl">
+              <span className="block text-[#D9E3F6]">PESAN</span>
+              <span className="block text-[#DC2626]">TEMPATMU</span>
             </h1>
           </header>
 
           <div className="flex w-full flex-col gap-6">
             <form
               onSubmit={handleSubmit}
-              className="mx-auto w-full max-w-[720px] bg-[#212B39] px-6 py-7 shadow-[0_0_60px_rgba(0,0,0,0.6)] sm:px-8 sm:py-8 lg:px-10"
+              className="mx-auto w-full max-w-[720px] rounded-3xl border border-white/10 bg-[#101B2B] px-5 py-7 shadow-[0_24px_70px_rgba(0,0,0,0.34)] sm:px-8 sm:py-8 lg:px-10"
             >
-              <div className="flex items-center gap-3 border-b border-[#5C403C] pb-5">
+              <div className="flex items-center gap-3 border-b border-white/10 pb-5">
                 <FormIcon className="h-5 w-6 text-[#EEC200]" />
-                <h2 className="font-['Space_Grotesk',sans-serif] text-2xl font-bold uppercase leading-8 tracking-[-0.025em]">
+                <h2 className="font-['Space_Grotesk',sans-serif] text-2xl font-bold leading-8 text-[#D9E3F6]">
                   Form Reservasi
                 </h2>
               </div>
@@ -1020,7 +988,7 @@ export default function Reservasi() {
                 <div className="lg:col-span-2">
                   <Field label="Catatan">
                     <textarea
-                      className="min-h-[74px] w-full resize-none border-0 border-b-2 border-[#5C403C] bg-transparent px-1 py-3 font-['Space_Grotesk',sans-serif] text-base font-bold leading-6 text-[#D9E3F6] outline-none transition placeholder:text-[#94A3B8]/75 focus:border-[#EEC200]"
+                      className="min-h-[92px] w-full resize-none rounded-2xl border border-[#5C403C]/80 bg-[#091421]/55 px-4 py-3 font-['Space_Grotesk',sans-serif] text-base font-bold leading-6 text-[#D9E3F6] outline-none transition placeholder:text-[#94A3B8]/75 focus:border-[#EEC200] focus:bg-[#091421]"
                       name="note"
                       value={formData.note}
                       onChange={handleChange}
@@ -1032,71 +1000,13 @@ export default function Reservasi() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex h-16 w-full items-center justify-center bg-[#DC2626] px-4 py-4 text-center font-['Space_Grotesk',sans-serif] text-lg font-bold uppercase leading-7 tracking-[0.2em] text-[#FFF6F5] shadow-[0_10px_30px_rgba(220,38,38,0.3)] transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70 md:text-2xl lg:col-span-2"
+                  className="flex h-14 w-full items-center justify-center rounded-full bg-[#DC2626] px-5 py-4 text-center font-['Space_Grotesk',sans-serif] text-base font-bold leading-7 text-[#FFF6F5] shadow-[0_16px_34px_rgba(220,38,38,0.28)] transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70 sm:text-lg lg:col-span-2"
                 >
                   {isSubmitting ? "Mengirim..." : "Konfirmasi Reservasi"}
                 </button>
               </div>
             </form>
-
-            <div className="mx-auto w-full max-w-[720px] -skew-x-12 bg-[#EEC200] px-5 py-3 text-[#3C2F00]">
-              <div className="flex skew-x-12 items-center gap-4">
-                <NoticeIcon className="h-6 w-7 shrink-0" />
-                <p className="font-['Be_Vietnam_Pro',sans-serif] text-[11px] font-bold uppercase leading-[14px] tracking-[-0.025em]">
-                  Dengan melakukan reservasi, pelanggan dianggap telah memahami dan menyetujui seluruh ketentuan yang berlaku serta bersedia menerima segala konsekuensi yang ditetapkan.
-                </p>
-              </div>
-            </div>
           </div>
-
-          <section className="relative mx-auto grid w-full max-w-[960px] justify-center gap-12 pt-12 lg:grid-cols-[448px_448px] lg:items-center lg:gap-16">
-            <div className="relative mx-auto w-full max-w-[448px] pt-5">
-              <span className="pointer-events-none absolute -left-3 top-0 font-['Be_Vietnam_Pro',sans-serif] text-[92px] font-black uppercase leading-none text-[#DC2626]/20 sm:text-[108px] md:-left-5 md:text-[120px]">
-                INFO
-              </span>
-
-              <div className="relative z-10 flex max-w-[448px] flex-col gap-8 pt-12 sm:pt-14">
-                <h2 className="border-l-4 border-[#EEC200] pl-5 font-['Space_Grotesk',sans-serif] text-4xl font-bold uppercase leading-none tracking-[-0.025em]">
-                  The Sigma
-                  <br />
-                  Protocol
-                </h2>
-
-                <p className="max-w-[350px] pl-5 font-['Be_Vietnam_Pro',sans-serif] text-base font-light leading-[26px] text-[#94A3B8]">
-                  Protokol reservasi adalah aturan yang mengatur proses pemesanan tempat agar berjalan tertib. Dengan melakukan reservasi, pelanggan dianggap telah memahami, menyetujui, dan siap menerima semua ketentuan serta konsekuensi yang berlaku.
-                </p>
-
-                <div className="grid w-full gap-4 sm:grid-cols-2">
-                  <article className="group flex h-[105px] flex-col items-center border-l-2 border-[#4AE176] bg-[#121C2A] p-6 transition duration-300 hover:-translate-y-1 hover:bg-[#16202E] hover:shadow-[0_14px_32px_rgba(74,225,118,0.16)]">
-                    <WifiIcon className="h-7 w-7 text-[#4AE176] transition duration-300 group-hover:-translate-y-1 group-hover:scale-110" />
-                    <p className="mt-4 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 tracking-[0.1em]">
-                      Wifi cepat sangat sigma
-                    </p>
-                  </article>
-
-                  <article className="group flex h-[105px] flex-col items-center border-l-2 border-[#DC2626] bg-[#121C2A] p-6 transition duration-300 hover:-translate-y-1 hover:bg-[#16202E] hover:shadow-[0_14px_32px_rgba(220,38,38,0.18)]">
-                    <ChargeIcon className="h-7 w-7 text-[#DC2626] transition duration-300 group-hover:-translate-y-1 group-hover:scale-110" />
-                    <p className="mt-4 font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 tracking-[0.1em]">
-                      Station Charging
-                    </p>
-                  </article>
-                </div>
-              </div>
-            </div>
-
-            <div className="relative mx-auto min-h-[368px] w-full max-w-[448px]">
-              <img
-                src={fotoKedai1}
-                alt="Interior Kedai Sigma"
-                className="absolute left-0 top-0 h-80 w-[216px] border border-[#2B3544]/20 object-cover grayscale opacity-0 transition duration-700 hover:-translate-y-2 hover:grayscale-0 [animation:favorite-card-in_700ms_cubic-bezier(0.16,1,0.3,1)_forwards]"
-              />
-              <img
-                src={fotoKedai2}
-                alt="Suasana Kedai Sigma"
-                className="absolute left-[232px] top-12 h-80 w-[216px] border border-[#2B3544]/20 object-cover grayscale opacity-0 transition duration-700 hover:-translate-y-2 hover:grayscale-0 [animation:favorite-card-in_700ms_140ms_cubic-bezier(0.16,1,0.3,1)_forwards]"
-              />
-            </div>
-          </section>
         </div>
       </section>
 

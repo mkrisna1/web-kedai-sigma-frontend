@@ -100,6 +100,15 @@ const formatCalendarLabel = (value) => {
   return `${date.getDate()} ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
 };
 
+const formatTodayHeaderLabel = () =>
+  new Intl.DateTimeFormat("id-ID", {
+    timeZone: INDONESIA_TIME_ZONE,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
+
 const getTableNumber = (value) =>
   String(value || "-")
     .replace(/^meja\s*/i, "")
@@ -359,12 +368,34 @@ const Dashboard = () => {
   const hasTrafficData = trafficWavePoints.some((item) => item.total > 0);
   return (
     <div className="bg-[#F7F9FB] font-['Inter',Arial,sans-serif]">
-      <div className="mx-auto max-w-[1120px] space-y-6">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="rounded-xl bg-white p-6 shadow-sm">
+      <div className="mx-auto max-w-[1280px] space-y-5">
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm sm:px-6">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-blue-600">
+                Admin Panel
+              </p>
+              <h1 className="mt-1 text-2xl font-black leading-tight text-slate-950 sm:text-3xl">
+                Dashboard Kedai Sigma
+              </h1>
+              <p className="mt-1 text-sm font-medium text-slate-500">
+                Ringkasan pendapatan, meja, reservasi, transaksi, dan traffic pesanan.
+              </p>
+            </div>
+            <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-2 text-right text-sm font-bold capitalize text-blue-700">
+              <span className="block text-[10px] font-black uppercase leading-4 text-blue-500">
+                Hari ini
+              </span>
+              {formatTodayHeaderLabel()}
+            </div>
+          </div>
+        </section>
+
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#EFF6FF]">
-                <i className="fa-solid fa-wallet text-2xl text-[#2563EB]" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EFF6FF]">
+                <i className="fa-solid fa-wallet text-xl text-[#2563EB]" />
               </div>
               <div
                 className={`flex items-center gap-2 text-sm font-semibold ${
@@ -379,13 +410,13 @@ const Dashboard = () => {
                 <span>{formatPercentChange(incomePercent)}</span>
               </div>
             </div>
-            <p className="mt-8 text-xs font-semibold uppercase tracking-normal text-[#434655]">
+            <p className="mt-6 text-xs font-semibold uppercase tracking-normal text-[#434655]">
               Pendapatan Kedai
             </p>
             <p className="mt-2 text-3xl font-bold leading-tight text-[#191C1E]">
               {formatRupiah(incomeValue)}
             </p>
-            <div className="mt-6 grid grid-cols-[1fr_auto] gap-3">
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
               <select
                 value={incomePeriod}
                 onChange={(event) => setIncomePeriod(event.target.value)}
@@ -410,13 +441,13 @@ const Dashboard = () => {
             </p>
           </div>
 
-          <div className="rounded-xl bg-white p-6 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex justify-between">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F0FDF4]">
-                <i className="fa-solid fa-chair text-2xl text-[#16A34A]" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F0FDF4]">
+                <i className="fa-solid fa-chair text-xl text-[#16A34A]" />
               </div>
             </div>
-            <p className="mt-8 text-xs font-semibold uppercase tracking-normal text-[#434655]">
+            <p className="mt-6 text-xs font-semibold uppercase tracking-normal text-[#434655]">
               Meja yang Terisi
             </p>
             <div className="mt-3 flex items-end gap-2">
@@ -429,16 +460,16 @@ const Dashboard = () => {
             </p>
           </div>
 
-          <div className="rounded-xl bg-white p-6 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F0FFAD]">
-                <i className="fa-solid fa-clock text-2xl text-gray-700" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F0FFAD]">
+                <i className="fa-solid fa-clock text-xl text-gray-700" />
               </div>
               <div className="rounded-full bg-[#BA1A1A] px-3 py-1 text-sm font-bold text-white">
                 {dashboard.reservasi_belum_diproses || 0}
               </div>
             </div>
-            <p className="mt-8 text-xs font-semibold uppercase tracking-normal text-[#434655]">
+            <p className="mt-6 text-xs font-semibold uppercase tracking-normal text-[#434655]">
               Reservasi Belum Diproses
             </p>
             <p className="mt-2 text-4xl font-bold leading-none text-[#BA1A1A]">
@@ -447,8 +478,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-7">
-          <div className="rounded-xl bg-white p-6 shadow-sm xl:col-span-5">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-7">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-5">
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h3 className="text-xl font-bold text-[#191C1E]">
@@ -524,7 +555,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="flex self-start flex-col rounded-xl bg-white p-6 shadow-sm xl:col-span-2">
+          <div className="flex self-start flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2">
             <div className="flex flex-col gap-4">
               <div>
                 <h3 className="text-lg font-bold text-[#191C1E]">

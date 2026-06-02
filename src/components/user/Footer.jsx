@@ -74,12 +74,12 @@ const socialLinks = [
 
 export default function Footer() {
   return (
-    <footer className="border-t border-[#16202E] bg-[#091421]">
+    <footer className="border-t border-white/10 bg-[#07111F]">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-12 md:px-12 md:py-16">
         <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
           <a href="/" className="inline-flex">
-            <span className="font-grotesk text-2xl font-black uppercase tracking-[-0.05em] text-[#DC2626]">
-              KEDAI SIGMA
+            <span className="font-grotesk text-2xl font-black tracking-normal text-[#FF6B63]">
+              Kedai Sigma
             </span>
           </a>
 
@@ -93,7 +93,7 @@ export default function Footer() {
                 className="group flex items-center gap-2 text-[#E6BDB8] transition-colors hover:text-[#D9E3F6]"
               >
                 {item.icon}
-                <span className="font-grotesk text-xs font-bold uppercase tracking-widest">
+                <span className="font-grotesk text-xs font-bold tracking-normal">
                   {item.label}
                 </span>
               </a>
@@ -101,11 +101,11 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="h-px bg-[#16202E]" />
+        <div className="h-px bg-white/10" />
 
         <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
           <span className="font-grotesk text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569]">
-            &copy; 2025 KEDAI SIGMA
+            &copy; 2025 Kedai Sigma
           </span>
 
           <div className="flex flex-wrap items-center gap-6 sm:gap-8">
@@ -113,13 +113,13 @@ export default function Footer() {
               type="button"
               className="font-grotesk text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569] transition-colors hover:text-[#94A3B8]"
             >
-              Terms of Chaos
+              Syarat Layanan
             </button>
             <button
               type="button"
               className="font-grotesk text-[10px] font-bold uppercase tracking-[0.2em] text-[#475569] transition-colors hover:text-[#94A3B8]"
             >
-              Cookie Policy
+              Kebijakan Privasi
             </button>
           </div>
         </div>
