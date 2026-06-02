@@ -402,11 +402,6 @@ export const createPublicReview = (payload) =>
     body: payload,
   });
 
-export const likePublicReview = (reviewId) =>
-  request(`/public/review/${reviewId}/like`, {
-    method: "POST",
-  });
-
 export const createPublicReservation = (payload) =>
   request("/public/reservasi", {
     method: "POST",
