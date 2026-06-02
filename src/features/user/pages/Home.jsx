@@ -235,9 +235,9 @@ const mapFavoriteFromApi = (item) => {
 function SkewLabel({ children, className = "bg-[#EEC200] text-[#3C2F00]" }) {
   return (
     <span
-      className={`inline-flex -skew-x-12 px-4 py-1 font-['Space_Grotesk',sans-serif] text-sm font-bold uppercase leading-6 ${className}`}
+      className={`inline-flex rounded-full px-4 py-1.5 font-['Space_Grotesk',sans-serif] text-sm font-bold leading-6 ${className}`}
     >
-      <span className="skew-x-12">{children}</span>
+      <span>{children}</span>
     </span>
   );
 }
@@ -245,10 +245,10 @@ function SkewLabel({ children, className = "bg-[#EEC200] text-[#3C2F00]" }) {
 function SectionTitle({ children }) {
   return (
     <div className="flex w-full items-end gap-6">
-      <h2 className="shrink-0 font-['Space_Grotesk',sans-serif] text-5xl font-bold uppercase leading-none tracking-[-0.05em] text-[#D9E3F6] md:text-7xl">
+      <h2 className="shrink-0 font-['Space_Grotesk',sans-serif] text-4xl font-bold leading-none tracking-normal text-[#D9E3F6] md:text-6xl">
         {children}
       </h2>
-      <div className="mb-3 h-1 flex-1 bg-[#2B3544]" />
+      <div className="mb-3 h-px flex-1 bg-[#314158]" />
     </div>
   );
 }
@@ -504,21 +504,22 @@ export default function Home() {
         </div>
 
         <div className="w-full max-w-[1088px]">
-          <SkewLabel>Est. 2025 // Desa Bulusari</SkewLabel>
+          <span className="inline-flex -skew-x-12 bg-[#EEC200] px-5 py-2 font-['Space_Grotesk',sans-serif] text-sm font-bold uppercase leading-5 text-[#3C2F00]">
+            <span className="skew-x-12">Est. 2025 // Desa Bulusari</span>
+          </span>
 
           <h1 className="mt-6 font-['Space_Grotesk',sans-serif] text-7xl font-bold uppercase leading-[0.86] tracking-[-0.05em] text-[#D9E3F6] drop-shadow-[0_0_15px_rgba(220,38,38,0.8)] md:text-[150px]">
             Kedai
           </h1>
 
           <p className="mt-6 max-w-[376px] font-['Be_Vietnam_Pro',sans-serif] text-xl font-medium leading-8 text-[#E6BDB8] md:text-2xl">
-            Di sini tempat kumpulan orang-orang yang sigma. Kopi terbaik,
-            suasana underground, vibes paling kenceng.
+            Di sini tempat kumpulan orang-orang yang sigma. Kopi terbaik, suasana underground, vibes paling kenceng.
           </p>
 
           <div className="mt-12 flex flex-col gap-4 sm:flex-row">
             <Link
               to="/menu"
-              className="group flex h-[72px] w-full items-center justify-center gap-3 bg-[#DC2626] px-10 py-5 font-['Space_Grotesk',sans-serif] text-xl font-black uppercase leading-7 text-[#FFF6F5] shadow-[8px_8px_0_#5C0C0C] transition duration-300 ease-out hover:-translate-y-1 hover:bg-red-700 hover:shadow-[10px_10px_0_#5C0C0C] active:translate-y-0 active:shadow-[4px_4px_0_#5C0C0C] sm:w-[224px]"
+              className="group flex h-[64px] w-full items-center justify-center gap-3 bg-[#DC2626] px-9 font-['Space_Grotesk',sans-serif] text-lg font-black uppercase leading-7 text-[#FFF6F5] shadow-[8px_8px_0_#5C0C0C] transition duration-300 ease-out hover:-translate-y-1 hover:bg-red-700 hover:shadow-[10px_10px_0_#5C0C0C] active:translate-y-0 active:shadow-[4px_4px_0_#5C0C0C] sm:w-[224px]"
             >
               <span>Lihat Menu</span>
               <span className="transition duration-300 ease-out group-hover:translate-x-1">
@@ -529,11 +530,11 @@ export default function Home() {
               href="#location"
               onClick={handleLocationClick}
               aria-controls="location"
-              className={`location-scroll-trigger group relative flex h-[72px] w-full items-center justify-center gap-2 overflow-hidden border-2 border-[#5C403C] px-4 py-5 font-['Space_Grotesk',sans-serif] text-lg font-bold uppercase leading-7 text-[#D9E3F6] transition duration-300 ease-out hover:-translate-y-1 hover:border-[#EEC200] hover:bg-[#EEC200] hover:text-[#3C2F00] hover:shadow-[0_16px_34px_rgba(238,194,0,0.18)] active:translate-y-0 sm:w-[236px] sm:text-xl ${
+              className={`location-scroll-trigger group relative flex h-[64px] w-full items-center justify-center gap-3 overflow-hidden border border-[#5C403C] px-5 font-['Space_Grotesk',sans-serif] text-lg font-black uppercase leading-7 text-[#D9E3F6] transition duration-300 ease-out hover:-translate-y-1 hover:border-[#EEC200] hover:bg-[#EEC200] hover:text-[#3C2F00] hover:shadow-[0_16px_34px_rgba(238,194,0,0.18)] active:translate-y-0 sm:w-[236px] ${
                 locationScrollActive ? "location-scroll-active" : ""
               }`}
             >
-              <span className="location-scroll-pin flex h-8 w-8 items-center justify-center bg-[#EEC200] text-[#3C2F00] transition duration-300 ease-out group-hover:-translate-y-0.5 group-hover:bg-[#3C2F00] group-hover:text-[#EEC200]">
+              <span className="location-scroll-pin flex h-10 w-10 items-center justify-center bg-[#EEC200] text-[#3C2F00] transition duration-300 ease-out group-hover:-translate-y-0.5 group-hover:bg-[#3C2F00] group-hover:text-[#EEC200]">
                 <MapPinIcon className="h-4 w-4" />
               </span>
               <span>Lokasi Kami</span>
@@ -547,7 +548,7 @@ export default function Home() {
             {stats.map((item, index) => (
               <article
                 key={item.label}
-                className="stat-card-motion min-h-[132px] min-w-0 border-l-4 bg-[#121C2A] p-6 opacity-0 transition duration-300 hover:-translate-y-2 hover:bg-[#16202E] hover:shadow-[0_18px_45px_rgba(220,38,38,0.18)]"
+                className="stat-card-motion min-h-[132px] min-w-0 rounded-2xl border border-white/10 bg-[#121C2A] p-5 opacity-0 shadow-[0_18px_46px_rgba(0,0,0,0.18)] transition duration-300 hover:-translate-y-1 hover:bg-[#16202E]"
                 style={{
                   animation:
                     "stat-card-in 620ms cubic-bezier(0.16, 1, 0.3, 1) forwards",
@@ -566,7 +567,7 @@ export default function Home() {
                 >
                   {item.value}
                 </p>
-                <p className="mt-1 font-['Space_Grotesk',sans-serif] text-sm font-bold uppercase leading-5 tracking-[0.1em] text-[#E6BDB8]">
+                <p className="mt-1 font-['Space_Grotesk',sans-serif] text-sm font-bold leading-5 tracking-normal text-[#D9C5C1]">
                   {item.label}
                 </p>
               </article>
@@ -575,13 +576,13 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="bg-[#050F1C] px-6 py-24 md:px-24">
+      <section className="bg-[#050F1C] px-6 py-20 md:px-24">
         <div className="mx-auto flex max-w-[1088px] flex-col gap-16">
           <SectionTitle>Menu Favorit</SectionTitle>
 
           <div className="grid gap-6 lg:grid-cols-3">
             <article
-              className="favorite-card-motion group relative min-h-[500px] overflow-hidden bg-[#16202E] opacity-0 shadow-[0_0_40px_rgba(220,38,38,0.12)] transition-[transform,box-shadow] duration-500 ease-out hover:-translate-y-2 hover:shadow-[0_24px_60px_rgba(220,38,38,0.24)] lg:col-span-2"
+              className="favorite-card-motion group relative min-h-[460px] overflow-hidden rounded-3xl bg-[#16202E] opacity-0 shadow-[0_22px_70px_rgba(0,0,0,0.25)] transition-[transform,box-shadow] duration-500 ease-out hover:-translate-y-2 hover:shadow-[0_24px_60px_rgba(220,38,38,0.20)] lg:col-span-2"
               style={{
                 animation:
                   "favorite-card-in 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards",
@@ -590,6 +591,8 @@ export default function Home() {
               <img
                 src={highlightedFavorite.image}
                 alt={highlightedFavorite.name}
+                loading="lazy"
+                decoding="async"
                 className="absolute inset-0 h-full w-full object-cover transition duration-700 ease-out group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent transition duration-500 group-hover:from-black/95 group-hover:via-black/10" />
@@ -602,7 +605,7 @@ export default function Home() {
                 </div>
                 <div className="mt-4 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
                   <div>
-                    <h3 className="font-['Space_Grotesk',sans-serif] text-4xl font-bold uppercase leading-10 tracking-[-0.05em] transition duration-500 ease-out group-hover:text-[#FFF6F5]">
+                    <h3 className="font-['Space_Grotesk',sans-serif] text-4xl font-bold leading-10 tracking-normal transition duration-500 ease-out group-hover:text-[#FFF6F5]">
                       {highlightedFavorite.name}
                     </h3>
                     <p className="mt-2 font-['Be_Vietnam_Pro',sans-serif] text-base leading-6 text-[#E6BDB8]">
@@ -617,7 +620,7 @@ export default function Home() {
             </article>
 
             <article
-              className="favorite-card-motion group relative flex min-h-[500px] flex-col justify-between overflow-hidden border-t-8 border-[#DC2626] bg-[#212B39] p-8 opacity-0 shadow-[0_0_32px_rgba(220,38,38,0.1)] transition-[transform,box-shadow] duration-500 ease-out hover:-translate-y-2 hover:shadow-[0_20px_52px_rgba(220,38,38,0.18)]"
+              className="favorite-card-motion group relative flex min-h-[460px] flex-col justify-between overflow-hidden rounded-3xl border border-white/10 bg-[#212B39] p-8 opacity-0 shadow-[0_18px_54px_rgba(0,0,0,0.22)] transition-[transform,box-shadow] duration-500 ease-out hover:-translate-y-2 hover:shadow-[0_20px_52px_rgba(220,38,38,0.16)]"
               style={{
                 animation:
                   "favorite-card-in 700ms 110ms cubic-bezier(0.16, 1, 0.3, 1) forwards",
@@ -626,6 +629,8 @@ export default function Home() {
               <img
                 src={sideFavorite.image}
                 alt={sideFavorite.name}
+                loading="lazy"
+                decoding="async"
                 className="absolute inset-0 h-full w-full object-cover opacity-55 transition duration-700 ease-out group-hover:scale-105 group-hover:opacity-70"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#091421]/95 via-[#091421]/58 to-[#091421]/30" />
@@ -633,7 +638,7 @@ export default function Home() {
                 <div className="text-[#DC2626] transition duration-500 ease-out group-hover:-translate-y-2 group-hover:text-[#EEC200]">
                   <FireIcon />
                 </div>
-                <h3 className="mt-9 font-['Space_Grotesk',sans-serif] text-4xl font-bold uppercase leading-10 tracking-[-0.05em]">
+                <h3 className="mt-9 font-['Space_Grotesk',sans-serif] text-4xl font-bold leading-10 tracking-normal">
                   {sideFavorite.name}
                 </h3>
                 <p className="mt-4 font-['Be_Vietnam_Pro',sans-serif] text-base leading-6 text-[#E6BDB8]">
@@ -648,7 +653,7 @@ export default function Home() {
             {smallFavorites.map((item, index) => (
               <article
                 key={item.name}
-                className="favorite-card-motion group relative min-h-[400px] overflow-hidden bg-[#121C2A] opacity-0 shadow-[0_0_30px_rgba(220,38,38,0.1)] transition-[transform,box-shadow] duration-500 ease-out hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(74,225,118,0.15)]"
+                className="favorite-card-motion group relative min-h-[360px] overflow-hidden rounded-3xl bg-[#121C2A] opacity-0 shadow-[0_18px_48px_rgba(0,0,0,0.18)] transition-[transform,box-shadow] duration-500 ease-out hover:-translate-y-2 hover:shadow-[0_20px_48px_rgba(74,225,118,0.14)]"
                 style={{
                   animation:
                     "favorite-card-in 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards",
@@ -658,6 +663,8 @@ export default function Home() {
                 <img
                   src={item.image}
                   alt={item.name}
+                  loading="lazy"
+                  decoding="async"
                   className="absolute inset-0 h-full w-full object-cover transition duration-700 ease-out group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-black/40 transition duration-500 group-hover:bg-black/25" />
@@ -668,7 +675,7 @@ export default function Home() {
                   </SkewLabel>
                 </div>
                 <div className="absolute inset-x-0 bottom-0 p-6 transition duration-500 ease-out group-hover:-translate-y-2">
-                  <h3 className="font-['Space_Grotesk',sans-serif] text-2xl font-bold uppercase leading-8 transition duration-500 group-hover:text-[#FFF6F5]">
+                  <h3 className="font-['Space_Grotesk',sans-serif] text-2xl font-bold leading-8 transition duration-500 group-hover:text-[#FFF6F5]">
                     {item.name}
                   </h3>
                   <p
@@ -684,7 +691,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="border-y-8 border-[#050F1C] bg-[#091421] px-6 py-24 md:px-24">
+      <section className="border-y border-white/10 bg-[#091421] px-6 py-20 md:px-24">
         <div className="mx-auto flex max-w-[1088px] flex-col gap-16">
           <SectionTitle>Foto Kedai</SectionTitle>
           <div className="overflow-hidden">
@@ -692,11 +699,13 @@ export default function Home() {
               {galleryLoop.map((item, index) => (
                 <figure
                   key={`${item.label}-${index}`}
-                  className="group h-[455px] w-[341px] shrink-0 overflow-hidden bg-[#16202E] transition duration-500 ease-out hover:-translate-y-2 hover:shadow-[0_22px_52px_rgba(220,38,38,0.18)]"
+                  className="group h-[390px] w-[300px] shrink-0 overflow-hidden rounded-3xl bg-[#16202E] transition duration-500 ease-out hover:-translate-y-2 hover:shadow-[0_22px_52px_rgba(220,38,38,0.16)]"
                 >
                   <img
                     src={item.image}
                     alt={item.label}
+                    loading="lazy"
+                    decoding="async"
                     className="h-full w-full object-cover transition duration-700 ease-out group-hover:scale-105"
                   />
                 </figure>
@@ -714,6 +723,8 @@ export default function Home() {
         <img
           src={lokasiSigma}
           alt="Lokasi Kedai Sigma"
+          loading="lazy"
+          decoding="async"
           className="location-map-motion absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-[#050F1C]/40" />
@@ -725,7 +736,7 @@ export default function Home() {
 
           <div
             ref={locationCardRef}
-            className={`location-card-motion group relative w-full max-w-[448px] overflow-hidden border-2 border-[#DC2626] bg-[#091421]/95 p-10 text-center shadow-[0_0_0_rgba(238,194,0,0)] backdrop-blur-md transition-[transform,border-color,box-shadow] duration-500 ease-out hover:-translate-y-1 hover:border-[#EEC200] hover:shadow-[0_20px_55px_rgba(220,38,38,0.22)] ${
+            className={`location-card-motion group relative w-full max-w-[448px] overflow-hidden rounded-3xl border border-white/10 bg-[#091421]/95 p-8 text-center shadow-[0_24px_70px_rgba(0,0,0,0.28)] backdrop-blur-md transition-[transform,border-color,box-shadow] duration-500 ease-out hover:-translate-y-1 hover:border-[#EEC200] hover:shadow-[0_20px_55px_rgba(220,38,38,0.18)] sm:p-10 ${
               locationPulse ? "location-focus-ring" : ""
             }`}
             tabIndex="-1"
@@ -734,10 +745,10 @@ export default function Home() {
             <div className="pointer-events-none absolute inset-x-0 top-0 h-1 origin-left scale-x-0 bg-[#EEC200] transition duration-500 ease-out group-hover:scale-x-100" />
 
             <div className="relative">
-              <h2 className="font-['Space_Grotesk',sans-serif] text-4xl font-black uppercase leading-10 tracking-[-0.05em]">
+              <h2 className="font-['Space_Grotesk',sans-serif] text-4xl font-black leading-10 tracking-normal">
                 Lokasi
               </h2>
-              <p className="mt-4 font-['Be_Vietnam_Pro',sans-serif] text-sm uppercase leading-5 tracking-[0.1em] text-[#E6BDB8]">
+              <p className="mt-4 font-['Be_Vietnam_Pro',sans-serif] text-sm leading-6 tracking-normal text-[#D9C5C1]">
                 CM9M+5M2, Blimbing, Bulusari, Kec. Gempol, Pasuruan, Jawa
                 Timur
               </p>
@@ -745,7 +756,7 @@ export default function Home() {
                 href="https://www.google.com/maps/place/Kedai+sigma/@-7.5830068,112.6849278,2052m/data=!3m1!1e3!4m6!3m5!1s0x2dd7df006f54af3b:0xf79fc24e5225303b!8m2!3d-7.5821219!4d112.6841547!16s%2Fg%2F11yg6j139l?entry=ttu&g_ep=EgoyMDI2MDUwMi4wIKXMDSoASAFQAw%3D%3D"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group/maps mt-8 flex h-14 items-center justify-center gap-2 bg-[#DC2626] px-5 font-['Space_Grotesk',sans-serif] text-base font-bold uppercase text-[#FFF6F5] shadow-[6px_6px_0_rgba(92,12,12,0.8)] outline-none transition duration-300 ease-out hover:-translate-y-1 hover:bg-red-700 hover:shadow-[8px_8px_0_rgba(92,12,12,0.8)] focus-visible:ring-2 focus-visible:ring-[#EEC200] focus-visible:ring-offset-4 focus-visible:ring-offset-[#091421] active:translate-y-0 active:shadow-[3px_3px_0_rgba(92,12,12,0.8)]"
+                className="group/maps mt-8 flex h-14 items-center justify-center gap-2 rounded-full bg-[#DC2626] px-5 font-['Space_Grotesk',sans-serif] text-base font-bold text-[#FFF6F5] shadow-[0_16px_34px_rgba(220,38,38,0.24)] outline-none transition duration-300 ease-out hover:-translate-y-1 hover:bg-red-700 focus-visible:ring-2 focus-visible:ring-[#EEC200] focus-visible:ring-offset-4 focus-visible:ring-offset-[#091421] active:translate-y-0"
               >
                 Buka di Google Maps
                 <span className="transition duration-300 ease-out group-hover/maps:translate-x-1">

@@ -11,8 +11,25 @@ import {
 
 const formatRupiah = (value) => `Rp ${Number(value || 0).toLocaleString("id-ID")}`;
 const QRIS_PAYMENT_SECONDS = 10 * 60;
+const QRIS_PAYMENT_STORAGE_PREFIX = "kedai_sigma_qris_payment";
 const QRCode =
   typeof QRCodeLib === "function" ? QRCodeLib : QRCodeLib.default || QRCodeLib;
+
+const readSessionJson = (key, fallback) => {
+  if (typeof window === "undefined") {
+    return fallback;
+  }
+
+  try {
+    const value = window.sessionStorage.getItem(key);
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const getQrisPaymentStorageKey = (search = "") =>
+  `${QRIS_PAYMENT_STORAGE_PREFIX}:${search || "default"}`;
 
 const getOrderId = (order) => order?.id_pesanan || order?.order_id || order?.id || "";
 
@@ -57,7 +74,7 @@ const resolveCheckoutItems = async (items, mejaId) => {
     return items;
   }
 
-  const response = await getQrMenu({ meja_id: mejaId });
+  const response = await getQrMenu({ meja_id: mejaId, _refresh: Date.now() });
   const menuByName = new Map(
     extractQrMenuItems(response)
       .map((menuItem) => [normalizeMenuName(getMenuName(menuItem)), getMenuBackendId(menuItem)])
@@ -125,12 +142,12 @@ function ArrowLeftIcon() {
 
 function CartItemCard({ item, onQuantityChange, onRemove, onEdit }) {
   return (
-    <article className="overflow-hidden border border-[#DC2626]/70 bg-[#16202E] shadow-[0_0_0_3px_rgba(220,38,38,0.10)]">
-      <div className="flex gap-3 p-3">
+    <article className="overflow-hidden rounded-2xl border border-[#EEC200]/15 bg-[#16202E] shadow-[0_16px_38px_rgba(0,0,0,0.18)]">
+      <div className="flex gap-3 p-3.5">
         <img
           src={item.image}
           alt={item.name}
-          className="h-20 w-20 shrink-0 object-cover"
+          className="h-[78px] w-[78px] shrink-0 rounded-xl object-cover"
           loading="lazy"
         />
 
@@ -144,7 +161,7 @@ function CartItemCard({ item, onQuantityChange, onRemove, onEdit }) {
                 type="button"
                 onClick={() => onEdit(item)}
                 aria-label={`Edit ${item.name}`}
-                className="flex h-7 w-7 items-center justify-center text-[#EEC200] transition hover:text-white"
+                className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0E1928] text-[#EEC200] transition hover:text-white"
               >
                 <PencilIcon className="h-[14px] w-[14px]" />
               </button>
@@ -152,7 +169,7 @@ function CartItemCard({ item, onQuantityChange, onRemove, onEdit }) {
                 type="button"
                 onClick={() => onRemove(item.cartKey)}
                 aria-label={`Hapus ${item.name}`}
-                className="flex h-7 w-7 items-center justify-center text-[#FFB4AB] transition hover:text-white"
+                className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0E1928] text-[#FFB4AB] transition hover:text-white"
               >
                 <TrashIcon />
               </button>
@@ -170,8 +187,8 @@ function CartItemCard({ item, onQuantityChange, onRemove, onEdit }) {
             </div>
           )}
 
-          <div className="mt-4 flex items-center justify-between gap-3">
-            <div className="flex h-9 items-center bg-[#091421]">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex h-9 items-center overflow-hidden rounded-lg bg-[#091421]">
               <button
                 type="button"
                 onClick={() => onQuantityChange(item.cartKey, item.quantity - 1)}
@@ -209,7 +226,7 @@ function EditMenuModal({ item, onClose, onConfirm }) {
     temperatureOptions.find((opt) => opt.label === item.variantLabel)?.id ?? temperatureOptions[0]?.id ?? ""
   );
   const [note, setNote] = useState(item.note || "");
-  
+
   const selectedOption =
     temperatureOptions.find((option) => option.id === selectedOptionId) ??
     temperatureOptions[0];
@@ -469,13 +486,13 @@ function QrisPaymentModal({ payment, onClose, onConfirmPaid }) {
   return (
     <ViewportPortal>
     <div
-      className="fixed inset-0 z-50 flex animate-[qr-modal-backdrop_180ms_ease-out] items-center justify-center bg-black/75 px-4 py-8 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex animate-[qr-modal-backdrop_180ms_ease-out] items-start justify-center overflow-y-auto bg-black/75 px-4 py-3 backdrop-blur-sm sm:items-center sm:py-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="qris-payment-title"
     >
-      <section className="flex max-h-[calc(100vh-24px)] w-[min(390px,calc(100vw-32px))] animate-[qr-modal-panel_260ms_cubic-bezier(0.16,1,0.3,1)] flex-col overflow-hidden rounded-xl border border-[#EEC200]/60 bg-[#091421] shadow-[0_24px_70px_rgba(0,0,0,0.38)]">
-        <header className="border-b border-white/15 px-5 py-4 text-center">
+      <section className="my-auto flex max-h-[calc(100dvh-24px)] w-[min(390px,calc(100vw-32px))] animate-[qr-modal-panel_260ms_cubic-bezier(0.16,1,0.3,1)] flex-col overflow-hidden rounded-xl border border-[#EEC200]/60 bg-[#091421] shadow-[0_24px_70px_rgba(0,0,0,0.38)]">
+        <header className="border-b border-white/15 px-5 py-3 text-center sm:py-4">
           <p className="text-xs font-bold tracking-[0.8px] text-[#EEC200]">
             Pembayaran QRIS
           </p>
@@ -487,7 +504,7 @@ function QrisPaymentModal({ payment, onClose, onConfirmPaid }) {
           </h2>
         </header>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4 sm:gap-4 sm:p-5">
           <div className="grid grid-cols-2 gap-3">
             <div className="border-l-4 border-[#EEC200] bg-[#16202E] p-3">
               <p className="text-[10px] font-bold tracking-[0.4px] text-[#E6BDB8]">
@@ -511,7 +528,7 @@ function QrisPaymentModal({ payment, onClose, onConfirmPaid }) {
             <img
               src={qrisStaticImage}
               alt="QRIS pembayaran Kedai Sigma"
-              className="mx-auto h-auto w-full object-contain"
+              className="mx-auto max-h-[min(42dvh,300px)] w-full object-contain"
             />
           </div>
 
@@ -625,7 +642,6 @@ export default function Keranjang() {
   const [isOrderSubmitted, setIsOrderSubmitted] = useState(false);
   const [isPaymentMethodModalOpen, setIsPaymentMethodModalOpen] = useState(false);
   const [cashPayment, setCashPayment] = useState(null);
-  const [qrisPayment, setQrisPayment] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [searchParams] = useSearchParams();
@@ -633,6 +649,23 @@ export default function Keranjang() {
   const queryString = searchParams.toString();
   const menuPath = queryString ? `/qr/menu?${queryString}` : "/qr/menu";
   const mejaId = searchParams.get("meja_id") || qrTable?.id;
+  const qrisPaymentStorageKey = getQrisPaymentStorageKey(queryString);
+  const [qrisPayment, setQrisPayment] = useState(() =>
+    readSessionJson(getQrisPaymentStorageKey(window.location.search.replace(/^\?/, "")), null),
+  );
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, []);
+
+  useEffect(() => {
+    if (qrisPayment) {
+      window.sessionStorage.setItem(qrisPaymentStorageKey, JSON.stringify(qrisPayment));
+      return;
+    }
+
+    window.sessionStorage.removeItem(qrisPaymentStorageKey);
+  }, [qrisPayment, qrisPaymentStorageKey]);
 
   const openOrderTypeModal = () => {
     if (!cartItems.length) {
@@ -708,41 +741,42 @@ export default function Keranjang() {
   };
 
   return (
-    <main className="flex flex-1 flex-col gap-[29px] border-r-4 border-[#212B39] px-7 pb-12 pt-7">
-      <section className="box-border flex w-full max-w-[285px] flex-col border-l-8 border-[#DC2626] py-4 pl-2.5">
-        <h1 className="font-['Space_Grotesk',Arial,sans-serif] text-[44px] font-bold leading-[48px] tracking-[-1px] text-[#D9E3F6]">
-          Pesanan
+    <main className="flex flex-1 flex-col items-center gap-5 px-5 pb-12 pt-6 sm:px-6">
+      <section className="box-border flex w-full max-w-[372px] flex-col rounded-2xl border border-[#EEC200]/15 bg-[#111C2A] px-5 py-5 shadow-[0_16px_38px_rgba(0,0,0,0.18)]">
+        <span className="mb-2 h-1.5 w-12 rounded-full bg-[#DC2626]" />
+        <h1 className="font-['Space_Grotesk',Arial,sans-serif] text-[36px] font-bold leading-[40px] tracking-normal text-[#D9E3F6]">
+          Keranjang
         </h1>
-        <p className="w-full max-w-[267px] text-[11px] font-medium leading-5 tracking-normal text-[#E6BDB8]">
+        <p className="mt-1 w-full max-w-[300px] text-[11px] font-medium leading-5 tracking-normal text-[#E6BDB8]">
           Cek lagi menu pilihanmu sebelum dikirim ke kasir.
         </p>
       </section>
 
       <Link
         to={menuPath}
-        className="flex h-12 w-[210px] items-center justify-center gap-3 rounded-lg border-l-4 border-[#EEC200] bg-[#212B39] px-4 font-['Space_Grotesk',Arial,sans-serif] text-xs font-bold tracking-[0.5px] text-[#EEC200] transition hover:text-[#FFB4AB]"
+        className="flex h-12 w-full max-w-[372px] items-center justify-center gap-3 rounded-xl border-2 border-[#EEC200] bg-[#EEC200] px-4 font-['Space_Grotesk',Arial,sans-serif] text-sm font-black tracking-normal text-[#3C2F00] shadow-[0_12px_24px_rgba(238,194,0,0.18)] transition hover:-translate-y-0.5 hover:brightness-105"
       >
         <ArrowLeftIcon />
-        Kembali Menu
+        Kembali ke Menu
       </Link>
 
       {cartItems.length > 0 && (
-        <section className="flex w-full max-w-[334px] flex-col gap-2">
+        <section className="flex w-full max-w-[372px] flex-col gap-2">
           <p className="font-['Space_Grotesk',Arial,sans-serif] text-sm font-bold tracking-normal text-[#D9E3F6]">
             Tipe Pesanan
           </p>
-          <div className="flex rounded-lg bg-[#212B39] p-1">
+          <div className="flex rounded-xl bg-[#212B39] p-1">
             <button
               type="button"
               onClick={() => setOrderType("dine_in")}
-              className={`flex-1 rounded-md py-2 font-['Space_Grotesk',Arial,sans-serif] text-xs font-bold tracking-normal transition ${orderType === "dine_in" ? "bg-[#EEC200] text-[#3C2F00]" : "text-[#E6BDB8] hover:text-white"}`}
+              className={`flex-1 rounded-lg py-2.5 font-['Space_Grotesk',Arial,sans-serif] text-xs font-bold tracking-normal transition ${orderType === "dine_in" ? "bg-[#EEC200] text-[#3C2F00]" : "text-[#E6BDB8] hover:text-white"}`}
             >
               Makan di Sini
             </button>
             <button
               type="button"
               onClick={() => setOrderType("takeaway")}
-              className={`flex-1 rounded-md py-2 font-['Space_Grotesk',Arial,sans-serif] text-xs font-bold tracking-normal transition ${orderType === "takeaway" ? "bg-[#EEC200] text-[#3C2F00]" : "text-[#E6BDB8] hover:text-white"}`}
+              className={`flex-1 rounded-lg py-2.5 font-['Space_Grotesk',Arial,sans-serif] text-xs font-bold tracking-normal transition ${orderType === "takeaway" ? "bg-[#EEC200] text-[#3C2F00]" : "text-[#E6BDB8] hover:text-white"}`}
             >
               Bawa Pulang
             </button>
@@ -751,7 +785,7 @@ export default function Keranjang() {
       )}
 
       {cartItems.length === 0 ? (
-        <section className="w-full max-w-[334px] border-l-4 border-[#EEC200] bg-[#212B39] p-5">
+        <section className="w-full max-w-[372px] rounded-2xl border border-[#EEC200]/20 bg-[#212B39] p-5">
           <h2 className="font-['Space_Grotesk',Arial,sans-serif] text-xl font-bold leading-7 text-[#D9E3F6]">
             Keranjang Kosong
           </h2>
@@ -761,7 +795,7 @@ export default function Keranjang() {
         </section>
       ) : (
         <>
-          <section className="flex w-full max-w-[334px] flex-col gap-4">
+          <section className="flex w-full max-w-[372px] flex-col gap-3">
             {cartItems.map((item) => (
               <CartItemCard
                 key={item.cartKey}
@@ -773,7 +807,7 @@ export default function Keranjang() {
             ))}
           </section>
 
-          <section className="w-full max-w-[334px] bg-[#16202E] p-5 border-b-8 border-[#EEC200]">
+          <section className="w-full max-w-[372px] rounded-2xl border border-[#EEC200]/20 bg-[#16202E] p-5 shadow-[0_16px_38px_rgba(0,0,0,0.18)]">
             <div className="flex flex-col gap-3 pb-4 mb-4 border-b-2 border-[#2B3544]">
               <div className="flex items-center justify-between gap-4">
                 <span className="text-xs font-bold leading-4 tracking-normal text-[#E6BDB8]">
@@ -784,7 +818,7 @@ export default function Keranjang() {
                 </span>
               </div>
             </div>
-            
+
             <div className="flex items-center justify-between gap-4 border-b-2 border-[#2B3544] pb-4">
               <span className="text-xs font-bold leading-4 tracking-normal text-[#E6BDB8]">
                 Total Pembayaran

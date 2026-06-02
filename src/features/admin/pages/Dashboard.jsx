@@ -100,6 +100,15 @@ const formatCalendarLabel = (value) => {
   return `${date.getDate()} ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
 };
 
+const formatTodayHeaderLabel = () =>
+  new Intl.DateTimeFormat("id-ID", {
+    timeZone: INDONESIA_TIME_ZONE,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
+
 const getTableNumber = (value) =>
   String(value || "-")
     .replace(/^meja\s*/i, "")
@@ -111,6 +120,30 @@ const mapTransaction = (order) => ({
   time: formatTime(order.tgl_pesanan || order.created_at),
   total: formatRupiah(order.total_harga),
 });
+
+const buildTrafficWavePath = (points) => {
+  if (points.length === 0) {
+    return "";
+  }
+
+  if (points.length === 1) {
+    return `M ${points[0].x} ${points[0].y}`;
+  }
+
+  return points.reduce((path, point, index) => {
+    if (index === 0) {
+      return `M ${point.x} ${point.y}`;
+    }
+
+    const previousPoint = points[index - 1];
+    const controlX = previousPoint.x;
+    const controlY = previousPoint.y;
+    const midX = (previousPoint.x + point.x) / 2;
+    const midY = (previousPoint.y + point.y) / 2;
+
+    return `${path} Q ${controlX} ${controlY} ${midX} ${midY}`;
+  }, "") + ` T ${points.at(-1).x} ${points.at(-1).y}`;
+};
 
 function CalendarPopup({ value, onClose, onSelect }) {
   const initialDate = parseDateValue(value);
@@ -299,23 +332,70 @@ const Dashboard = () => {
     (peak, item) => ((Number(item.total) || 0) > (Number(peak?.total) || 0) ? item : peak),
     null,
   );
-  const trafficBars = trafficData.map((item) => ({
-    ...item,
-    height:
-      highestTraffic === 0
-        ? "0%"
-        : `${Math.max(((Number(item.total) || 0) / highestTraffic) * 100, 8)}%`,
-    color: item.tanggal === busiestDay?.tanggal ? "bg-[#10B981]" : "bg-[#2563EB]",
-  }));
+  const trafficChart = {
+    width: 320,
+    height: 176,
+    paddingX: 10,
+    paddingY: 18,
+  };
+  const trafficWavePoints = trafficData.map((item, index) => {
+    const total = Number(item.total) || 0;
+    const chartWidth = trafficChart.width - trafficChart.paddingX * 2;
+    const chartHeight = trafficChart.height - trafficChart.paddingY * 2;
+    const x =
+      trafficChart.paddingX +
+      (trafficData.length <= 1 ? chartWidth / 2 : (index / (trafficData.length - 1)) * chartWidth);
+    const y =
+      trafficChart.height -
+      trafficChart.paddingY -
+      (highestTraffic === 0 ? 0 : (total / highestTraffic) * chartHeight);
 
+    return {
+      ...item,
+      total,
+      x,
+      y,
+      isPeak: item.tanggal === busiestDay?.tanggal,
+    };
+  });
+  const trafficWavePath = buildTrafficWavePath(trafficWavePoints);
+  const trafficAreaPath = trafficWavePath
+    ? `${trafficWavePath} L ${trafficWavePoints.at(-1).x} ${
+        trafficChart.height - trafficChart.paddingY
+      } L ${trafficWavePoints[0].x} ${trafficChart.height - trafficChart.paddingY} Z`
+    : "";
+  const trafficLabelItems = trafficWavePoints.filter((item) => item.hari === 1 || item.hari % 5 === 0);
+  const hasTrafficData = trafficWavePoints.some((item) => item.total > 0);
   return (
     <div className="bg-[#F7F9FB] font-['Inter',Arial,sans-serif]">
-      <div className="mx-auto max-w-[1120px] space-y-6">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="rounded-xl bg-white p-6 shadow-sm">
+      <div className="mx-auto max-w-[1280px] space-y-5">
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm sm:px-6">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-blue-600">
+                Admin Panel
+              </p>
+              <h1 className="mt-1 text-2xl font-black leading-tight text-slate-950 sm:text-3xl">
+                Dashboard Kedai Sigma
+              </h1>
+              <p className="mt-1 text-sm font-medium text-slate-500">
+                Ringkasan pendapatan, meja, reservasi, transaksi, dan traffic pesanan.
+              </p>
+            </div>
+            <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-2 text-right text-sm font-bold capitalize text-blue-700">
+              <span className="block text-[10px] font-black uppercase leading-4 text-blue-500">
+                Hari ini
+              </span>
+              {formatTodayHeaderLabel()}
+            </div>
+          </div>
+        </section>
+
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#EFF6FF]">
-                <i className="fa-solid fa-wallet text-2xl text-[#2563EB]" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EFF6FF]">
+                <i className="fa-solid fa-wallet text-xl text-[#2563EB]" />
               </div>
               <div
                 className={`flex items-center gap-2 text-sm font-semibold ${
@@ -330,13 +410,13 @@ const Dashboard = () => {
                 <span>{formatPercentChange(incomePercent)}</span>
               </div>
             </div>
-            <p className="mt-8 text-xs font-semibold uppercase tracking-normal text-[#434655]">
+            <p className="mt-6 text-xs font-semibold uppercase tracking-normal text-[#434655]">
               Pendapatan Kedai
             </p>
             <p className="mt-2 text-3xl font-bold leading-tight text-[#191C1E]">
               {formatRupiah(incomeValue)}
             </p>
-            <div className="mt-6 grid grid-cols-[1fr_auto] gap-3">
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
               <select
                 value={incomePeriod}
                 onChange={(event) => setIncomePeriod(event.target.value)}
@@ -361,13 +441,13 @@ const Dashboard = () => {
             </p>
           </div>
 
-          <div className="rounded-xl bg-white p-6 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex justify-between">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F0FDF4]">
-                <i className="fa-solid fa-chair text-2xl text-[#16A34A]" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F0FDF4]">
+                <i className="fa-solid fa-chair text-xl text-[#16A34A]" />
               </div>
             </div>
-            <p className="mt-8 text-xs font-semibold uppercase tracking-normal text-[#434655]">
+            <p className="mt-6 text-xs font-semibold uppercase tracking-normal text-[#434655]">
               Meja yang Terisi
             </p>
             <div className="mt-3 flex items-end gap-2">
@@ -380,16 +460,16 @@ const Dashboard = () => {
             </p>
           </div>
 
-          <div className="rounded-xl bg-white p-6 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F0FFAD]">
-                <i className="fa-solid fa-clock text-2xl text-gray-700" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F0FFAD]">
+                <i className="fa-solid fa-clock text-xl text-gray-700" />
               </div>
               <div className="rounded-full bg-[#BA1A1A] px-3 py-1 text-sm font-bold text-white">
                 {dashboard.reservasi_belum_diproses || 0}
               </div>
             </div>
-            <p className="mt-8 text-xs font-semibold uppercase tracking-normal text-[#434655]">
+            <p className="mt-6 text-xs font-semibold uppercase tracking-normal text-[#434655]">
               Reservasi Belum Diproses
             </p>
             <p className="mt-2 text-4xl font-bold leading-none text-[#BA1A1A]">
@@ -398,8 +478,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-7">
-          <div className="rounded-xl bg-white p-6 shadow-sm xl:col-span-5">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-7">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-5">
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h3 className="text-xl font-bold text-[#191C1E]">
@@ -475,7 +555,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="flex self-start flex-col rounded-xl bg-white p-6 shadow-sm xl:col-span-2">
+          <div className="flex self-start flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2">
             <div className="flex flex-col gap-4">
               <div>
                 <h3 className="text-lg font-bold text-[#191C1E]">
@@ -507,23 +587,82 @@ const Dashboard = () => {
               </div>
             </div>
 
-            <div className="relative mt-8 flex h-56 shrink-0 items-end gap-1 overflow-hidden border-b border-l border-gray-200 px-1">
-              {trafficBars.map((item, index) => (
-                <div
-                  key={item.tanggal || index}
-                  className={`min-w-0 flex-1 rounded-t ${item.color}`}
-                  style={{ height: item.height }}
-                  title={`${item.label}: ${item.total} pesanan`}
-                />
-              ))}
+            <div className="relative mt-8 h-56 shrink-0 overflow-hidden rounded-xl border border-[#E6E8EA] bg-gradient-to-b from-[#F8FAFF] to-white px-2 py-3">
+              <svg
+                viewBox={`0 0 ${trafficChart.width} ${trafficChart.height}`}
+                className="h-full w-full"
+                role="img"
+                aria-label="Grafik gelombang traffic pesanan bulanan"
+                preserveAspectRatio="none"
+              >
+                <defs>
+                  <linearGradient id="trafficWaveFill" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#2563EB" stopOpacity="0.24" />
+                    <stop offset="100%" stopColor="#2563EB" stopOpacity="0.02" />
+                  </linearGradient>
+                  <linearGradient id="trafficWaveLine" x1="0" x2="1" y1="0" y2="0">
+                    <stop offset="0%" stopColor="#2563EB" />
+                    <stop offset="100%" stopColor="#10B981" />
+                  </linearGradient>
+                </defs>
+
+                {[0, 1, 2, 3].map((line) => {
+                  const y =
+                    trafficChart.paddingY +
+                    (line / 3) * (trafficChart.height - trafficChart.paddingY * 2);
+
+                  return (
+                    <line
+                      key={line}
+                      x1={trafficChart.paddingX}
+                      x2={trafficChart.width - trafficChart.paddingX}
+                      y1={y}
+                      y2={y}
+                      stroke="#E6E8EA"
+                      strokeWidth="1"
+                    />
+                  );
+                })}
+
+                {trafficAreaPath && (
+                  <path d={trafficAreaPath} fill="url(#trafficWaveFill)" />
+                )}
+                {trafficWavePath && (
+                  <path
+                    d={trafficWavePath}
+                    fill="none"
+                    stroke="url(#trafficWaveLine)"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="4"
+                  />
+                )}
+                {trafficWavePoints.map((item, index) => (
+                  <circle
+                    key={item.tanggal || index}
+                    cx={item.x}
+                    cy={item.y}
+                    r={item.isPeak ? 5.5 : 3.3}
+                    fill={item.isPeak ? "#10B981" : "#2563EB"}
+                    stroke="#FFFFFF"
+                    strokeWidth="2"
+                  >
+                    <title>{`${item.label}: ${item.total} pesanan`}</title>
+                  </circle>
+                ))}
+              </svg>
+
+              {!hasTrafficData && (
+                <div className="absolute inset-0 flex items-center justify-center text-center text-xs font-bold text-[#94A3B8]">
+                  Belum ada traffic pesanan.
+                </div>
+              )}
             </div>
 
             <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[9px] font-bold text-[#94A3B8]">
-              {trafficBars
-                .filter((item) => item.hari === 1 || item.hari % 5 === 0)
-                .map((item) => (
-                  <span key={item.tanggal}>{item.hari}</span>
-                ))}
+              {trafficLabelItems.map((item) => (
+                <span key={item.tanggal}>{item.hari}</span>
+              ))}
             </div>
 
             <div className="mt-6 space-y-3 text-sm">

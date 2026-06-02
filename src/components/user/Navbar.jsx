@@ -23,40 +23,26 @@ const scrollPageToTop = () => {
 export default function Navbar() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const activeIndex = Math.max(
-    navLinks.findIndex((link) =>
-      link.href === "/"
-        ? location.pathname === "/" || location.pathname === "/home"
-        : location.pathname === link.href
-    ),
-    0
-  );
   const handleNavigate = () => {
     setMenuOpen(false);
     scrollPageToTop();
   };
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-50 h-[95px] bg-[#091421]/90 px-6 py-4 shadow-[0_0_40px_rgba(220,38,38,0.05)] backdrop-blur-md">
+    <header className="fixed left-0 right-0 top-0 z-50 h-[86px] border-b border-white/5 bg-[#091421]/92 px-4 py-3 shadow-[0_14px_46px_rgba(0,0,0,0.18)] backdrop-blur-md sm:px-6">
       <Link
         to="/"
-        className="absolute left-4 top-1/2 flex h-10 w-[173px] -translate-y-1/2 items-center justify-start transition duration-300 hover:opacity-90"
+        className="absolute left-4 top-1/2 flex h-12 w-[162px] -translate-y-1/2 items-center justify-start rounded-full transition duration-300 hover:opacity-90"
         onClick={handleNavigate}
       >
         <img
           src={logoSigma}
           alt="Kedai Sigma"
-          className="h-20 w-[190px] -translate-x-4 object-cover object-center mix-blend-screen"
+          className="h-20 w-[184px] -translate-x-5 object-cover object-center mix-blend-screen"
         />
       </Link>
 
-      <nav className="absolute left-1/2 top-1/2 hidden h-10 w-[430px] -translate-x-1/2 -translate-y-1/2 grid-cols-4 items-center justify-items-center md:grid">
-        <span
-          className="pointer-events-none absolute bottom-0 h-1 w-16 -translate-x-1/2 bg-[#DC2626] transition-[left] duration-300 ease-out"
-          style={{
-            left: `${activeIndex * 25 + 12.5}%`,
-          }}
-        />
+      <nav className="absolute left-1/2 top-1/2 hidden h-12 w-[520px] -translate-x-1/2 -translate-y-1/2 grid-cols-4 items-center justify-items-center md:grid">
         {navLinks.map((link) => {
           const isActive =
             link.href === "/"
@@ -68,10 +54,10 @@ export default function Navbar() {
               key={link.href}
               to={link.href}
               onClick={handleNavigate}
-              className={`flex h-10 items-start justify-center pt-1 font-grotesk text-base uppercase leading-6 tracking-normal transition-colors ${
+              className={`relative flex h-12 items-center justify-center px-4 font-grotesk text-lg font-black uppercase leading-6 tracking-normal transition-colors after:absolute after:bottom-0 after:left-1/2 after:h-1 after:-translate-x-1/2 after:bg-[#DC2626] after:transition-all ${
                 isActive
-                  ? "font-bold text-[#FFB4AB]"
-                  : "font-black text-[#94A3B8] hover:text-[#D9E3F6]"
+                  ? "text-[#FFB4AB] after:w-16"
+                  : "text-[#94A3B8] after:w-0 hover:text-[#D9E3F6]"
               }`}
             >
               {link.label}
@@ -105,26 +91,31 @@ export default function Navbar() {
       </button>
 
       {menuOpen && (
-        <div className="absolute left-0 right-0 top-[95px] flex flex-col gap-4 border-t border-[#16202E] bg-[#091421] p-6 md:hidden">
-          {navLinks.map((link) => {
-            const isActive =
-              link.href === "/"
-                ? location.pathname === "/" || location.pathname === "/home"
-                : location.pathname === link.href;
+        <div className="fixed inset-x-0 top-[86px] z-40 max-h-[calc(100dvh-86px)] overflow-y-auto border-t border-white/5 bg-[#091421]/98 px-4 py-4 shadow-2xl backdrop-blur-md md:hidden">
+          <div className="mx-auto flex w-full max-w-[360px] flex-col gap-2 rounded-2xl border border-white/10 bg-[#0D1828] p-3">
+            {navLinks.map((link) => {
+              const isActive =
+                link.href === "/"
+                  ? location.pathname === "/" || location.pathname === "/home"
+                  : location.pathname === link.href;
 
-            return (
-              <Link
-                key={link.href}
-                to={link.href}
-                onClick={handleNavigate}
-                className={`font-grotesk text-base font-black uppercase tracking-normal ${
-                  isActive ? "text-[#FFB4AB]" : "text-[#94A3B8]"
-                }`}
-              >
-                {link.label}
-              </Link>
-            );
-          })}
+              return (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  onClick={handleNavigate}
+                  className={`flex h-12 items-center justify-between rounded-xl px-4 font-grotesk text-sm font-black tracking-normal transition ${
+                    isActive
+                      ? "bg-[#DC2626] text-white shadow-[0_12px_26px_rgba(220,38,38,0.22)]"
+                      : "bg-[#121C2A] text-[#D9E3F6] hover:bg-[#16202E]"
+                  }`}
+                >
+                  <span>{link.label}</span>
+                  {isActive && <span className="h-2 w-2 rounded-full bg-[#EEC200]" />}
+                </Link>
+              );
+            })}
+          </div>
         </div>
       )}
     </header>

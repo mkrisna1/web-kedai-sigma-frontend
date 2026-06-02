@@ -9,7 +9,7 @@ export default function MainLayout() {
     <div className="flex min-h-screen flex-col overflow-x-hidden">
       <Navbar />
 
-      <main className="flex-1 bg-[#091421] pt-[95px]">
+      <main className="flex-1 bg-[#091421] pt-[86px]">
         <div key={location.pathname} className="page-route-transition">
           <Outlet />
         </div>

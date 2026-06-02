@@ -859,12 +859,15 @@ export default function MejaAdmin() {
     const occupiedTables = activeTables.filter((table) => table.used > 0).length;
     const availableTables = Math.max(activeTables.length - occupiedTables, 0);
     const maintenanceTables = tables.length - activeTables.length;
+    const totalSeats = activeTables.reduce((total, table) => total + table.capacity, 0);
+    const usedSeats = activeTables.reduce((total, table) => total + table.used, 0);
+    const availableSeats = Math.max(totalSeats - usedSeats, 0);
 
     return [
       {
-        label: "Total Meja",
-        value: tables.length,
-        description: `${activeTables.length} aktif, ${maintenanceTables} maintenance`,
+        label: "Kursi Tersedia",
+        value: `${availableSeats}/${totalSeats}`,
+        description: `${activeTables.length} meja aktif, ${maintenanceTables} maintenance`,
         valueClass: "text-[#191C1E]",
       },
       {
@@ -1016,9 +1019,9 @@ export default function MejaAdmin() {
   };
 
   return (
-    <main className="bg-[#F7F9FB] font-['Inter',Arial,sans-serif] text-[#191C1E]">
-      <section className="mx-auto flex w-full max-w-[1120px] flex-col gap-6">
-        <header className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+    <main className="bg-transparent font-['Inter',Arial,sans-serif] text-[#191C1E]">
+      <section className="mx-auto flex w-full max-w-[1280px] flex-col gap-5">
+        <header className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-2xl font-extrabold leading-8 tracking-normal text-[#191C1E]">
               Kelola Meja & QR
@@ -1047,7 +1050,7 @@ export default function MejaAdmin() {
           ))}
         </section>
 
-        <section className="flex flex-col gap-5">
+        <section className="flex flex-col gap-5 rounded-2xl border border-slate-200 bg-white/60 p-5 shadow-sm">
           <div className="flex items-center gap-4">
             <h2 className="whitespace-nowrap text-xl font-bold leading-7 text-[#191C1E]">
               Sektor A

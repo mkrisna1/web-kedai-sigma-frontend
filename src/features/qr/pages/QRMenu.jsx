@@ -36,6 +36,8 @@ import tehTarikImage from "../../../assets/Teh Tarik.jpg";
 import v6DripImage from "../../../assets/V6 Drip.jpg";
 import v6DripSusuImage from "../../../assets/V6 Drip Susu.jpg";
 
+const QR_MENU_AUTO_REFRESH_MS = 30000;
+
 const formatRupiah = (value) => `Rp ${Number(value || 0).toLocaleString("id-ID")}`;
 
 const toNullableNumber = (value) => {
@@ -793,6 +795,8 @@ function AddMenuModal({ item, onClose, onConfirm }) {
             <img
               src={item.image}
               alt={item.name}
+              loading="lazy"
+              decoding="async"
               className="absolute left-0 top-2 h-[60px] w-[60px] rounded-md object-cover"
             />
 
@@ -932,7 +936,7 @@ export default function QRMenu() {
   const [query, setQuery] = useState("");
   const [priceSort, setPriceSort] = useState("default");
   const [isPriceFilterOpen, setIsPriceFilterOpen] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(4);
+  const [visibleCount, setVisibleCount] = useState(8);
   const [configItem, setConfigItem] = useState(null);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [apiMenuItems, setApiMenuItems] = useState(null);
@@ -949,30 +953,39 @@ export default function QRMenu() {
   useEffect(() => {
     let isMounted = true;
 
-    getQrMenu({
-      meja_id: mejaId,
-      table: tableQuery,
-      name: nameQuery,
-    })
-      .then((response) => {
-        if (!isMounted) {
-          return;
-        }
-
-        setApiMenuItems((response.data?.menu || []).map(mapMenuFromApi));
-        setApiTableName(response.data?.meja?.nomor_meja || "");
-        setQrTable?.(response.data?.meja || null);
+    const loadQrMenu = () => {
+      getQrMenu({
+        meja_id: mejaId,
+        table: tableQuery,
+        name: nameQuery,
+        _refresh: Date.now(),
       })
-      .catch(() => {
-        if (isMounted) {
-          setApiMenuItems(null);
-          setApiTableName("");
-          setQrTable?.(null);
-        }
-      });
+        .then((response) => {
+          if (!isMounted) {
+            return;
+          }
+
+          setApiMenuItems((response.data?.menu || []).map(mapMenuFromApi));
+          setApiTableName(response.data?.meja?.nomor_meja || "");
+          setQrTable?.(response.data?.meja || null);
+        })
+        .catch(() => {
+          if (isMounted) {
+            setApiMenuItems(null);
+            setApiTableName("");
+            setQrTable?.(null);
+          }
+        });
+    };
+
+    loadQrMenu();
+    const intervalId = window.setInterval(loadQrMenu, QR_MENU_AUTO_REFRESH_MS);
+    window.addEventListener("focus", loadQrMenu);
 
     return () => {
       isMounted = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", loadQrMenu);
     };
   }, [mejaId, nameQuery, setQrTable, tableQuery]);
 
@@ -1024,12 +1037,12 @@ export default function QRMenu() {
   };
 
   return (
-    <main className="flex flex-1 flex-col gap-6 border-r-4 border-[#212B39] px-6 pb-28 pt-6">
-      <section className="box-border flex w-full max-w-[334px] flex-col rounded-lg border border-[#273446] border-l-8 border-l-[#DC2626] bg-[#111C2A] px-4 py-5 shadow-[0_18px_48px_rgba(0,0,0,0.18)]">
+    <main className="flex flex-1 flex-col items-center gap-5 border-r-4 border-[#212B39] px-5 pb-28 pt-5 sm:px-6">
+      <section className="box-border flex w-full max-w-[372px] flex-col rounded-2xl border border-[#EEC200]/20 bg-gradient-to-br from-[#111C2A] via-[#121D2D] to-[#172235] px-4 py-5 shadow-[0_18px_48px_rgba(0,0,0,0.22)]">
         <p className="mb-2 font-['Space_Grotesk',Arial,sans-serif] text-[10px] font-bold tracking-[0.8px] text-[#EEC200]">
           QR Menu Kedai Sigma
         </p>
-        <h1 className="break-words font-['Space_Grotesk',Arial,sans-serif] text-[42px] font-bold leading-[46px] tracking-normal text-[#D9E3F6] [overflow-wrap:anywhere]">
+        <h1 className="break-words font-['Space_Grotesk',Arial,sans-serif] text-[40px] font-bold leading-[44px] tracking-normal text-[#F7FBFF] [overflow-wrap:anywhere]">
           {tableLabel}
         </h1>
         <p className="mt-2 w-full max-w-[286px] text-[11px] font-medium leading-5 tracking-normal text-[#E6BDB8]">
@@ -1037,7 +1050,7 @@ export default function QRMenu() {
         </p>
       </section>
 
-      <nav className="flex w-full max-w-[372px] gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <nav className="flex w-full max-w-[372px] touch-pan-x gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {categoryTabs.map((tab) => {
           const isActive = tab.value === activeCategory;
 
@@ -1047,7 +1060,7 @@ export default function QRMenu() {
               type="button"
               onClick={() => {
                 setActiveCategory(tab.value);
-                setVisibleCount(4);
+                setVisibleCount(8);
               }}
               className={`relative h-10 shrink-0 rounded-full border px-4 font-['Space_Grotesk',Arial,sans-serif] text-[13px] font-bold leading-10 tracking-normal transition ${
                 isActive
@@ -1061,14 +1074,14 @@ export default function QRMenu() {
         })}
       </nav>
 
-      <section className="relative flex w-full max-w-[334px] items-center gap-2">
-        <label className="flex h-11 min-w-0 flex-1 items-center gap-1.5 rounded-lg border border-[#273446] border-l-4 border-l-[#EEC200] bg-[#212B39] px-3 text-[#EEC200]">
+      <section className="relative flex w-full max-w-[372px] items-center gap-2">
+        <label className="flex h-11 min-w-0 flex-1 items-center gap-1.5 rounded-xl border border-[#EEC200]/20 bg-[#212B39] px-3 text-[#EEC200] shadow-[0_12px_28px_rgba(0,0,0,0.14)]">
           <SearchIcon />
           <input
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
-              setVisibleCount(4);
+              setVisibleCount(8);
             }}
             placeholder="Cari menu..."
             className="h-7 min-w-0 flex-1 bg-transparent px-2 text-[12px] font-bold leading-[14px] tracking-normal text-[#E6BDB8] outline-none placeholder:text-[#E6BDB8]"
@@ -1093,9 +1106,9 @@ export default function QRMenu() {
           onClick={() => setIsPriceFilterOpen((isOpen) => !isOpen)}
           aria-label="Filter harga menu"
           aria-expanded={isPriceFilterOpen}
-          className={`flex h-10 w-10 shrink-0 items-center justify-center border-l-4 bg-[#212B39] transition ${
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-[#212B39] transition ${
             priceSort === "default"
-              ? "border-[#DC2626] text-[#EEC200] hover:text-[#FFB4AB] active:text-[#FFB4AB] focus-visible:text-[#FFB4AB]"
+              ? "border-[#273446] text-[#EEC200] hover:border-[#EEC200]/60 hover:text-[#FFB4AB] active:text-[#FFB4AB] focus-visible:text-[#FFB4AB]"
               : "border-[#FFB4AB] text-[#FFB4AB]"
           }`}
         >
@@ -1113,7 +1126,7 @@ export default function QRMenu() {
                   type="button"
                   onClick={() => {
                     setPriceSort(option.value);
-                    setVisibleCount(4);
+                    setVisibleCount(8);
                     setIsPriceFilterOpen(false);
                   }}
                   className={`flex h-11 w-full items-center justify-between px-4 text-left font-['Space_Grotesk',Arial,sans-serif] text-[11px] font-bold tracking-[0.4px] transition ${
@@ -1135,7 +1148,7 @@ export default function QRMenu() {
 
       <section
         key={`${activeCategory}-${query.trim().toLowerCase()}-${priceSort}`}
-        className="grid w-full max-w-[334px] grid-cols-2 gap-x-5 gap-y-6 animate-[qr-menu-grid-in_220ms_ease-out]"
+        className="grid w-full max-w-[372px] grid-cols-2 gap-x-4 gap-y-5 animate-[qr-menu-grid-in_220ms_ease-out]"
       >
         {visibleItems.map((item, index) => (
           <div
@@ -1149,15 +1162,15 @@ export default function QRMenu() {
       </section>
 
       {visibleItems.length === 0 && (
-        <div className="w-full max-w-[334px] rounded-lg border-l-4 border-[#EEC200] bg-[#212B39] p-5 text-xs font-bold leading-5 tracking-normal text-[#E6BDB8]">
+        <div className="w-full max-w-[372px] rounded-xl border border-[#EEC200]/25 bg-[#212B39] p-5 text-xs font-bold leading-5 tracking-normal text-[#E6BDB8]">
           Menu tidak ditemukan.
         </div>
       )}
 
       {hasMore && (
-        <div className="flex w-full max-w-[330px] justify-center pb-4">
+        <div className="flex w-full max-w-[372px] justify-center pb-4">
           <BottomAction
-            onShowMore={() => setVisibleCount((count) => count + 4)}
+            onShowMore={() => setVisibleCount((count) => count + 8)}
           />
         </div>
       )}

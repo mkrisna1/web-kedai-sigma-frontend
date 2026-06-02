@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import ViewportPortal from "../../../components/common/ViewportPortal";
 import {
@@ -9,7 +9,7 @@ import {
 } from "../../../services/api";
 
 const emptyReservationPages = [[]];
-const ADMIN_DATA_REFRESH_EVENT = "kedai-sigma:admin-data-refreshed";
+const RESERVATION_REFRESH_MS = 20000;
 
 const statusStyles = {
   Menunggu: "bg-yellow-100 text-yellow-700",
@@ -401,30 +401,34 @@ export default function ReservasiAdmin() {
     setCurrentPage((page) => Math.min(page, nextPages.length - 1));
   };
 
+  const loadReservations = useCallback(async (silent = false) => {
+    try {
+      const result = await getAdminReservations({
+        ...(selectedDate ? { date: selectedDate } : {}),
+        ...(selectedStatus !== "Semua Status"
+          ? { status: apiStatusByUiStatus[selectedStatus] }
+          : {}),
+      });
+      setReservationItems((result.data || []).map(mapReservationFromApi));
+    } catch (error) {
+      if (!silent) {
+        toast.error(error.message || "Reservasi belum bisa dimuat.");
+      }
+    }
+  }, [selectedDate, selectedStatus]);
+
   useEffect(() => {
     let isMounted = true;
 
-    Promise.allSettled([getAdminReservations(), getAdminTables()])
-      .then(([reservationsResult, tablesResult]) => {
+    getAdminTables()
+      .then((tablesResult) => {
         if (isMounted) {
-          const reservations =
-            reservationsResult.status === "fulfilled"
-              ? reservationsResult.value.data || []
-              : [];
-          const tables =
-            tablesResult.status === "fulfilled"
-              ? tablesResult.value.data || []
-              : [];
-
-          setPages(chunkReservations(reservations.map(mapReservationFromApi)));
-          setTableOptions(tables.map(mapTableOptionFromApi));
-          setCurrentPage(0);
+          setTableOptions((tablesResult.data || []).map(mapTableOptionFromApi));
         }
       })
       .catch(() => {
         if (isMounted) {
-          setPages(emptyReservationPages);
-          setCurrentPage(0);
+          setTableOptions([]);
         }
       });
 
@@ -434,20 +438,24 @@ export default function ReservasiAdmin() {
   }, []);
 
   useEffect(() => {
-    const handleAdminDataRefresh = (event) => {
-      const refreshedReservations = event.detail?.reservations;
+    let isMounted = true;
 
-      if (Array.isArray(refreshedReservations)) {
-        setReservationItems(refreshedReservations.map(mapReservationFromApi));
+    const refresh = (silent = true) => {
+      if (isMounted) {
+        loadReservations(silent);
       }
     };
 
-    window.addEventListener(ADMIN_DATA_REFRESH_EVENT, handleAdminDataRefresh);
+    refresh(false);
+    const intervalId = window.setInterval(() => refresh(true), RESERVATION_REFRESH_MS);
+    window.addEventListener("focus", refresh);
 
     return () => {
-      window.removeEventListener(ADMIN_DATA_REFRESH_EVENT, handleAdminDataRefresh);
+      isMounted = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refresh);
     };
-  }, []);
+  }, [loadReservations]);
 
   const matchesFilters = (item) => {
     const matchesDate = selectedDate ? item.dateValue === selectedDate : true;
@@ -596,9 +604,18 @@ export default function ReservasiAdmin() {
   };
 
   return (
-    <section className="flex w-full flex-col gap-8 bg-[#F7F9FB] font-['Inter',Arial,sans-serif] text-[#191C1E]">
-      <div className="flex flex-col gap-6 lg:flex-row">
-        <div className="flex flex-1 flex-col gap-4 rounded-lg bg-white p-6 shadow-[0_10px_30px_rgba(25,28,30,0.04)] lg:flex-row lg:items-end">
+    <section className="mx-auto flex w-full max-w-[1280px] flex-col gap-5 bg-transparent font-['Inter',Arial,sans-serif] text-[#191C1E]">
+      <header className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        <h1 className="text-2xl font-black tracking-[-0.025em] text-slate-950">
+          Kelola Reservasi
+        </h1>
+        <p className="mt-1 text-sm font-medium text-slate-500">
+          Pantau jadwal booking, meja, dan status kedatangan pelanggan.
+        </p>
+      </header>
+
+      <div className="flex flex-col gap-5 lg:flex-row">
+        <div className="flex flex-1 flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:flex-row lg:items-end">
           <Field label="Filter Tanggal">
             <button
               type="button"
@@ -639,7 +656,7 @@ export default function ReservasiAdmin() {
           </button>
         </div>
 
-        <aside className="relative min-h-[123px] overflow-hidden rounded-lg bg-[#2563EB] p-6 text-white shadow-[0_10px_30px_rgba(25,28,30,0.04)] lg:w-[222px]">
+        <aside className="relative min-h-[123px] overflow-hidden rounded-2xl bg-gradient-to-br from-[#004AC6] to-[#2563EB] p-6 text-white shadow-lg shadow-blue-700/20 lg:w-[222px]">
           <CalendarIcon className="absolute -right-2 bottom-2 h-20 w-20 text-white/20" />
           <p className="text-xs font-medium uppercase tracking-[0.05em] text-white/70">
             Total hari ini
@@ -650,7 +667,7 @@ export default function ReservasiAdmin() {
         </aside>
       </div>
 
-      <div className="overflow-hidden rounded-2xl bg-white shadow-[0_10px_30px_rgba(25,28,30,0.04)]">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-[#E6E8EA] p-6">
           <div>
             <h3 className="text-lg font-bold text-[#191C1E]">

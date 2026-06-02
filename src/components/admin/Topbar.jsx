@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
-  getAdminOrders,
-  getAdminReservations,
+  getAdminNotifications,
+  markAdminNotificationRead,
+  markAllAdminNotificationsRead,
 } from "../../services/api";
 
-const MAX_VISIBLE_NOTIFICATIONS = 6;
-const NOTIFICATION_REFRESH_MS = 15000;
-const ADMIN_DATA_REFRESH_EVENT = "kedai-sigma:admin-data-refreshed";
+const MAX_VISIBLE_NOTIFICATIONS = 4;
+const NOTIFICATION_REFRESH_MS = 30000;
 const ACTIONABLE_NOTIFICATION_TYPES = ["Pesanan", "Reservasi"];
 
 const cn = (...classes) => classes.filter(Boolean).join(" ");
@@ -57,9 +57,10 @@ const buildNotifications = ({ orders, reservations }) => {
     .filter((order) => order.status_pesanan === "menunggu_konfirmasi" && order.is_notif_read !== true)
     .map((order) => ({
       id: `order-${order.id}`,
+      entityId: order.id,
       type: "Pesanan",
       title: `Pesanan baru ${getTableLabel(order)}`,
-      description: `${order.detail_pesanans?.length || 0} item menunggu diterima`,
+      description: `${order.detail_pesanans_count ?? order.detail_pesanans?.length ?? 0} item menunggu diterima`,
       time: formatShortTime(order.tgl_pesanan || order.created_at),
       to: "/admin/pesanan",
       tone: "blue",
@@ -69,6 +70,7 @@ const buildNotifications = ({ orders, reservations }) => {
     .filter((reservation) => reservation.status_reservasi === "menunggu_konfirmasi" && reservation.is_notif_read !== true)
     .map((reservation) => ({
       id: `reservation-${reservation.id}`,
+      entityId: reservation.id,
       type: "Reservasi",
       title: reservation.nama_reservasi || "Reservasi baru",
       description: `${reservation.jml_orang || 0} orang, ${formatReservationTime(
@@ -114,9 +116,10 @@ export default function TopBar({ onMenuClick }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
-  const [seenNotificationIds, setSeenNotificationIds] = useState(() => new Set());
+  const [showAllNotifications, setShowAllNotifications] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const location = useLocation();
+  const navigate = useNavigate();
   const dropdownRef = useRef(null);
 
   const actionableNotifications = useMemo(
@@ -127,34 +130,59 @@ export default function TopBar({ onMenuClick }) {
     [notifications],
   );
   const visibleNotifications = useMemo(
-    () => actionableNotifications.slice(0, MAX_VISIBLE_NOTIFICATIONS),
-    [actionableNotifications],
+    () =>
+      showAllNotifications
+        ? actionableNotifications
+        : actionableNotifications.slice(0, MAX_VISIBLE_NOTIFICATIONS),
+    [actionableNotifications, showAllNotifications],
   );
   const totalNotifications = actionableNotifications.length;
-  const unreadNotifications = useMemo(
-    () =>
-      actionableNotifications.filter(
-        (notification) => !seenNotificationIds.has(notification.id),
-      ),
-    [actionableNotifications, seenNotificationIds],
-  );
-  const badgeCount = unreadNotifications.length;
+  const hiddenNotifications = Math.max(totalNotifications - MAX_VISIBLE_NOTIFICATIONS, 0);
+  const badgeCount = totalNotifications;
 
   const handleBellClick = () => {
-    const nextOpenState = !isOpen;
+    setIsOpen((current) => !current);
+  };
 
-    setIsOpen(nextOpenState);
+  const removeNotification = (notificationId) => {
+    setNotifications((currentNotifications) =>
+      currentNotifications.filter((notification) => notification.id !== notificationId),
+    );
+  };
 
-    if (nextOpenState) {
-      setSeenNotificationIds((currentIds) => {
-        const nextIds = new Set(currentIds);
+  const handleMarkAsRead = async (notification) => {
+    removeNotification(notification.id);
 
-        actionableNotifications.forEach((notification) => {
-          nextIds.add(notification.id);
-        });
+    try {
+      await markAdminNotificationRead(notification.type, notification.entityId);
+    } catch (error) {
+      setErrorMessage(error.message || "Notifikasi belum bisa ditandai dibaca.");
+    }
+  };
 
-        return nextIds;
-      });
+  const handleOpenNotification = async (notification) => {
+    removeNotification(notification.id);
+    setIsOpen(false);
+    navigate(notification.to);
+
+    try {
+      await markAdminNotificationRead(notification.type, notification.entityId);
+    } catch (error) {
+      setErrorMessage(error.message || "Notifikasi belum bisa ditandai dibaca.");
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    const previousNotifications = notifications;
+
+    setNotifications([]);
+    setShowAllNotifications(false);
+
+    try {
+      await markAllAdminNotificationsRead();
+    } catch (error) {
+      setNotifications(previousNotifications);
+      setErrorMessage(error.message || "Notifikasi belum bisa ditandai semua.");
     }
   };
 
@@ -163,17 +191,14 @@ export default function TopBar({ onMenuClick }) {
 
     const loadNotifications = async () => {
       try {
-        const [ordersResult, reservationsResult] = await Promise.all([
-          getAdminOrders(),
-          getAdminReservations(),
-        ]);
+        const notificationsResult = await getAdminNotifications();
 
         if (!isMounted) {
           return;
         }
 
-        const orders = ordersResult?.data || [];
-        const reservations = reservationsResult?.data || [];
+        const orders = notificationsResult?.data?.orders || [];
+        const reservations = notificationsResult?.data?.reservations || [];
 
         setNotifications(
           buildNotifications({
@@ -181,11 +206,7 @@ export default function TopBar({ onMenuClick }) {
             reservations,
           }),
         );
-        window.dispatchEvent(
-          new CustomEvent(ADMIN_DATA_REFRESH_EVENT, {
-            detail: { orders, reservations },
-          }),
-        );
+        setShowAllNotifications(false);
         setErrorMessage("");
       } catch (error) {
         if (isMounted) {
@@ -240,7 +261,7 @@ export default function TopBar({ onMenuClick }) {
   }, []);
 
   return (
-    <header className="flex items-center justify-between border-b border-slate-200 bg-[#F8FAFC] px-4 py-4 sm:px-8 md:justify-end">
+    <header className="sticky top-0 z-40 flex items-center justify-between border-b border-slate-200/80 bg-white/85 px-4 py-3 shadow-sm backdrop-blur-xl sm:px-6 md:justify-end">
       <button
         type="button"
         onClick={onMenuClick}
@@ -255,8 +276,8 @@ export default function TopBar({ onMenuClick }) {
           type="button"
           onClick={handleBellClick}
           className={cn(
-            "relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition-colors",
-            isOpen ? "bg-white text-blue-700 shadow-sm" : "hover:bg-slate-100",
+            "relative flex h-10 w-10 items-center justify-center rounded-2xl text-slate-600 transition-colors",
+            isOpen ? "bg-blue-50 text-blue-700 shadow-sm" : "hover:bg-slate-100",
           )}
           aria-label={`Buka notifikasi${badgeCount ? `, ${badgeCount} belum dilihat` : ""}`}
           aria-expanded={isOpen}
@@ -270,19 +291,30 @@ export default function TopBar({ onMenuClick }) {
         </button>
 
         {isOpen && (
-          <div className="absolute right-0 top-12 z-50 w-[calc(100vw-32px)] max-w-[360px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.18)]">
-            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+          <div className="absolute right-0 top-12 z-50 w-[calc(100vw-32px)] max-w-[380px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_60px_rgba(15,23,42,0.18)]">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3.5">
               <div>
-                <p className="text-sm font-black text-slate-900">Notifikasi</p>
-                <p className="text-xs text-slate-500">
+                <p className="text-base font-black text-slate-900">Notifikasi</p>
+                <p className="mt-0.5 text-xs leading-5 text-slate-500">
                   {totalNotifications
-                    ? `${totalNotifications} pesanan/reservasi perlu dicek`
+                    ? `${totalNotifications} notifikasi belum dilihat`
                     : "Tidak ada pesanan atau reservasi baru"}
                 </p>
               </div>
-              {isLoading && (
-                <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
-              )}
+              <div className="ml-3 flex flex-shrink-0 items-center gap-2">
+                {isLoading && (
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
+                )}
+                {totalNotifications > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleMarkAllAsRead}
+                    className="rounded-xl bg-blue-50 px-3 py-2 text-[11px] font-black text-blue-700 transition hover:bg-blue-100"
+                  >
+                    Tandai semua
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="max-h-[420px] overflow-y-auto py-2">
@@ -299,15 +331,13 @@ export default function TopBar({ onMenuClick }) {
               )}
 
               {visibleNotifications.map((notification) => (
-                <Link
+                <div
                   key={notification.id}
-                  to={notification.to}
-                  onClick={() => setIsOpen(false)}
-                  className="mx-2 flex gap-3 rounded-md px-3 py-3 transition-colors hover:bg-slate-50"
+                  className="group mx-2 flex gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-slate-50"
                 >
                   <span
                     className={cn(
-                      "mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full",
+                      "mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full",
                       notification.tone === "blue" && "bg-blue-600",
                       notification.tone === "amber" && "bg-amber-500",
                     )}
@@ -327,15 +357,37 @@ export default function TopBar({ onMenuClick }) {
                     <span className="mt-0.5 block break-words text-xs text-slate-500 [overflow-wrap:anywhere]">
                       {notification.description}
                     </span>
+                    <span className="mt-3 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenNotification(notification)}
+                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-[11px] font-black text-white transition hover:bg-blue-700"
+                      >
+                        Buka
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleMarkAsRead(notification)}
+                        className="rounded-lg bg-slate-100 px-3 py-1.5 text-[11px] font-black text-slate-700 transition hover:bg-slate-200"
+                      >
+                        Tandai dilihat
+                      </button>
+                    </span>
                   </span>
-                </Link>
+                </div>
               ))}
             </div>
 
-            {totalNotifications > MAX_VISIBLE_NOTIFICATIONS && (
-              <div className="border-t border-slate-100 px-4 py-3 text-center text-xs font-bold text-slate-500">
-                +{totalNotifications - MAX_VISIBLE_NOTIFICATIONS} notifikasi lain
-              </div>
+            {hiddenNotifications > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowAllNotifications((current) => !current)}
+                className="flex w-full items-center justify-center border-t border-slate-100 px-4 py-3 text-xs font-black text-slate-600 transition hover:bg-slate-50 hover:text-blue-700"
+              >
+                {showAllNotifications
+                  ? "Tampilkan lebih sedikit"
+                  : `Lihat ${hiddenNotifications} notifikasi lain`}
+              </button>
             )}
           </div>
         )}

@@ -62,29 +62,43 @@ export const resolveApiAssetUrl = (value) => {
 const ADMIN_TOKEN_KEY = "admin_token";
 const ADMIN_DATA_KEY = "admin_data";
 
-const clearLegacyAdminSession = () => {
-  window.localStorage.removeItem(ADMIN_TOKEN_KEY);
-  window.localStorage.removeItem(ADMIN_DATA_KEY);
+const getAdminStorage = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return window.localStorage;
 };
 
 export const getAdminToken = () => {
-  if (typeof window === "undefined") {
+  const storage = getAdminStorage();
+
+  if (!storage) {
     return "";
   }
 
-  clearLegacyAdminSession();
+  const persistedToken = storage.getItem(ADMIN_TOKEN_KEY) || "";
+  const legacySessionToken = window.sessionStorage.getItem(ADMIN_TOKEN_KEY) || "";
 
-  return window.sessionStorage.getItem(ADMIN_TOKEN_KEY) || "";
+  if (legacySessionToken && !persistedToken) {
+    storage.setItem(ADMIN_TOKEN_KEY, legacySessionToken);
+    window.sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+  }
+
+  return persistedToken || legacySessionToken;
 };
 
 export const clearAdminSession = () => {
-  if (typeof window === "undefined") {
+  const storage = getAdminStorage();
+
+  if (!storage) {
     return;
   }
 
   window.sessionStorage.removeItem(ADMIN_TOKEN_KEY);
   window.sessionStorage.removeItem(ADMIN_DATA_KEY);
-  clearLegacyAdminSession();
+  storage.removeItem(ADMIN_TOKEN_KEY);
+  storage.removeItem(ADMIN_DATA_KEY);
 };
 
 const redirectAdminToLogin = () => {
@@ -172,8 +186,8 @@ export const loginAdmin = async (username, password) => {
   });
 
   if (data?.data?.token) {
-    clearLegacyAdminSession();
-    window.sessionStorage.setItem(ADMIN_TOKEN_KEY, data.data.token);
+    window.localStorage.setItem(ADMIN_TOKEN_KEY, data.data.token);
+    window.sessionStorage.removeItem(ADMIN_TOKEN_KEY);
   }
 
   return data;
@@ -210,7 +224,8 @@ export const logoutAdminOnUnload = () => {
 export const getAdminDashboard = (params) =>
   request("/admin/dashboard", { auth: true, params });
 
-export const getAdminOrders = () => request("/admin/pesanan", { auth: true });
+export const getAdminOrders = (params) =>
+  request("/admin/pesanan", { auth: true, params });
 
 export const getAdminMenu = () => request("/admin/menu", { auth: true });
 
@@ -277,8 +292,24 @@ export const resolveAdminOrderStockIssue = (orderId, payload) =>
     body: payload,
   });
 
-export const getAdminReservations = () =>
-  request("/admin/reservasi", { auth: true });
+export const getAdminReservations = (params) =>
+  request("/admin/reservasi", { auth: true, params });
+
+export const getAdminNotifications = () =>
+  request("/admin/notifikasi", { auth: true });
+
+export const markAdminNotificationRead = (type, id) =>
+  request("/admin/notifikasi/read", {
+    method: "POST",
+    auth: true,
+    body: { type, id },
+  });
+
+export const markAllAdminNotificationsRead = () =>
+  request("/admin/notifikasi/read-all", {
+    method: "POST",
+    auth: true,
+  });
 
 export const updateAdminReservationStatus = (
   reservationId,

@@ -36,6 +36,7 @@ import v6DripSusuImage from "../../../assets/V6 Drip Susu.jpg";
 
 const INITIAL_VISIBLE_COUNT = 9;
 const LOAD_MORE_COUNT = 6;
+const MENU_AUTO_REFRESH_MS = 30000;
 
 const filters = [
   { label: "Semua Menu", value: "all" },
@@ -567,38 +568,59 @@ function FilterButton({ item, active, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`-skew-x-12 border px-5 py-2 font-['Space_Grotesk',sans-serif] text-sm font-black leading-6 tracking-normal transition sm:px-7 sm:text-base ${
+      className={`rounded-full border px-5 py-2.5 font-['Space_Grotesk',sans-serif] text-sm font-bold leading-6 tracking-normal transition sm:px-6 sm:text-base ${
         active
           ? "border-[#EEC200] bg-[#EEC200] text-[#3C2F00]"
-          : "border-[#5C403C]/20 bg-[#212B39] text-[#D9E3F6] hover:border-[#5C403C]/60"
+          : "border-white/10 bg-[#121C2A] text-[#D9E3F6] hover:border-[#EEC200]/60"
       }`}
     >
-      <span className="block skew-x-12">{item.label}</span>
+      <span>{item.label}</span>
     </button>
   );
 }
 
+function getVariantHint(item) {
+  const value = `${item.name || ""} ${item.price || ""}`.toLowerCase();
+
+  if (value.includes("hot/ice") || value.includes("hot / ice") || value.includes("/")) {
+    return "Tersedia pilihan panas atau dingin.";
+  }
+
+  if (value.includes("ice")) {
+    return "Disajikan dingin.";
+  }
+
+  if (value.includes("hot")) {
+    return "Disajikan panas.";
+  }
+
+  return null;
+}
+
 function MenuCard({ item, index }) {
   const isOutOfStock = item.isAvailable === false;
+  const variantHint = getVariantHint(item);
 
   return (
     <article
-      className={`group flex min-h-[318px] min-w-0 flex-col overflow-hidden border p-3 opacity-0 transition-[transform,background-color,box-shadow] duration-500 ease-out sm:min-h-[500px] sm:p-6 ${
+      className={`group flex min-h-[318px] min-w-0 flex-col overflow-hidden rounded-2xl border p-3 opacity-0 transition-[transform,background-color,box-shadow] duration-500 ease-out sm:min-h-[430px] sm:p-4 ${
         isOutOfStock
           ? "border-[#DC2626]/70 bg-[#16202E] shadow-[0_0_0_3px_rgba(220,38,38,0.10)]"
-          : "border-transparent bg-[#121C2A] shadow-[0_0_40px_rgba(220,38,38,0.1)] hover:-translate-y-1.5 hover:bg-[#16202E] hover:shadow-[0_18px_48px_rgba(220,38,38,0.16)]"
+          : "border-white/10 bg-[#121C2A] shadow-[0_18px_48px_rgba(0,0,0,0.16)] hover:-translate-y-1.5 hover:border-[#EEC200]/40 hover:bg-[#16202E] hover:shadow-[0_18px_48px_rgba(220,38,38,0.12)]"
       }`}
       style={{
         animation: "menu-card-in 520ms cubic-bezier(0.16, 1, 0.3, 1) forwards",
         animationDelay: `${Math.min(index % LOAD_MORE_COUNT, 5) * 70}ms`,
       }}
     >
-      <div className="relative h-[150px] overflow-hidden bg-[#212B39] sm:h-[300px] lg:h-[336px]">
+      <div className="relative h-[150px] overflow-hidden rounded-xl bg-[#212B39] sm:h-[250px] lg:h-[280px]">
         {item.image && (
           <>
             <img
               src={item.image}
               alt={item.name}
+              loading="lazy"
+              decoding="async"
               className={`h-full w-full object-cover transition duration-700 ease-out group-hover:scale-105 ${
                 isOutOfStock ? "grayscale opacity-45" : ""
               }`}
@@ -622,20 +644,25 @@ function MenuCard({ item, index }) {
         )}
       </div>
 
-      <div className="mt-3 flex min-w-0 flex-1 flex-col sm:mt-6">
-        <div className="min-w-0 pb-4 sm:pb-6">
-          <h3 className="min-w-0 overflow-hidden break-words break-all font-['Space_Grotesk',sans-serif] text-sm font-bold leading-5 tracking-normal text-[#D9E3F6] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [overflow-wrap:anywhere] sm:text-2xl sm:leading-8">
+      <div className="mt-3 flex min-w-0 flex-1 flex-col sm:mt-4">
+        <div className="min-w-0 pb-4">
+          <h3 className="min-w-0 overflow-hidden break-words break-all font-['Space_Grotesk',sans-serif] text-sm font-bold leading-5 tracking-normal text-[#EEF4FF] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] [overflow-wrap:anywhere] sm:text-xl sm:leading-7">
             {item.name}
           </h3>
-          <p className="mt-1 min-w-0 break-words break-all font-['Be_Vietnam_Pro',sans-serif] text-xs leading-4 text-[#E6BDB8] [overflow-wrap:anywhere] sm:mt-2 sm:text-sm sm:leading-5">
+          <p className="mt-1 min-w-0 overflow-hidden break-words break-all font-['Be_Vietnam_Pro',sans-serif] text-xs leading-4 text-[#D9C5C1] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] [overflow-wrap:anywhere] sm:mt-2 sm:text-sm sm:leading-5">
             {item.description}
           </p>
+          {variantHint && (
+            <p className="mt-2 inline-flex max-w-full rounded-full border border-[#EEC200]/25 bg-[#EEC200]/10 px-3 py-1 font-['Be_Vietnam_Pro',sans-serif] text-[11px] font-bold leading-4 text-[#F7D94A]">
+              {variantHint}
+            </p>
+          )}
         </div>
 
         <div className="mt-auto flex min-w-0 flex-col items-start justify-between gap-2 sm:flex-row sm:items-center sm:gap-3">
           <p
-            className={`min-w-0 max-w-full break-words font-['Space_Grotesk',sans-serif] text-base font-bold leading-6 [overflow-wrap:anywhere] sm:text-xl sm:leading-7 ${
-              isOutOfStock ? "text-[#7B8798] line-through" : "text-[#4AE176]"
+            className={`min-w-0 max-w-full break-words rounded-full px-3 py-1.5 font-['Space_Grotesk',sans-serif] text-sm font-bold leading-5 [overflow-wrap:anywhere] sm:text-base ${
+              isOutOfStock ? "bg-[#2B3544] text-[#7B8798] line-through" : "bg-[#EEC200] text-[#3C2F00]"
             }`}
           >
             {item.price}
@@ -663,21 +690,29 @@ export default function Menu() {
   useEffect(() => {
     let isMounted = true;
 
-    getPublicMenu()
-      .then((response) => {
-        if (isMounted) {
-          setApiMenuItems((response.data || []).map(mapMenuFromApi));
-        }
-      })
-      .catch((error) => {
-        console.error("Gagal mengambil menu publik:", error);
-        if (isMounted) {
-          setApiMenuItems(null);
-        }
-      });
+    const loadMenu = () => {
+      getPublicMenu({ _refresh: Date.now() })
+        .then((response) => {
+          if (isMounted) {
+            setApiMenuItems((response.data || []).map(mapMenuFromApi));
+          }
+        })
+        .catch((error) => {
+          console.error("Gagal mengambil menu publik:", error);
+          if (isMounted) {
+            setApiMenuItems(null);
+          }
+        });
+    };
+
+    loadMenu();
+    const intervalId = window.setInterval(loadMenu, MENU_AUTO_REFRESH_MS);
+    window.addEventListener("focus", loadMenu);
 
     return () => {
       isMounted = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", loadMenu);
     };
   }, []);
 
@@ -751,31 +786,7 @@ export default function Menu() {
     <div className="min-h-screen bg-[#091421] text-[#D9E3F6]">
       <div className="h-1 bg-[#050F1C]" />
 
-      <main className="mx-auto flex w-full max-w-[1280px] flex-col gap-12 px-6 py-20 sm:px-8 lg:px-8 lg:py-24">
-        <section className="flex w-full flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <label className="relative block w-full max-w-sm">
-            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#AC8884]">
-              <SearchIcon />
-            </span>
-            <input
-              type="search"
-              value={search}
-              onChange={handleSearchChange}
-              placeholder="Cari menu"
-              className="h-[55px] w-full bg-[#121C2A] py-[17px] pl-12 pr-3 font-['Space_Grotesk',sans-serif] text-base font-bold leading-5 tracking-[-0.025em] text-[#D9E3F6] outline-none placeholder:text-[#5C403C] focus:ring-2 focus:ring-[#EEC200]"
-            />
-          </label>
-
-          <div className="max-w-xl lg:text-right">
-            <p className="font-['Space_Grotesk',sans-serif] text-xs font-bold uppercase leading-4 tracking-[0.08em] text-[#EEC200]">
-              KEDAI SIGMA MENU
-            </p>
-            <h1 className="mt-2 font-['Space_Grotesk',sans-serif] text-4xl font-black leading-none tracking-normal text-[#D9E3F6] sm:text-5xl">
-              Temukan menu favoritmu
-            </h1>
-          </div>
-        </section>
-
+      <main className="mx-auto flex w-full max-w-[1280px] flex-col gap-10 px-5 py-14 sm:px-8 lg:px-8 lg:py-20">
         <section className="flex w-full flex-wrap gap-4">
           {filters.map((item) => (
             <FilterButton
@@ -787,36 +798,51 @@ export default function Menu() {
           ))}
         </section>
 
-        <section className="flex w-full flex-wrap items-center gap-3">
-          {[
-            { label: "A-Z", value: "name" },
-            { label: "Harga Termurah", value: "price-low" },
-            { label: "Harga Termahal", value: "price-high" },
-          ].map((item) => {
-            const isActive = sortMode === item.value;
+        <section className="flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            {[
+              { label: "A-Z", value: "name" },
+              { label: "Harga Termurah", value: "price-low" },
+              { label: "Harga Termahal", value: "price-high" },
+            ].map((item) => {
+              const isActive = sortMode === item.value;
 
-            return (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => handleSortChange(item.value)}
-                className={`border px-5 py-3 font-['Space_Grotesk',sans-serif] text-xs font-black uppercase tracking-[0.14em] transition ${
-                  isActive
-                    ? "border-[#EEC200] bg-[#EEC200] text-[#3C2F00]"
-                    : "border-[#5C403C]/40 bg-[#121C2A] text-[#D9E3F6] hover:border-[#EEC200]"
-                }`}
-              >
-                {item.label}
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => handleSortChange(item.value)}
+                  className={`rounded-full border px-5 py-2.5 font-['Space_Grotesk',sans-serif] text-xs font-bold tracking-normal transition ${
+                    isActive
+                      ? "border-[#EEC200] bg-[#EEC200] text-[#3C2F00]"
+                      : "border-white/10 bg-[#121C2A] text-[#D9E3F6] hover:border-[#EEC200]/60"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <label className="relative block w-full lg:max-w-[360px]">
+            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#AC8884]">
+              <SearchIcon />
+            </span>
+            <input
+              type="search"
+              value={search}
+              onChange={handleSearchChange}
+              placeholder="Cari menu"
+              className="h-11 w-full rounded-full border border-white/10 bg-[#121C2A] py-3 pl-12 pr-4 font-['Space_Grotesk',sans-serif] text-sm font-bold leading-5 tracking-normal text-[#D9E3F6] outline-none placeholder:text-[#7B8798] focus:border-[#EEC200] focus:ring-2 focus:ring-[#EEC200]/20"
+            />
+          </label>
         </section>
 
         <section className="flex w-full flex-col gap-12">
           {visibleCategorySections.map((category) => (
             <div key={category.value} className="flex w-full flex-col gap-6">
               <div className="flex items-center gap-5">
-                <h2 className="font-['Space_Grotesk',sans-serif] text-2xl font-black leading-none tracking-[-0.02em] text-[#EEC200] sm:text-3xl">
+                <h2 className="font-['Space_Grotesk',sans-serif] text-2xl font-black leading-none tracking-normal text-[#EEC200] sm:text-3xl">
                   {category.label}
                 </h2>
                 <div className="h-px flex-1 bg-[#2B3544]" />
@@ -846,7 +872,7 @@ export default function Menu() {
             <button
               type="button"
               onClick={() => setVisibleCount((current) => current + LOAD_MORE_COUNT)}
-              className="group flex h-[60px] items-center gap-3 bg-[#EEC200] px-12 py-5 font-['Space_Grotesk',sans-serif] text-sm font-black uppercase leading-5 tracking-[0.2em] text-[#3C2F00] shadow-[8px_8px_0_#3C2F00] transition duration-300 ease-out hover:-translate-y-1 hover:shadow-[10px_10px_0_#3C2F00] active:translate-y-0 active:shadow-[4px_4px_0_#3C2F00]"
+              className="group flex h-12 items-center gap-3 rounded-full bg-[#EEC200] px-8 font-['Space_Grotesk',sans-serif] text-sm font-bold leading-5 tracking-normal text-[#3C2F00] shadow-[0_16px_34px_rgba(238,194,0,0.16)] transition duration-300 ease-out hover:-translate-y-1 active:translate-y-0"
             >
               Tampilkan lebih banyak
               <span className="transition duration-300 group-hover:translate-y-0.5">
